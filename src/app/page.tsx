@@ -27,7 +27,6 @@ export default function Home() {
   const [history, setHistory] = useState<{id: number; date: string; productName: string; result: GeneratedResult}[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [showHistoryWarning, setShowHistoryWarning] = useState(false)
-  const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light' | 'pink'>('dark')
 
   useEffect(() => {
@@ -242,10 +241,6 @@ export default function Home() {
         try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
         return updated
       })
-      if (!localStorage.getItem('storage_warning_shown')) {
-        setShowStorageWarning(true)
-        localStorage.setItem('storage_warning_shown', '1')
-      }
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다.')
