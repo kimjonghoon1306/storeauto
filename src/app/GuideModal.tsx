@@ -36,8 +36,25 @@ export default function GuideModal() {
       ],
     },
     {
+      emoji: '🖼️',
+      title: '1단계 — AI 이미지 분석 (선택)',
+      desc: '상품 사진을 올리면 AI가 상품 정보를
+자동으로 읽어서 입력폼을 채워줍니다.
+사진이 없으면 건너뛰고 직접 입력하세요.',
+      sub: 'Gemini 또는 OpenAI 키가 필요합니다.
+Groq는 이미지 분석을 지원하지 않습니다.',
+      img: [
+        '① 🖼️ AI 이미지 분석 섹션 클릭해서 펼치기',
+        '② 상품 사진 업로드 (클릭 또는 드래그)',
+        '③ AI 이미지 분석 시작 버튼 클릭',
+        '④ 상품명·카테고리·특징이 아래 입력폼에 자동 입력됨',
+        '⑤ 트렌드 검색창에도 상품명이 자동으로 채워짐',
+        '⚠️ 이 기능은 입력폼 자동완성용입니다. 글 안에 포함되는 SEO 키워드는 트렌드 분석에서 선택하세요.',
+      ],
+    },
+    {
       emoji: '📊',
-      title: '1단계 — 네이버 트렌드 분석',
+      title: '2단계 — 네이버 트렌드 분석',
       desc: '팔고 싶은 상품 키워드를 입력하면\n네이버 12개월 검색량 트렌드를\n그래프로 보여줍니다.',
       sub: 'AI가 트렌드를 분석해 최적의 SEO 키워드 5개를 추천해줍니다.',
       img: [
@@ -50,7 +67,7 @@ export default function GuideModal() {
     },
     {
       emoji: '🎭',
-      title: '2단계 — 글쓰기 스타일 선택',
+      title: '3단계 — 글쓰기 스타일 선택',
       desc: '4가지 페르소나 중 원하는\n글쓰기 스타일을 선택하세요.',
       sub: '같은 상품도 스타일에 따라 완전히 다른 느낌으로 생성됩니다.',
       img: [
@@ -62,7 +79,7 @@ export default function GuideModal() {
     },
     {
       emoji: '🤖',
-      title: '3단계 — AI 선택',
+      title: '4단계 — AI 선택',
       desc: 'Gemini, OpenAI, Groq 중\n사용할 AI를 선택하세요.',
       sub: '설정 페이지에서 키를 등록하면 자동으로 불러와집니다.',
       img: [
@@ -73,7 +90,7 @@ export default function GuideModal() {
     },
     {
       emoji: '📦',
-      title: '4단계 — 상품 정보 입력',
+      title: '5단계 — 상품 정보 입력',
       desc: '판매하실 상품 정보를 입력하세요.\n상세할수록 좋은 결과가 나옵니다.',
       sub: '별표(*) 항목은 필수입니다.',
       img: [
@@ -86,7 +103,7 @@ export default function GuideModal() {
     },
     {
       emoji: '✦',
-      title: '5단계 — 자동 생성',
+      title: '6단계 — 자동 생성',
       desc: '"✦ 상품 설명 자동 생성" 버튼을\n클릭하면 AI가 10~20초 안에\n모든 내용을 완성합니다.',
       img: [
         '🔍 네이버 SEO 최적화 키워드 10개',
@@ -99,7 +116,7 @@ export default function GuideModal() {
     },
     {
       emoji: '🎨',
-      title: '6단계 — 상세페이지 제작',
+      title: '7단계 — 상세페이지 제작',
       desc: '생성 완료 후 결과 아래\n"상세페이지 제작" 섹션이 나타납니다.',
       img: [
         '① 7가지 디자인 템플릿 선택',
