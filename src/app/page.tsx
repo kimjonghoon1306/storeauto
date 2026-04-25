@@ -24,11 +24,22 @@ export default function Home() {
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [history, setHistory] = useState<{id: number; date: string; productName: string; result: GeneratedResult}[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [showHistoryWarning, setShowHistoryWarning] = useState(false)
+  const [showStorageWarning, setShowStorageWarning] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light' | 'pink'>('dark')
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
   }, [theme])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('storeauto_history')
+      if (saved) setHistory(JSON.parse(saved))
+    } catch {}
+  }, [])
 
   const [persona, setPersona] = useState<'A' | 'B' | 'C' | 'D'>('A')
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>('gemini')
@@ -219,6 +230,22 @@ export default function Home() {
       }
       const parsed: GeneratedResult = JSON.parse(jsonStr)
       setResult(parsed)
+      // 히스토리 저장
+      const newItem = {
+        id: Date.now(),
+        date: new Date().toLocaleString('ko-KR'),
+        productName: input.productName,
+        result: parsed,
+      }
+      setHistory(prev => {
+        const updated = [newItem, ...prev].slice(0, 20)
+        try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
+        return updated
+      })
+      if (!localStorage.getItem('storage_warning_shown')) {
+        setShowStorageWarning(true)
+        localStorage.setItem('storage_warning_shown', '1')
+      }
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다.')
@@ -250,6 +277,47 @@ export default function Home() {
   return (
     <>
       <GuideModal />
+
+      {/* 저장 경고 팝업 - 최초 1회 */}
+      {showStorageWarning && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1001,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+        }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '32px', maxWidth: '420px', width: '100%',
+          }}>
+            <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '16px' }}>⚠️</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text)', textAlign: 'center', marginBottom: '16px' }}>
+              저장 데이터 안내
+            </h3>
+            <div style={{
+              background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
+              borderRadius: '10px', padding: '16px', marginBottom: '20px',
+            }}>
+              <p style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 2 }}>
+                📱 <strong>이 기기 브라우저에만</strong> 저장됩니다.<br />
+                💻 다른 기기나 다른 브라우저에서는 보이지 않아요.<br />
+                🗑️ 브라우저 캐시/쿠키를 삭제하면 데이터가 사라집니다.<br />
+                🔄 시크릿 모드에서는 저장되지 않습니다.
+              </p>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '20px' }}>
+              중요한 내용은 반드시 복사해두세요!
+            </p>
+            <button onClick={() => setShowStorageWarning(false)} style={{
+              width: '100%', background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              확인했습니다 ✓
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 20px) 80px' }}>
 
         {/* 헤더 */}
@@ -289,6 +357,73 @@ export default function Home() {
             상품 정보만 입력하면 키워드 · 설명 · FAQ · HTML까지 한 번에
           </p>
         </div>
+
+        {/* 히스토리 패널 */}
+        {showHistory && history.length > 0 && (
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '20px', marginBottom: '24px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent)' }}>📋 생성 기록</p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => {
+                  if (confirm('기록을 모두 삭제할까요?')) {
+                    setHistory([])
+                    localStorage.removeItem('storeauto_history')
+                  }
+                }} style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>전체 삭제</button>
+                <button onClick={() => setShowHistory(false)} style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>닫기</button>
+              </div>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              ⚠️ 이 기기 브라우저에만 저장됩니다. 캐시 삭제 시 사라집니다.
+            </p>
+            <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+              {history.map(item => (
+                <div key={item.id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: '10px', padding: '12px 16px', gap: '12px',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.date}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button onClick={() => {
+                      setResult(item.result)
+                      setInput(prev => ({ ...prev, productName: item.productName }))
+                      setShowHistory(false)
+                      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                    }} style={{
+                      background: 'var(--accent)', color: '#fff', border: 'none',
+                      borderRadius: '6px', padding: '6px 12px', fontSize: '12px',
+                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>불러오기</button>
+                    <button onClick={() => {
+                      const updated = history.filter(h => h.id !== item.id)
+                      setHistory(updated)
+                      try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
+                    }} style={{
+                      background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                      padding: '6px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 입력 폼 */}
         <div style={{
