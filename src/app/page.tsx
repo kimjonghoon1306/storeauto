@@ -33,6 +33,7 @@ export default function Home() {
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
+    localStorage.setItem('storeauto_theme', theme)
   }, [theme])
 
   useEffect(() => {
@@ -360,18 +361,28 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => router.push('/settings')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid var(--accent)', background: 'rgba(255,107,53,0.1)',
                 color: 'var(--accent)', transition: 'all 0.15s',
-              }}>⚙️ 키 설정</button>
+                whiteSpace: 'nowrap',
+              }}>⚙️ 설정</button>
               <button onClick={() => router.push('/reviews')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)',
                 color: '#f59e0b', transition: 'all 0.15s',
-              }}>💬 리뷰 답글</button>
+                whiteSpace: 'nowrap',
+              }}>💬 리뷰</button>
+              <button onClick={() => router.push('/government')} style={{
+                padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid #34d399', background: 'rgba(52,211,153,0.1)',
+                color: '#34d399', transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}>🏛️ 지원</button>
               {history.length > 0 && (
                 <button onClick={() => setShowHistory(v => !v)} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
