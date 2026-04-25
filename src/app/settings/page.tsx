@@ -11,7 +11,7 @@ const THEMES = {
   pink:  { bg: '#1a0a14', surface: '#241018', surface2: '#2e1520', border: '#4a2035', accent: '#ff4d8f', text: '#fff0f5', muted: '#cc88aa', green: '#ff80c0' },
 }
 
-export default function SettingsPage() {
+export default function Page() {
   const router = useRouter()
   const [theme, setTheme] = useState<Theme>('dark')
   const [saved, setSaved] = useState(false)
@@ -388,4 +388,3 @@ export default function SettingsPage() {
     </>
   )
 }
-
