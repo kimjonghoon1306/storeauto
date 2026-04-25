@@ -45,6 +45,7 @@ export default function Home() {
   const [openaiKey, setOpenaiKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
   const [showKey, setShowKey] = useState(false)
+  const [regenLoading, setRegenLoading] = useState<string | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -64,6 +65,106 @@ export default function Home() {
         ? prev.promotions.filter(x => x !== p)
         : [...prev.promotions, p],
     }))
+  }
+
+  // 공통 AI 호출 함수
+  const callAI = async (prompt: string): Promise<string> => {
+    let text = ''
+    if (provider === 'gemini') {
+      const GEMINI_MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash','gemini-1.5-flash-latest']
+      let lastErr = ''
+      for (const model of GEMINI_MODELS) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } }) }
+          )
+          if (!res.ok) {
+            const errData = await res.json()
+            const msg = (errData?.error?.message || '').toLowerCase()
+            const status = res.status
+            if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) throw new Error('Gemini API 키가 잘못되었습니다.')
+            lastErr = `${model} 오류(${status})`; continue
+          }
+          const data = await res.json()
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (!text) { lastErr = `${model} 빈 응답`; continue }
+          break
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : ''
+          if (msg.includes('API 키')) throw e
+          lastErr = msg; continue
+        }
+      }
+      if (!text) throw new Error(`생성 실패: ${lastErr}`)
+    } else if (provider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey.trim()}` },
+        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(`OpenAI 오류: ${e?.error?.message || ''}`) }
+      const data = await res.json()
+      text = data.choices?.[0]?.message?.content || ''
+    } else {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey.trim()}` },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
+      })
+      if (!res.ok) { const e = await res.json(); throw new Error(`Groq 오류: ${e?.error?.message || ''}`) }
+      const data = await res.json()
+      text = data.choices?.[0]?.message?.content || ''
+    }
+    return text
+  }
+
+  // 섹션별 재생성
+  type RegenSection = 'keywords' | 'oneLiner' | 'description' | 'recommendation' | 'cta' | 'faq'
+  const handleRegen = async (section: RegenSection) => {
+    if (!result) return
+    setRegenLoading(section)
+    try {
+      const sectionPrompts: Record<RegenSection, string> = {
+        keywords: `다음 상품의 네이버 검색 최적화 키워드 10개를 새롭게 생성해주세요.
+상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
+JSON 배열로만 응답: ["키워드1","키워드2","키워드3","키워드4","키워드5","키워드6","키워드7","키워드8","키워드9","키워드10"]`,
+        oneLiner: `다음 상품의 핵심을 담은 감성적인 한 줄 카피를 새롭게 1개만 만들어주세요.
+상품명: ${input.productName}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
+따옴표 없이 카피 텍스트만 출력하세요. 25자 내외.`,
+        description: `다음 상품의 상세 설명을 새롭게 작성해주세요. 700자 이상, 줄바꿈은 \n 사용, 쌍따옴표 금지.
+상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}, 가격: ${input.priceRange}, 타겟: ${input.targetCustomer}
+텍스트만 출력하세요.`,
+        recommendation: `다음 상품을 추천하는 3가지 타입의 고객을 구체적 상황으로 묘사해주세요. 줄바꿈은 \n 사용, 쌍따옴표 금지.
+상품명: ${input.productName}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
+텍스트만 출력하세요.`,
+        cta: `다음 상품의 구매 유도 멘트를 새롭게 3~4문장으로 작성해주세요. 긴급성과 혜택 강조. 줄바꿈은 \n 사용, 쌍따옴표 금지.
+상품명: ${input.productName}, 프로모션: ${input.promotions.join(', ') || '없음'}, 가격: ${input.priceRange}
+텍스트만 출력하세요.`,
+        faq: `다음 상품에 대해 실제 구매자가 궁금해할 FAQ 5개를 새롭게 만들어주세요.
+상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}
+JSON 배열로만 응답. 쌍따옴표 금지: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답변2"},{"q":"질문3","a":"답변3"},{"q":"질문4","a":"답변4"},{"q":"질문5","a":"답변5"}]`,
+      }
+
+      const text = await callAI(sectionPrompts[section])
+      const cleaned = text.replace(/\`\`\`json|\`\`\`/g, '').trim()
+
+      setResult(prev => {
+        if (!prev) return prev
+        if (section === 'keywords') {
+          try { return { ...prev, keywords: JSON.parse(cleaned.match(/\[[\s\S]*\]/)?.[0] || '[]') } } catch { return prev }
+        }
+        if (section === 'faq') {
+          try { return { ...prev, faq: JSON.parse(cleaned.match(/\[[\s\S]*\]/)?.[0] || '[]') } } catch { return prev }
+        }
+        return { ...prev, [section]: cleaned }
+      })
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : '재생성 중 오류가 발생했습니다.')
+    } finally {
+      setRegenLoading(null)
+    }
   }
 
   const handleSubmit = async () => {
@@ -253,6 +354,23 @@ export default function Home() {
     setCopied(key)
     setTimeout(() => setCopied(null), 2000)
   }
+
+  const RegenBtn = ({ section, label }: { section: 'keywords' | 'oneLiner' | 'description' | 'recommendation' | 'cta' | 'faq'; label: string }) => (
+    <button
+      onClick={() => handleRegen(section)}
+      disabled={regenLoading !== null}
+      style={{
+        background: regenLoading === section ? 'var(--surface2)' : 'rgba(255,107,53,0.1)',
+        border: '1px solid var(--accent)', color: regenLoading === section ? 'var(--text-muted)' : 'var(--accent)',
+        borderRadius: '6px', padding: '6px 12px', fontSize: '12px',
+        cursor: regenLoading !== null ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit', whiteSpace: 'nowrap' as const, fontWeight: 600,
+        transition: 'all 0.2s',
+      }}
+    >
+      {regenLoading === section ? '⟳ 생성중...' : `↺ ${label} 재생성`}
+    </button>
+  )
 
   const CopyBtn = ({ text, id }: { text: string; id: string }) => (
     <button
@@ -613,7 +731,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>🔍 네이버 검색 최적화 키워드</h3>
-                <CopyBtn text={result.keywords.join(', ')} id="keywords" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="keywords" label="키워드" />
+                  <CopyBtn text={result.keywords.join(', ')} id="keywords" />
+                </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
                 {result.keywords.map((k, i) => (
@@ -629,7 +750,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>✦ 핵심 카피</h3>
-                <CopyBtn text={result.oneLiner} id="oneliner" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="oneLiner" label="카피" />
+                  <CopyBtn text={result.oneLiner} id="oneliner" />
+                </div>
               </div>
               <p style={{ fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: 700, color: 'var(--accent2)', marginTop: '4px' }}>{result.oneLiner}</p>
             </div>
@@ -637,7 +761,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>📝 상세 설명</h3>
-                <CopyBtn text={result.description} id="desc" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="description" label="설명" />
+                  <CopyBtn text={result.description} id="desc" />
+                </div>
               </div>
               <p style={{ lineHeight: 1.9, whiteSpace: 'pre-line', color: 'var(--text)', fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.description}</p>
             </div>
@@ -645,7 +772,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>👤 이런 분께 추천</h3>
-                <CopyBtn text={result.recommendation} id="rec" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="recommendation" label="추천" />
+                  <CopyBtn text={result.recommendation} id="rec" />
+                </div>
               </div>
               <p style={{ lineHeight: 2, whiteSpace: 'pre-line', color: 'var(--text)', fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.recommendation}</p>
             </div>
@@ -653,7 +783,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>🛒 구매 유도 멘트</h3>
-                <CopyBtn text={result.cta} id="cta" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="cta" label="멘트" />
+                  <CopyBtn text={result.cta} id="cta" />
+                </div>
               </div>
               <p style={{ lineHeight: 1.8, color: 'var(--accent)', fontWeight: 500, fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.cta}</p>
             </div>
@@ -661,7 +794,10 @@ export default function Home() {
             <div className="result-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3>❓ FAQ</h3>
-                <CopyBtn text={result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')} id="faq" />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <RegenBtn section="faq" label="FAQ" />
+                  <CopyBtn text={result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')} id="faq" />
+                </div>
               </div>
               <div style={{ display: 'grid', gap: '14px', marginTop: '8px' }}>
                 {result.faq.map((item, i) => (
