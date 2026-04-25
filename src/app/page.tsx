@@ -474,6 +474,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             {/* 네이버 트렌드 & AI 키워드 */}
             <TrendSearch
               onKeywordSelect={(kw) => setSeoKeyword(kw)}
+              onClearSeoKeyword={() => setSeoKeyword('')}
               callAI={callAI}
               naverClientId={naverClientId}
               naverClientSecret={naverClientSecret}
