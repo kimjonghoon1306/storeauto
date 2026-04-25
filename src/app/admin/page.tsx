@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseQuery } from '@/lib/supabase'
 
 type Tab = 'keys' | 'popup' | 'gov' | 'password'
+type Theme = 'dark' | 'light' | 'pink'
 
 interface PopupItem {
   id?: string
@@ -26,448 +27,601 @@ interface GovItem {
 
 const ADMIN_PW_KEY = 'storeauto_admin_pw'
 const DEFAULT_PW = 'admin1234'
+
 const REGIONS = ['전국','서울','부산','인천','대구','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주']
 const GOV_CATS = ['지자체지원금','정책자금','무상지원','창업지원','기타']
+
 const POPUP_TYPES = [
-  { key: 'notice', label: '공지', color: '#f59e0b' },
-  { key: 'info',   label: '정보', color: '#3b82f6' },
-  { key: 'event',  label: '이벤트', color: '#10b981' },
-  { key: 'warning',label: '경고', color: '#ef4444' },
-]
-const TABS: { key: Tab; icon: string; label: string }[] = [
-  { key: 'keys',     icon: '🔑', label: 'API 키' },
-  { key: 'popup',    icon: '📢', label: '팝업' },
-  { key: 'gov',      icon: '🏛️', label: '정부지원' },
-  { key: 'password', icon: '🔒', label: '비밀번호' },
+  { key:'notice',  label:'공지',   color:'#f59e0b' },
+  { key:'info',    label:'정보',   color:'#3b82f6' },
+  { key:'event',   label:'이벤트', color:'#10b981' },
+  { key:'warning', label:'경고',   color:'#ef4444' },
 ]
 
-const iStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '10px',
-  padding: '11px 14px',
-  color: '#f0f0f5',
-  fontSize: '14px',
-  outline: 'none',
-  fontFamily: "'Noto Sans KR', sans-serif",
-}
+const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
+  { key:'keys',     icon:'🔑', label:'API 키',   color:'#ffd700' },
+  { key:'popup',    icon:'📢', label:'팝업',     color:'#f472b6' },
+  { key:'gov',      icon:'🏛️', label:'정부지원', color:'#34d399' },
+  { key:'password', icon:'🔒', label:'비밀번호', color:'#60a5fa' },
+]
 
 export default function AdminPage() {
   const router = useRouter()
-  const [authed, setAuthed]   = useState(false)
-  const [pw, setPw]           = useState('')
-  const [pwErr, setPwErr]     = useState('')
-  const [tab, setTab]         = useState<Tab>('keys')
-  const [busy, setBusy]       = useState(false)
-  const [toast, setToast]     = useState('')
+  const [authed, setAuthed] = useState(false)
+  const [pw, setPw]         = useState('')
+  const [shake, setShake]   = useState(false)
+  const [tab, setTab]       = useState<Tab>('keys')
+  const [theme, setTheme]   = useState<Theme>('dark')
+  const [busy, setBusy]     = useState(false)
+  const [toast, setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
 
-  const [gemini, setGemini]         = useState('')
-  const [datalabId, setDatalabId]   = useState('')
-  const [datalabSec, setDatalabSec] = useState('')
-  const [showGemini, setShowGemini] = useState(false)
-  const [showDlId, setShowDlId]     = useState(false)
-  const [showDlSec, setShowDlSec]   = useState(false)
+  const [gemini, setGemini] = useState('')
+  const [dlId, setDlId]     = useState('')
+  const [dlSec, setDlSec]   = useState('')
+  const [showG, setShowG]   = useState(false)
+  const [showI, setShowI]   = useState(false)
+  const [showS, setShowS]   = useState(false)
 
-  const [popups, setPopups]     = useState<PopupItem[]>([])
-  const [pTitle, setPTitle]     = useState('')
-  const [pContent, setPContent] = useState('')
-  const [pType, setPType]       = useState('notice')
-  const [pBg, setPBg]           = useState('#1c1c28')
-  const [pFg, setPFg]           = useState('#f0f0f5')
+  const [popups, setPopups]   = useState<PopupItem[]>([])
+  const [pTitle, setPTitle]   = useState('')
+  const [pCont, setPCont]     = useState('')
+  const [pType, setPType]     = useState('notice')
+  const [pBg, setPBg]         = useState('#1c1c28')
+  const [pFg, setPFg]         = useState('#f0f0f5')
 
-  const [govList, setGovList]     = useState<GovItem[]>([])
-  const [gRegion, setGRegion]     = useState('전국')
-  const [gCat, setGCat]           = useState('지자체지원금')
-  const [gTitle, setGTitle]       = useState('')
-  const [gContent, setGContent]   = useState('')
+  const [govList, setGovList] = useState<GovItem[]>([])
+  const [gReg, setGReg]       = useState('전국')
+  const [gCat, setGCat]       = useState('지자체지원금')
+  const [gTitle, setGTitle]   = useState('')
+  const [gCont, setGCont]     = useState('')
 
-  const [oldPw, setOldPw]   = useState('')
-  const [newPw1, setNewPw1] = useState('')
-  const [newPw2, setNewPw2] = useState('')
+  const [oldPw, setOldPw] = useState('')
+  const [newP1, setNewP1] = useState('')
+  const [newP2, setNewP2] = useState('')
 
-  const msg = (t: string) => { setToast(t); setTimeout(() => setToast(''), 2500) }
+  const isDark = theme === 'dark'
+  const isPink = theme === 'pink'
 
-  const login = () => {
-    const stored = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
-    if (pw === stored) { setAuthed(true); loadAll() }
-    else { setPwErr('비밀번호가 틀렸어요'); setTimeout(() => setPwErr(''), 2000) }
-  }
+  const BG      = isDark ? '#050510' : isPink ? '#0f0814' : '#f0f2ff'
+  const SURFACE = isDark ? 'rgba(255,255,255,0.04)' : isPink ? 'rgba(255,120,200,0.06)' : 'rgba(255,255,255,0.85)'
+  const BORDER  = isDark ? 'rgba(255,255,255,0.08)' : isPink ? 'rgba(255,100,200,0.15)' : 'rgba(0,0,0,0.08)'
+  const TEXT    = isDark ? '#f0f0ff' : isPink ? '#ffe4f5' : '#1a1a2e'
+  const MUTED   = isDark ? '#44446a' : isPink ? '#aa66bb' : '#9999bb'
+  const ACCENT  = '#ff6b35'
 
-  const loadAll = async () => {
+  const pop = useCallback((msg: string, ok = true) => {
+    setToast({ msg, ok })
+    setTimeout(() => setToast(null), 2800)
+  }, [])
+
+  const loadAll = useCallback(async () => {
     setBusy(true)
     try {
-      const configs = await supabaseQuery('admin_config', 'GET', undefined, 'select=key,value') as Array<{ key: string; value: string }>
+      const [configs, pops, govs] = await Promise.all([
+        supabaseQuery('admin_config','GET',undefined,'select=key,value'),
+        supabaseQuery('popups','GET',undefined,'order=created_at.desc'),
+        supabaseQuery('gov_support','GET',undefined,'order=created_at.desc'),
+      ])
       if (Array.isArray(configs)) {
-        configs.forEach((c) => {
-          if (c.key === 'gemini_key')      setGemini(c.value || '')
-          if (c.key === 'datalab_id')      setDatalabId(c.value || '')
-          if (c.key === 'datalab_secret')  setDatalabSec(c.value || '')
+        configs.forEach((c: { key: string; value: string }) => {
+          if (c.key==='gemini_key')     setGemini(c.value||'')
+          if (c.key==='datalab_id')     setDlId(c.value||'')
+          if (c.key==='datalab_secret') setDlSec(c.value||'')
         })
       }
-      const pops = await supabaseQuery('popups', 'GET', undefined, 'order=created_at.desc') as PopupItem[]
-      if (Array.isArray(pops)) setPopups(pops)
-      const govs = await supabaseQuery('gov_support', 'GET', undefined, 'order=created_at.desc') as GovItem[]
-      if (Array.isArray(govs)) setGovList(govs)
+      if (Array.isArray(pops)) setPopups(pops as PopupItem[])
+      if (Array.isArray(govs)) setGovList(govs as GovItem[])
     } catch (_e) { /* ignore */ }
     setBusy(false)
-  }
+  }, [])
 
-  const saveConfig = async (key: string, value: string) => {
-    await supabaseQuery('admin_config', 'POST', { key, value }, 'on_conflict=key')
+  const login = useCallback(() => {
+    const stored = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
+    if (pw === stored) { setAuthed(true); loadAll() }
+    else { setShake(true); setTimeout(() => setShake(false), 500) }
+  }, [pw, loadAll])
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key==='Enter' && !authed) login() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [authed, login])
+
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem('admin_theme') as Theme
+      if (t) setTheme(t)
+    } catch (_e) { /* ignore */ }
+  }, [])
+
+  const setThemeAndSave = (t: Theme) => {
+    setTheme(t)
+    try { localStorage.setItem('admin_theme', t) } catch (_e) { /* ignore */ }
   }
 
   const saveKeys = async () => {
     setBusy(true)
     try {
-      await saveConfig('gemini_key', gemini)
-      await saveConfig('datalab_id', datalabId)
-      await saveConfig('datalab_secret', datalabSec)
-      const prev = JSON.parse(localStorage.getItem('storeauto_keys') || '{}') as Record<string, string>
-      localStorage.setItem('storeauto_keys', JSON.stringify({ ...prev, gemini }))
-      msg('✅ 키 저장 완료!')
-    } catch (_e) { msg('❌ 저장 실패') }
+      await supabaseQuery('admin_config','POST',{key:'gemini_key',value:gemini},'on_conflict=key')
+      await supabaseQuery('admin_config','POST',{key:'datalab_id',value:dlId},'on_conflict=key')
+      await supabaseQuery('admin_config','POST',{key:'datalab_secret',value:dlSec},'on_conflict=key')
+      const prev = JSON.parse(localStorage.getItem('storeauto_keys')||'{}') as Record<string,string>
+      localStorage.setItem('storeauto_keys', JSON.stringify({...prev, gemini}))
+      pop('✅ 키 저장 완료!')
+    } catch (_e) { pop('❌ 저장 실패', false) }
     setBusy(false)
   }
 
   const addPopup = async () => {
-    if (!pTitle || !pContent) return
+    if (!pTitle||!pCont) return
     setBusy(true)
     try {
-      const item = { title: pTitle, content: pContent, type: pType, active: true, bg_color: pBg, text_color: pFg }
-      const res = await supabaseQuery('popups', 'POST', item) as PopupItem[]
-      if (Array.isArray(res) && res[0]) setPopups([res[0], ...popups])
-      setPTitle(''); setPContent('')
-      msg('✅ 팝업 등록!')
-    } catch (_e) { msg('❌ 저장 실패') }
+      const res = await supabaseQuery('popups','POST',{title:pTitle,content:pCont,type:pType,active:true,bg_color:pBg,text_color:pFg}) as PopupItem[]
+      if (Array.isArray(res)&&res[0]) setPopups([res[0],...popups])
+      setPTitle(''); setPCont('')
+      pop('✅ 팝업 등록!')
+    } catch (_e) { pop('❌ 실패', false) }
     setBusy(false)
   }
 
   const togglePopup = async (p: PopupItem) => {
     try {
-      await supabaseQuery('popups', 'PATCH', { active: !p.active }, 'id=eq.' + p.id)
-      setPopups(popups.map((x) => x.id === p.id ? { ...x, active: !x.active } : x))
-    } catch (_e) { msg('❌ 오류') }
+      await supabaseQuery('popups','PATCH',{active:!p.active},'id=eq.'+p.id)
+      setPopups(popups.map((x) => x.id===p.id ? {...x,active:!x.active} : x))
+    } catch (_e) { pop('❌ 오류', false) }
   }
 
   const delPopup = async (id: string) => {
     try {
-      await supabaseQuery('popups', 'DELETE', undefined, 'id=eq.' + id)
-      setPopups(popups.filter((p) => p.id !== id))
-      msg('🗑️ 삭제')
-    } catch (_e) { msg('❌ 오류') }
+      await supabaseQuery('popups','DELETE',undefined,'id=eq.'+id)
+      setPopups(popups.filter((p) => p.id!==id))
+      pop('🗑️ 삭제 완료')
+    } catch (_e) { pop('❌ 오류', false) }
   }
 
   const addGov = async () => {
-    if (!gTitle || !gContent) return
+    if (!gTitle||!gCont) return
     setBusy(true)
     try {
-      const item = { region: gRegion, category: gCat, title: gTitle, content: gContent }
-      const res = await supabaseQuery('gov_support', 'POST', item) as GovItem[]
-      if (Array.isArray(res) && res[0]) setGovList([res[0], ...govList])
-      setGTitle(''); setGContent('')
-      msg('✅ 등록 완료!')
-    } catch (_e) { msg('❌ 저장 실패') }
+      const res = await supabaseQuery('gov_support','POST',{region:gReg,category:gCat,title:gTitle,content:gCont}) as GovItem[]
+      if (Array.isArray(res)&&res[0]) setGovList([res[0],...govList])
+      setGTitle(''); setGCont('')
+      pop('✅ 등록 완료!')
+    } catch (_e) { pop('❌ 실패', false) }
     setBusy(false)
   }
 
   const delGov = async (id: string) => {
     try {
-      await supabaseQuery('gov_support', 'DELETE', undefined, 'id=eq.' + id)
-      setGovList(govList.filter((g) => g.id !== id))
-      msg('🗑️ 삭제')
-    } catch (_e) { msg('❌ 오류') }
+      await supabaseQuery('gov_support','DELETE',undefined,'id=eq.'+id)
+      setGovList(govList.filter((g) => g.id!==id))
+      pop('🗑️ 삭제 완료')
+    } catch (_e) { pop('❌ 오류', false) }
   }
 
   const changePw = () => {
     const stored = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
-    if (oldPw !== stored) { msg('❌ 현재 비밀번호 틀림'); return }
-    if (newPw1.length < 4) { msg('❌ 4자 이상 입력'); return }
-    if (newPw1 !== newPw2) { msg('❌ 비밀번호 불일치'); return }
-    localStorage.setItem(ADMIN_PW_KEY, newPw1)
-    setOldPw(''); setNewPw1(''); setNewPw2('')
-    msg('✅ 비밀번호 변경 완료!')
+    if (oldPw!==stored) { pop('❌ 현재 비밀번호 틀림', false); return }
+    if (newP1.length<4) { pop('❌ 4자 이상 입력', false); return }
+    if (newP1!==newP2)  { pop('❌ 비밀번호 불일치', false); return }
+    localStorage.setItem(ADMIN_PW_KEY, newP1)
+    setOldPw(''); setNewP1(''); setNewP2('')
+    pop('✅ 비밀번호 변경 완료!')
   }
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Enter' && !authed) login() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+  const inputSt: React.CSSProperties = {
+    width:'100%', background:SURFACE, border:'1px solid '+BORDER,
+    borderRadius:'14px', padding:'14px 18px', color:TEXT,
+    fontSize:'15px', outline:'none', fontFamily:"'Noto Sans KR',sans-serif",
+    transition:'all 0.2s',
+  }
+
+  const glowBtn = (color: string): React.CSSProperties => ({
+    padding:'13px 28px', borderRadius:'14px', border:'none', cursor:'pointer',
+    fontFamily:"'Noto Sans KR',sans-serif", fontSize:'14px', fontWeight:800,
+    color:'white', background:color,
+    boxShadow:'0 4px 20px '+color+'55',
+    transition:'all 0.25s', letterSpacing:'0.3px',
   })
 
-  // ── 로그인 화면 ─────────────────────────────────────────────────────
-  if (!authed) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#080810', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR', sans-serif" }}>
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
-          @keyframes glow { 0%,100%{box-shadow:0 0 30px rgba(255,107,53,0.3)} 50%{box-shadow:0 0 60px rgba(255,107,53,0.5)} }
-          @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-          input::placeholder{color:#444}
-          *{box-sizing:border-box}
-        `}</style>
-        <div style={{ width: '100%', maxWidth: '360px', padding: '0 20px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            <div style={{
-              width: 68, height: 68, borderRadius: '20px', margin: '0 auto 14px',
-              background: 'linear-gradient(135deg,#ff6b35,#ffd700)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '30px',
-              animation: 'glow 3s ease-in-out infinite',
-            }}>⚙️</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#f0f0f5' }}>관리자 패널</div>
-            <div style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>STORE AUTO ADMIN</div>
+  // ── 로그인 ──────────────────────────────────────────
+  if (!authed) return (
+    <div style={{ minHeight:'100vh', width:'100%', background:BG, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Noto Sans KR',sans-serif", position:'relative', overflow:'hidden' }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        @keyframes orbit { from{transform:rotate(0deg) translateX(180px) rotate(0deg)} to{transform:rotate(360deg) translateX(180px) rotate(-360deg)} }
+        @keyframes orbitR { from{transform:rotate(0deg) translateX(120px) rotate(0deg)} to{transform:rotate(-360deg) translateX(120px) rotate(360deg)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-10px)} 40%{transform:translateX(10px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+        @keyframes glowPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        input::placeholder{color:#555}
+        *{box-sizing:border-box}
+      `}</style>
+
+      {/* 배경 오브들 */}
+      {[
+        {w:500,h:500,color:'rgba(255,107,53,0.07)',top:'-10%',left:'-5%',blur:80},
+        {w:400,h:400,color:'rgba(139,92,246,0.06)',top:'60%',left:'70%',blur:80},
+        {w:300,h:300,color:'rgba(20,184,166,0.05)',top:'40%',left:'20%',blur:60},
+      ].map((o,i) => (
+        <div key={i} style={{ position:'absolute', width:o.w, height:o.h, borderRadius:'50%', background:o.color, top:o.top, left:o.left, filter:'blur('+o.blur+'px)', animation:'glowPulse '+(4+i)+'s ease-in-out infinite', animationDelay:(i*1.5)+'s', pointerEvents:'none' }} />
+      ))}
+
+      {/* 궤도 장식 */}
+      <div style={{ position:'absolute', width:360, height:360, borderRadius:'50%', border:'1px solid rgba(255,107,53,0.06)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }}>
+        <div style={{ position:'absolute', width:10, height:10, borderRadius:'50%', background:'#ff6b35', top:'50%', left:'50%', marginTop:-5, marginLeft:-5, animation:'orbit 8s linear infinite', boxShadow:'0 0 12px #ff6b35' }} />
+      </div>
+      <div style={{ position:'absolute', width:500, height:500, borderRadius:'50%', border:'1px solid rgba(139,92,246,0.04)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }}>
+        <div style={{ position:'absolute', width:7, height:7, borderRadius:'50%', background:'#8b5cf6', top:'50%', left:'50%', marginTop:-3.5, marginLeft:-3.5, animation:'orbitR 12s linear infinite', boxShadow:'0 0 10px #8b5cf6' }} />
+      </div>
+
+      {/* 테마 버튼 */}
+      <div style={{ position:'fixed', top:20, right:20, display:'flex', gap:8, zIndex:10 }}>
+        {(['dark','light','pink'] as Theme[]).map((t) => (
+          <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:34, height:34, borderRadius:'50%', border:'2px solid '+(theme===t ? ACCENT : 'transparent'), cursor:'pointer', fontSize:'16px', transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#f0f2ff':'#1f0a1a', boxShadow:theme===t?'0 0 16px '+ACCENT+'66':'' }}>
+            {t==='dark'?'🌙':t==='light'?'☀️':'🌸'}
+          </button>
+        ))}
+      </div>
+
+      {/* 로그인 카드 */}
+      <div style={{ width:'100%', maxWidth:400, padding:'0 20px', animation:'fadeUp 0.6s ease', position:'relative', zIndex:5 }}>
+        <div style={{ animation:'float 5s ease-in-out infinite' }}>
+          {/* 로고 */}
+          <div style={{ textAlign:'center', marginBottom:40 }}>
+            <div style={{ width:80, height:80, borderRadius:24, background:'linear-gradient(135deg,#ff6b35,#ffd700)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 16px', boxShadow:'0 0 40px rgba(255,107,53,0.5), 0 20px 40px rgba(0,0,0,0.3)' }}>⚙️</div>
+            <div style={{ fontSize:26, fontWeight:900, color:TEXT, letterSpacing:'-0.5px' }}>관리자 패널</div>
+            <div style={{ fontSize:13, color:MUTED, marginTop:6, letterSpacing:'2px' }}>STORE AUTO ADMIN</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '28px', backdropFilter: 'blur(20px)' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '11px', color: '#555', letterSpacing: '1px', marginBottom: '8px' }}>PASSWORD</div>
-              <input
-                type="password" value={pw} onChange={(e) => setPw(e.target.value)}
-                placeholder="비밀번호 입력" style={{ ...iStyle, letterSpacing: '4px', animation: pwErr ? 'shake 0.4s ease' : 'none', borderColor: pwErr ? '#ef4444' : 'rgba(255,255,255,0.08)' }}
-              />
-              {pwErr && <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '6px' }}>{pwErr}</div>}
+
+          {/* 카드 */}
+          <div style={{ background:SURFACE, border:'1px solid '+BORDER, borderRadius:28, padding:'36px 32px', backdropFilter:'blur(40px)', boxShadow:'0 40px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:11, color:MUTED, letterSpacing:'2px', marginBottom:10, fontWeight:700 }}>비밀번호</div>
+              <div style={{ position:'relative' }}>
+                <input
+                  type="password" value={pw}
+                  onChange={(e) => setPw(e.target.value)}
+                  placeholder="비밀번호를 입력하세요"
+                  style={{ ...inputSt, letterSpacing:'4px', fontSize:18, borderColor:shake?'#ef4444':BORDER, animation:shake?'shake 0.5s ease':'none', boxShadow:shake?'0 0 20px rgba(239,68,68,0.3)':'none' }}
+                />
+              </div>
+              {shake && <div style={{ fontSize:13, color:'#ef4444', marginTop:8, fontWeight:700, animation:'fadeUp 0.3s ease' }}>⚠️ 비밀번호가 틀렸어요</div>}
             </div>
-            <button onClick={login} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#ff6b35,#ff8c5a)', border: 'none', borderRadius: '10px', color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 8px 24px rgba(255,107,53,0.35)' }}>
-              로그인
-            </button>
-            <button onClick={() => router.push('/')} style={{ width: '100%', padding: '10px', marginTop: '8px', background: 'transparent', border: 'none', color: '#444', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit' }}>
-              ← 메인으로
+
+            <button onClick={login} style={{ ...glowBtn('linear-gradient(135deg,#ff6b35,#ff8c5a)'), width:'100%', fontSize:16, padding:'16px', boxShadow:'0 8px 30px rgba(255,107,53,0.45)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform='translateY(-2px) scale(1.01)'; (e.currentTarget as HTMLElement).style.boxShadow='0 14px 40px rgba(255,107,53,0.55)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform=''; (e.currentTarget as HTMLElement).style.boxShadow='0 8px 30px rgba(255,107,53,0.45)' }}
+            >🚀 로그인</button>
+
+            <button onClick={() => router.push('/')} style={{ width:'100%', padding:'13px', marginTop:10, background:'transparent', border:'none', color:MUTED, fontSize:13, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
+              ← 메인으로 돌아가기
             </button>
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── 대시보드 ────────────────────────────────────────────────────────
+  // ── 대시보드 ────────────────────────────────────────
+  const activeTabInfo = TABS.find((t) => t.key===tab)!
+
   return (
-    <div style={{ minHeight: '100vh', background: '#080810', color: '#f0f0f5', fontFamily: "'Noto Sans KR', sans-serif" }}>
+    <div style={{ minHeight:'100vh', width:'100%', background:BG, color:TEXT, fontFamily:"'Noto Sans KR',sans-serif", display:'flex', flexDirection:'column' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes toastIn{from{opacity:0;transform:translateX(80px)}to{opacity:1;transform:translateX(0)}}
-        input::placeholder,textarea::placeholder{color:#444}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes toastIn{from{opacity:0;transform:translateX(60px) scale(0.95)}to{opacity:1;transform:translateX(0) scale(1)}}
+        @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+        @keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.6}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        input::placeholder,textarea::placeholder{color:#555}
         select option{background:#1c1c28}
         *{box-sizing:border-box}
-        ::-webkit-scrollbar{width:4px}
-        ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+        ::-webkit-scrollbar{width:5px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:rgba(255,107,53,0.3);border-radius:10px}
+        .hov-row:hover{background:rgba(255,107,53,0.04)!important;transition:background 0.2s}
       `}</style>
 
+      {/* 토스트 */}
       {toast && (
-        <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, background: 'rgba(20,20,30,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px 20px', fontSize: '14px', fontWeight: 700, backdropFilter: 'blur(20px)', animation: 'toastIn 0.3s ease', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          {toast}
+        <div style={{ position:'fixed', top:24, right:24, zIndex:9999, padding:'14px 22px', borderRadius:14, fontSize:14, fontWeight:800, backdropFilter:'blur(20px)', animation:'toastIn 0.3s ease', background:toast.ok?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)', border:'1px solid '+(toast.ok?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)'), color:toast.ok?'#34d399':'#f87171', boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}>
+          {toast.msg}
         </div>
       )}
 
       {/* 헤더 */}
-      <div style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '0 20px', height: '58px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(20px)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: 34, height: 34, borderRadius: '9px', background: 'linear-gradient(135deg,#ff6b35,#ffd700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', boxShadow: '0 0 16px rgba(255,107,53,0.3)' }}>⚙️</div>
+      <div style={{ background:SURFACE, borderBottom:'1px solid '+BORDER, padding:'0 24px', height:64, display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100, backdropFilter:'blur(30px)', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#ff6b35,#ffd700)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, boxShadow:'0 0 20px rgba(255,107,53,0.4)', animation:'bounce 2s ease-in-out infinite' }}>⚙️</div>
           <div>
-            <div style={{ fontSize: '14px', fontWeight: 900 }}>관리자 패널</div>
-            <div style={{ fontSize: '10px', color: '#444' }}>STORE AUTO</div>
+            <div style={{ fontSize:16, fontWeight:900, letterSpacing:'-0.3px', color:TEXT }}>관리자 패널</div>
+            <div style={{ fontSize:11, color:MUTED, letterSpacing:'1px' }}>STORE AUTO</div>
           </div>
+          <div style={{ marginLeft:8, width:8, height:8, borderRadius:'50%', background:'#10b981', boxShadow:'0 0 10px #10b981', animation:'glowPulse 2s ease-in-out infinite' }} />
+          {busy && <div style={{ fontSize:11, color:MUTED, animation:'spin 1s linear infinite', display:'inline-block' }}>⟳</div>}
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => router.push('/')} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#888', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}>메인</button>
-          <button onClick={() => setAuthed(false)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontFamily: 'inherit' }}>로그아웃</button>
+
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {/* 테마 */}
+          <div style={{ display:'flex', gap:6 }}>
+            {(['dark','light','pink'] as Theme[]).map((t) => (
+              <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:30, height:30, borderRadius:'50%', border:'2px solid '+(theme===t?ACCENT:'transparent'), cursor:'pointer', fontSize:14, transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1f0a1a', boxShadow:theme===t?'0 0 12px '+ACCENT+'88':'' }}>
+                {t==='dark'?'🌙':t==='light'?'☀️':'🌸'}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => router.push('/')} style={{ ...glowBtn('rgba(255,255,255,0.06)'), padding:'7px 14px', fontSize:12, color:MUTED, boxShadow:'none', border:'1px solid '+BORDER }}>메인</button>
+          <button onClick={() => setAuthed(false)} style={{ ...glowBtn('linear-gradient(135deg,#ef4444,#dc2626)'), padding:'7px 14px', fontSize:12, boxShadow:'0 4px 16px rgba(239,68,68,0.3)' }}>로그아웃</button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 58px)' }}>
-        {/* 사이드바 */}
-        <div style={{ width: '180px', flexShrink: 0, background: 'rgba(255,255,255,0.01)', borderRight: '1px solid rgba(255,255,255,0.05)', padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {/* 바디 */}
+      <div style={{ flex:1, display:'flex', overflow:'hidden', position:'relative' }}>
+
+        {/* 사이드바 — 데스크탑 */}
+        <div style={{ width:220, flexShrink:0, background:SURFACE, borderRight:'1px solid '+BORDER, padding:'24px 12px', display:'flex', flexDirection:'column', gap:6 }} className="desktop-sidebar">
           {TABS.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
-              display: 'flex', alignItems: 'center', gap: '9px', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer',
-              border: 'none', fontFamily: 'inherit', fontSize: '13px', fontWeight: 700, textAlign: 'left', width: '100%',
-              background: tab === t.key ? 'rgba(255,107,53,0.12)' : 'transparent',
-              color: tab === t.key ? '#ff6b35' : '#555',
-              borderLeft: tab === t.key ? '2px solid #ff6b35' : '2px solid transparent',
-              transition: 'all 0.15s',
-            }}>
-              <span style={{ fontSize: '16px' }}>{t.icon}</span>{t.label}
+              display:'flex', alignItems:'center', gap:12, padding:'13px 16px', borderRadius:14, cursor:'pointer',
+              border:'none', fontFamily:"'Noto Sans KR',sans-serif", fontSize:14, fontWeight:800,
+              textAlign:'left', width:'100%', transition:'all 0.2s',
+              background:tab===t.key?t.color+'18':'transparent',
+              color:tab===t.key?t.color:MUTED,
+              borderLeft:tab===t.key?'3px solid '+t.color:'3px solid transparent',
+              boxShadow:tab===t.key?'inset 0 0 20px '+t.color+'08':'none',
+              animation:'bounce 3s ease-in-out infinite',
+              animationDelay:TABS.indexOf(t)*0.2+'s',
+            }}
+              onMouseEnter={(e) => { const el = e.currentTarget; el.style.background=t.color+'12'; el.style.transform='translateX(4px)' }}
+              onMouseLeave={(e) => { const el = e.currentTarget; el.style.background=tab===t.key?t.color+'18':'transparent'; el.style.transform='' }}
+            >
+              <span style={{ fontSize:20 }}>{t.icon}</span>
+              <span>{t.label}</span>
+              {tab===t.key && <span style={{ marginLeft:'auto', fontSize:8, color:t.color }}>●</span>}
             </button>
           ))}
-          {busy && <div style={{ fontSize: '11px', color: '#444', textAlign: 'center', marginTop: '12px' }}>로딩 중...</div>}
         </div>
 
         {/* 컨텐츠 */}
-        <div style={{ flex: 1, padding: '28px 24px', overflowY: 'auto', animation: 'fadeIn 0.25s ease' }}>
+        <div style={{ flex:1, overflowY:'auto', padding:'clamp(16px,3vw,36px)', paddingBottom:80, animation:'fadeUp 0.3s ease' }}>
+
+          {/* 섹션 헤더 */}
+          <div style={{ marginBottom:28, display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:48, height:48, borderRadius:16, background:activeTabInfo.color+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, boxShadow:'0 0 20px '+activeTabInfo.color+'30', animation:'bounce 2s ease-in-out infinite' }}>
+              {activeTabInfo.icon}
+            </div>
+            <div>
+              <div style={{ fontSize:'clamp(18px,3vw,22px)', fontWeight:900, color:TEXT, letterSpacing:'-0.3px' }}>{activeTabInfo.label}</div>
+              <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>
+                {tab==='keys'&&'Supabase 저장 → 모든 기기 자동 동기화'}
+                {tab==='popup'&&'방문자에게 표시될 팝업을 관리합니다'}
+                {tab==='gov'&&'챗봇이 우선 참고하는 지원정보'}
+                {tab==='password'&&'관리자 로그인 비밀번호 변경'}
+              </div>
+            </div>
+          </div>
 
           {/* ── API 키 ── */}
-          {tab === 'keys' && (
-            <div>
-              <SectionHead title="🔑 API 키 관리" desc="Supabase에 저장 → 모든 기기 자동 동기화" />
-              <div style={{ maxWidth: '480px' }}>
-                <KField label="Gemini API 키" badge="무료" badgeColor="#10b981" value={gemini} onChange={setGemini} show={showGemini} onToggle={() => setShowGemini(!showGemini)} placeholder="AIza..." />
-                <KField label="네이버 데이터랩 Client ID" value={datalabId} onChange={setDatalabId} show={showDlId} onToggle={() => setShowDlId(!showDlId)} placeholder="Client ID" />
-                <KField label="네이버 데이터랩 Client Secret" value={datalabSec} onChange={setDatalabSec} show={showDlSec} onToggle={() => setShowDlSec(!showDlSec)} placeholder="Client Secret" />
-                <Btn onClick={saveKeys} busy={busy} label="저장" />
-                <div style={{ marginTop: '14px', padding: '12px 14px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: '10px', fontSize: '12px', color: '#10b981', lineHeight: 1.7 }}>
-                  💡 Gemini 키는 이 기기 localStorage에도 자동 저장돼요.<br />다른 기기에선 /admin 로그인 후 저장 버튼 누르세요.
+          {tab==='keys' && (
+            <div style={{ maxWidth:560 }}>
+              {[
+                { label:'Gemini API 키', badge:'무료', badgeColor:'#10b981', value:gemini, set:setGemini, show:showG, toggleShow:()=>setShowG(!showG), ph:'AIza...' },
+                { label:'네이버 데이터랩 Client ID', value:dlId, set:setDlId, show:showI, toggleShow:()=>setShowI(!showI), ph:'Client ID' },
+                { label:'네이버 데이터랩 Client Secret', value:dlSec, set:setDlSec, show:showS, toggleShow:()=>setShowS(!showS), ph:'Client Secret' },
+              ].map((f, i) => (
+                <div key={i} style={{ marginBottom:20 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    <span style={{ fontSize:13, fontWeight:800, color:MUTED, letterSpacing:'0.5px' }}>{f.label}</span>
+                    {'badge' in f && f.badge && <span style={{ fontSize:11, padding:'2px 10px', borderRadius:20, background:f.badgeColor+'22', color:f.badgeColor, fontWeight:800 }}>{f.badge}</span>}
+                  </div>
+                  <div style={{ position:'relative' }}>
+                    <input type={f.show?'text':'password'} value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.ph}
+                      style={{ ...inputSt, paddingRight:50, borderRadius:16 }}
+                      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color; (e.target as HTMLInputElement).style.boxShadow='0 0 20px '+activeTabInfo.color+'22' }}
+                      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER; (e.target as HTMLInputElement).style.boxShadow='none' }}
+                    />
+                    <button onClick={f.toggleShow} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:18, color:MUTED, padding:4, transition:'all 0.2s' }}>{f.show?'🙈':'👁️'}</button>
+                  </div>
                 </div>
+              ))}
+              <GlowButton onClick={saveKeys} busy={busy} label="💾 저장하기" color="linear-gradient(135deg,#ff6b35,#ffd700)" glow="rgba(255,107,53,0.4)" />
+              <div style={{ marginTop:20, padding:'16px 18px', background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:16, fontSize:13, color:'#34d399', lineHeight:1.8 }}>
+                💡 Gemini 키는 이 기기 localStorage에도 자동 저장돼요.<br />다른 기기에서는 /admin 로그인 후 저장 버튼 누르세요.
               </div>
             </div>
           )}
 
           {/* ── 팝업 ── */}
-          {tab === 'popup' && (
+          {tab==='popup' && (
             <div>
-              <SectionHead title="📢 팝업 관리" desc="사이트 방문자에게 표시할 팝업을 관리합니다" />
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '18px', marginBottom: '20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#ff6b35', marginBottom: '12px' }}>+ 새 팝업 등록</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              <Card color={activeTabInfo.color} title="+ 새 팝업 등록">
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
                   {POPUP_TYPES.map((t) => (
-                    <button key={t.key} onClick={() => setPType(t.key)} style={{ padding: '5px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'inherit', fontSize: '12px', fontWeight: 700, border: 'none', background: pType === t.key ? t.color : 'rgba(255,255,255,0.05)', color: pType === t.key ? 'white' : '#555', transition: 'all 0.15s' }}>{t.label}</button>
+                    <button key={t.key} onClick={() => setPType(t.key)} style={{ padding:'7px 18px', borderRadius:20, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif", fontSize:13, fontWeight:800, border:'none', background:pType===t.key?t.color:'rgba(255,255,255,0.05)', color:pType===t.key?'white':MUTED, transition:'all 0.2s', boxShadow:pType===t.key?'0 4px 16px '+t.color+'44':'' }}>
+                      {t.label}
+                    </button>
                   ))}
                 </div>
-                <input value={pTitle} onChange={(e) => setPTitle(e.target.value)} placeholder="팝업 제목" style={{ ...iStyle, marginBottom: '8px' }} />
-                <textarea value={pContent} onChange={(e) => setPContent(e.target.value)} placeholder="팝업 내용 (링크, 공지 등)" rows={3} style={{ ...iStyle, resize: 'vertical', marginBottom: '10px' }} />
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <label style={{ fontSize: '12px', color: '#555' }}>배경</label>
-                  <input type="color" value={pBg} onChange={(e) => setPBg(e.target.value)} style={{ width: '32px', height: '26px', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '4px' }} />
-                  <label style={{ fontSize: '12px', color: '#555' }}>글자</label>
-                  <input type="color" value={pFg} onChange={(e) => setPFg(e.target.value)} style={{ width: '32px', height: '26px', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '4px' }} />
-                  <Btn onClick={addPopup} busy={busy} label="등록" />
+                <input value={pTitle} onChange={(e) => setPTitle(e.target.value)} placeholder="팝업 제목" style={{ ...inputSt, marginBottom:10, borderRadius:16 }}
+                  onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color }}
+                  onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER }}
+                />
+                <textarea value={pCont} onChange={(e) => setPCont(e.target.value)} placeholder="팝업 내용 (링크, 공지, 이벤트 내용 등)" rows={3} style={{ ...inputSt, resize:'vertical', marginBottom:14, borderRadius:16 }}
+                  onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor=activeTabInfo.color }}
+                  onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor=BORDER }}
+                />
+                <div style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'center' }}>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <span style={{ fontSize:12, color:MUTED }}>배경색</span>
+                    <input type="color" value={pBg} onChange={(e) => setPBg(e.target.value)} style={{ width:36, height:32, border:'none', background:'none', cursor:'pointer', borderRadius:8 }} />
+                    <span style={{ fontSize:12, color:MUTED }}>글자색</span>
+                    <input type="color" value={pFg} onChange={(e) => setPFg(e.target.value)} style={{ width:36, height:32, border:'none', background:'none', cursor:'pointer', borderRadius:8 }} />
+                  </div>
+                  <GlowButton onClick={addPopup} busy={busy} label="📢 등록" color="linear-gradient(135deg,#f472b6,#ec4899)" glow="rgba(244,114,182,0.4)" />
                 </div>
-              </div>
-              {popups.length === 0 && <Empty />}
-              {popups.map((p) => (
-                <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid ' + (p.active ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.06)'), borderRadius: '12px', padding: '14px 16px', marginBottom: '8px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: '7px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '3px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '14px' }}>{p.title}</span>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: (POPUP_TYPES.find((t) => t.key === p.type)?.color || '#888') + '22', color: POPUP_TYPES.find((t) => t.key === p.type)?.color || '#888', fontWeight: 700 }}>{POPUP_TYPES.find((t) => t.key === p.type)?.label}</span>
-                      <span style={{ fontSize: '11px', color: p.active ? '#10b981' : '#555', fontWeight: 700 }}>{p.active ? '● 활성' : '○ 비활성'}</span>
+              </Card>
+
+              {popups.length===0 && <EmptyState text="등록된 팝업이 없어요" />}
+              {popups.map((p) => {
+                const pt = POPUP_TYPES.find((t) => t.key===p.type)
+                return (
+                  <div key={p.id} className="hov-row" style={{ background:SURFACE, border:'1px solid '+(p.active?pt?.color+'33':BORDER), borderRadius:16, padding:'16px 20px', marginBottom:10, display:'flex', gap:14, alignItems:'flex-start', transition:'all 0.2s' }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', marginBottom:4 }}>
+                        <span style={{ fontWeight:900, fontSize:15, color:TEXT }}>{p.title}</span>
+                        <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:(pt?.color||'#888')+'22', color:pt?.color||'#888', fontWeight:800 }}>{pt?.label}</span>
+                        <span style={{ fontSize:11, color:p.active?'#10b981':MUTED, fontWeight:700 }}>{p.active?'● 활성':'○ 비활성'}</span>
+                      </div>
+                      <div style={{ fontSize:13, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.content}</div>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.content}</div>
+                    <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                      <ActionBtn onClick={() => togglePopup(p)} color={p.active?'#f59e0b':'#10b981'}>{p.active?'⏸':'▶'}</ActionBtn>
+                      <ActionBtn onClick={() => p.id&&delPopup(p.id)} color="#ef4444">🗑</ActionBtn>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <IBtn onClick={() => togglePopup(p)}>{p.active ? '⏸' : '▶'}</IBtn>
-                    <IBtn danger onClick={() => p.id && delPopup(p.id)}>🗑</IBtn>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {/* ── 정부지원 ── */}
-          {tab === 'gov' && (
+          {tab==='gov' && (
             <div>
-              <SectionHead title="🏛️ 정부지원 데이터" desc="챗봇이 우선 참고하는 지원정보를 등록합니다" />
-              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '14px', padding: '18px', marginBottom: '20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#ff6b35', marginBottom: '12px' }}>+ 새 지원정보 등록</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  <Sel value={gRegion} onChange={setGRegion} options={REGIONS} />
-                  <Sel value={gCat} onChange={setGCat} options={GOV_CATS} />
-                  <input value={gTitle} onChange={(e) => setGTitle(e.target.value)} placeholder="지원사업명" style={{ ...iStyle, flex: 1, minWidth: '140px' }} />
+              <Card color={activeTabInfo.color} title="+ 새 지원정보 등록">
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:12 }}>
+                  <StyledSelect value={gReg} onChange={setGReg} options={REGIONS} color={activeTabInfo.color} bg={SURFACE} border={BORDER} textColor={TEXT} />
+                  <StyledSelect value={gCat} onChange={setGCat} options={GOV_CATS} color={activeTabInfo.color} bg={SURFACE} border={BORDER} textColor={TEXT} />
+                  <input value={gTitle} onChange={(e) => setGTitle(e.target.value)} placeholder="지원사업명" style={{ ...inputSt, flex:1, minWidth:140, borderRadius:16 }}
+                    onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color }}
+                    onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER }}
+                  />
                 </div>
-                <textarea value={gContent} onChange={(e) => setGContent(e.target.value)} placeholder="지원 내용, 신청 방법, 금액, 대상, URL 등" rows={3} style={{ ...iStyle, resize: 'vertical', marginBottom: '10px' }} />
-                <Btn onClick={addGov} busy={busy} label="등록" />
-              </div>
-              {govList.length === 0 && <Empty />}
+                <textarea value={gCont} onChange={(e) => setGCont(e.target.value)} placeholder="지원 내용, 신청 방법, 금액, 대상, URL 등" rows={3} style={{ ...inputSt, resize:'vertical', marginBottom:14, borderRadius:16 }}
+                  onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor=activeTabInfo.color }}
+                  onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor=BORDER }}
+                />
+                <GlowButton onClick={addGov} busy={busy} label="🏛️ 등록" color="linear-gradient(135deg,#34d399,#059669)" glow="rgba(52,211,153,0.4)" />
+              </Card>
+
+              {govList.length===0 && <EmptyState text="등록된 지원정보가 없어요" />}
               {govList.map((g) => (
-                <div key={g.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '3px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: 'rgba(255,107,53,0.15)', color: '#ff6b35', fontWeight: 700 }}>{g.region}</span>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', color: '#666' }}>{g.category}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 700 }}>{g.title}</span>
+                <div key={g.id} className="hov-row" style={{ background:SURFACE, border:'1px solid '+BORDER, borderRadius:16, padding:'14px 18px', marginBottom:8, display:'flex', gap:12, alignItems:'flex-start' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom:4 }}>
+                      <span style={{ fontSize:12, padding:'3px 10px', borderRadius:20, background:'rgba(255,107,53,0.15)', color:'#ff6b35', fontWeight:800 }}>{g.region}</span>
+                      <span style={{ fontSize:12, padding:'3px 10px', borderRadius:20, background:SURFACE, color:MUTED }}>{g.category}</span>
+                      <span style={{ fontSize:15, fontWeight:900, color:TEXT }}>{g.title}</span>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.content}</div>
+                    <div style={{ fontSize:13, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.content}</div>
                   </div>
-                  <IBtn danger onClick={() => g.id && delGov(g.id)}>🗑</IBtn>
+                  <ActionBtn onClick={() => g.id&&delGov(g.id)} color="#ef4444">🗑</ActionBtn>
                 </div>
               ))}
             </div>
           )}
 
           {/* ── 비밀번호 ── */}
-          {tab === 'password' && (
-            <div>
-              <SectionHead title="🔒 비밀번호 변경" desc="관리자 페이지 로그인 비밀번호를 변경합니다" />
-              <div style={{ maxWidth: '360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <PwField label="현재 비밀번호" value={oldPw} onChange={setOldPw} />
-                <PwField label="새 비밀번호 (4자 이상)" value={newPw1} onChange={setNewPw1} />
-                <PwField label="새 비밀번호 확인" value={newPw2} onChange={setNewPw2} />
-                <Btn onClick={changePw} busy={false} label="비밀번호 변경" />
-                <div style={{ fontSize: '12px', color: '#444', lineHeight: 1.7 }}>⚠️ 비밀번호는 이 기기(localStorage)에 저장됩니다.<br />초기 비밀번호: admin1234</div>
+          {tab==='password' && (
+            <div style={{ maxWidth:420 }}>
+              {[
+                { label:'현재 비밀번호', value:oldPw, set:setOldPw },
+                { label:'새 비밀번호 (4자 이상)', value:newP1, set:setNewP1 },
+                { label:'새 비밀번호 확인', value:newP2, set:setNewP2 },
+              ].map((f, i) => (
+                <div key={i} style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:12, color:MUTED, fontWeight:800, letterSpacing:'0.5px', marginBottom:8 }}>{f.label}</div>
+                  <input type="password" value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.label} style={{ ...inputSt, borderRadius:16 }}
+                    onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color; (e.target as HTMLInputElement).style.boxShadow='0 0 20px '+activeTabInfo.color+'22' }}
+                    onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER; (e.target as HTMLInputElement).style.boxShadow='none' }}
+                  />
+                </div>
+              ))}
+              <div style={{ marginTop:8, marginBottom:24 }}>
+                <GlowButton onClick={changePw} busy={false} label="🔒 비밀번호 변경" color="linear-gradient(135deg,#60a5fa,#3b82f6)" glow="rgba(96,165,250,0.4)" />
+              </div>
+              <div style={{ padding:'16px 18px', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:16, fontSize:13, color:'#93c5fd', lineHeight:1.8 }}>
+                ⚠️ 비밀번호는 이 기기 localStorage에 저장됩니다.<br />초기 비밀번호: <strong>admin1234</strong>
               </div>
             </div>
           )}
 
         </div>
       </div>
-    </div>
-  )
-}
 
-function SectionHead({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ fontSize: '18px', fontWeight: 900, letterSpacing: '-0.3px', marginBottom: '4px' }}>{title}</div>
-      <div style={{ fontSize: '12px', color: '#444' }}>{desc}</div>
-    </div>
-  )
-}
-
-function KField({ label, badge, badgeColor, value, onChange, show, onToggle, placeholder }: {
-  label: string; badge?: string; badgeColor?: string
-  value: string; onChange: (v: string) => void
-  show: boolean; onToggle: () => void; placeholder: string
-}) {
-  return (
-    <div style={{ marginBottom: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: '#777', letterSpacing: '0.3px' }}>{label}</span>
-        {badge && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: (badgeColor || '#10b981') + '22', color: badgeColor || '#10b981', fontWeight: 700 }}>{badge}</span>}
+      {/* 하단 탭 — 모바일 */}
+      <div style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:SURFACE, borderTop:'1px solid '+BORDER, padding:'8px 0', backdropFilter:'blur(30px)' }} id="mobile-nav">
+        <div style={{ display:'flex', justifyContent:'space-around' }}>
+          {TABS.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'6px 16px',
+              background:'transparent', border:'none', cursor:'pointer',
+              color:tab===t.key?t.color:MUTED, fontFamily:"'Noto Sans KR',sans-serif",
+              fontSize:10, fontWeight:800, transition:'all 0.2s',
+              animation:tab===t.key?'bounce 1.5s ease-in-out infinite':'none',
+            }}>
+              <span style={{ fontSize:22 }}>{t.icon}</span>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ position: 'relative' }}>
-        <input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ ...iStyle, paddingRight: '44px' }} />
-        <button onClick={onToggle} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: '15px', padding: '4px' }}>{show ? '🙈' : '👁️'}</button>
-      </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .desktop-sidebar { display: none !important; }
+          #mobile-nav { display: block !important; }
+        }
+      `}</style>
     </div>
   )
 }
 
-function PwField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function GlowButton({ onClick, busy, label, color, glow }: { onClick:()=>void; busy:boolean; label:string; color:string; glow:string }) {
   return (
-    <div>
-      <div style={{ fontSize: '11px', color: '#555', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</div>
-      <input type="password" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} style={iStyle} />
+    <button onClick={onClick} disabled={busy} style={{ padding:'13px 28px', borderRadius:14, border:'none', cursor:busy?'not-allowed':'pointer', fontFamily:"'Noto Sans KR',sans-serif", fontSize:14, fontWeight:800, color:'white', background:busy?'rgba(255,255,255,0.1)':color, boxShadow:busy?'none':'0 6px 24px '+glow, transition:'all 0.25s', opacity:busy?0.6:1 }}
+      onMouseEnter={(e) => { if (!busy) { const el=e.currentTarget; el.style.transform='translateY(-3px) scale(1.02)'; el.style.boxShadow='0 12px 36px '+glow } }}
+      onMouseLeave={(e) => { const el=e.currentTarget; el.style.transform=''; el.style.boxShadow=busy?'none':'0 6px 24px '+glow }}
+    >{busy?'처리 중...':label}</button>
+  )
+}
+
+function ActionBtn({ onClick, color, children }: { onClick:()=>void; color:string; children:React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{ background:color+'15', border:'1px solid '+color+'33', color, borderRadius:10, padding:'8px 12px', cursor:'pointer', fontSize:14, transition:'all 0.2s' }}
+      onMouseEnter={(e) => { const el=e.currentTarget; el.style.background=color+'30'; el.style.transform='scale(1.1)' }}
+      onMouseLeave={(e) => { const el=e.currentTarget; el.style.background=color+'15'; el.style.transform='' }}
+    >{children}</button>
+  )
+}
+
+function Card({ color, title, children }: { color:string; title:string; children:React.ReactNode }) {
+  return (
+    <div style={{ background:color+'08', border:'1px solid '+color+'25', borderRadius:20, padding:'20px 22px', marginBottom:24, boxShadow:'0 0 40px '+color+'08' }}>
+      <div style={{ fontSize:13, fontWeight:900, color, marginBottom:16, letterSpacing:'0.3px' }}>{title}</div>
+      {children}
     </div>
   )
 }
 
-function Sel({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+function StyledSelect({ value, onChange, options, color, bg, border, textColor }: { value:string; onChange:(v:string)=>void; options:string[]; color:string; bg:string; border:string; textColor:string }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...iStyle, width: 'auto', cursor: 'pointer' }}>
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={{ background:bg, border:'1px solid '+border, color:textColor, borderRadius:14, padding:'13px 16px', fontSize:14, cursor:'pointer', outline:'none', fontFamily:"'Noto Sans KR',sans-serif", transition:'all 0.2s' }}
+      onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor=color }}
+      onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor=border }}
+    >
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
   )
 }
 
-function Btn({ onClick, busy, label }: { onClick: () => void; busy: boolean; label: string }) {
+function EmptyState({ text }: { text:string }) {
   return (
-    <button onClick={onClick} disabled={busy} style={{ padding: '10px 22px', background: 'linear-gradient(135deg,#ff6b35,#ff8c5a)', border: 'none', borderRadius: '10px', color: 'white', fontSize: '13px', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1, boxShadow: '0 4px 14px rgba(255,107,53,0.3)', transition: 'opacity 0.2s' }}>
-      {busy ? '처리 중...' : label}
-    </button>
-  )
-}
-
-function IBtn({ onClick, danger, children }: { onClick: () => void; danger?: boolean; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} style={{ background: danger ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)', border: '1px solid ' + (danger ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)'), color: danger ? '#ef4444' : '#888', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', fontSize: '13px', transition: 'all 0.15s' }}>
-      {children}
-    </button>
-  )
-}
-
-function Empty() {
-  return (
-    <div style={{ textAlign: 'center', padding: '40px', color: '#333', fontSize: '14px' }}>
-      <div style={{ fontSize: '36px', marginBottom: '10px', opacity: 0.3 }}>📭</div>
-      등록된 항목이 없어요
+    <div style={{ textAlign:'center', padding:'60px 20px', color:'#333' }}>
+      <div style={{ fontSize:48, marginBottom:14, opacity:0.2 }}>📭</div>
+      <div style={{ fontSize:15 }}>{text}</div>
     </div>
   )
 }
