@@ -28,6 +28,7 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
   const [isOpen, setIsOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
+  const [hasSearched, setHasSearched] = useState(false)
 
   const hasNaverKey = !!naverClientId && !!naverClientSecret
   const maxRatio = Math.max(...trendData.map(d => d.ratio), 1)
@@ -83,7 +84,8 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
         : 0
       const trendDir = trend > 10 ? '급상승' : trend > 0 ? '상승' : trend < -10 ? '급하락' : '하락' 
 
-      // 1차: 분석 글 (텍스트)
+      // 1차: 분석 글 - 최초 1회만
+      if (!hasSearched) {
       const analysisPrompt = `네이버 검색 트렌드를 분석해주세요.
 키워드: "${query.trim()}"
 최근 12개월 검색량: ${results.map(d => d.period.slice(0,7)+":"+d.ratio).join(", ")}
@@ -95,14 +97,18 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
 
       const analysisText = await callAI(analysisPrompt)
       setAiAnalysis(analysisText.replace(/[*#_]/g, '').trim())
+      } // end if !hasSearched
 
       // 2차: 키워드 추천 (JSON 배열만)
+      const existingKws = recommendations.map(r => r.keyword).join(', ')
       const keywordPrompt = `"${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드 10개를 추천해주세요.
-
+${existingKws ? `
+이미 존재하는 키워드 (절대 중복 금지): ${existingKws}
+` : ''}
 반드시 아래 형식의 JSON 배열만 출력. 다른 텍스트 절대 금지:
 [{"keyword":"키워드","reason":"이유","score":95},{"keyword":"키워드","reason":"이유","score":90}]
 
-규칙: 한글만, 2~6단어 롱테일, score는 65~95 범위, reason은 15자 이내`
+규칙: 한글만, 2~6단어 롱테일, score는 65~95 범위, reason은 15자 이내, 위 목록과 완전히 다른 키워드`
 
       const keywordText = await callAI(keywordPrompt)
       const kwCleaned = keywordText.replace(/```json|```/g, '').trim()
@@ -119,6 +125,7 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
           // 파싱 실패 시 무시
         }
       }
+      setHasSearched(true)
       setPhase('done')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다.')
@@ -129,12 +136,55 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
     }
   }, [query, naverClientId, naverClientSecret, callAI, hasNaverKey])
 
+  // 키워드만 추가 생성
+  const handleAddKeywords = async () => {
+    if (!query.trim() || aiLoading) return
+    setAiLoading(true)
+    setError('')
+    try {
+      const existingList = recommendations.map(r => r.keyword).join(', ')
+      const keywordPrompt = `"${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드 10개를 추천해주세요.
+
+이미 있는 키워드 (절대 중복 금지): ${existingList}
+
+반드시 아래 형식의 JSON 배열만 출력. 다른 텍스트 절대 금지:
+[{"keyword":"키워드","reason":"이유","score":95}]
+
+규칙: 한글만, 2~6단어, score는 65~95 범위, reason은 15자 이내, 위 목록과 다른 새 키워드만`
+
+      const keywordText = await callAI(keywordPrompt)
+      const kwCleaned = keywordText.replace(/```json|```/g, '').trim()
+      const arrMatch = kwCleaned.match(/\[[\s\S]*\]/)
+      if (arrMatch) {
+        try {
+          const parsed: KeywordRec[] = JSON.parse(arrMatch[0])
+          const newKeywords = parsed.filter(
+            (nk: KeywordRec) => !recommendations.some(r => r.keyword === nk.keyword)
+          )
+          setRecommendations(prev => [...newKeywords, ...prev].slice(0, 30))
+          setCurrentPage(1)
+        } catch {}
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '키워드 추가 생성 오류')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   const handleSelect = (kw: string) => {
     setSelectedKeyword(kw)
     onKeywordSelect(kw)
   }
 
   return (
+    <>
+    <style>{`
+      @keyframes kwFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+      }
+    `}</style>
     <div style={{
       background: 'var(--surface)',
       border: '1px solid var(--border)',
@@ -449,11 +499,30 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
                   border: `1px solid ${recommendations.length >= 30 ? 'rgba(255,68,68,0.3)' : 'rgba(255,107,53,0.3)'}`,
                 }}>{recommendations.length}/30{recommendations.length >= 30 ? ' 최대' : ''}</span>
               </div>
-              <button onClick={() => { setRecommendations([]); onClearSeoKeyword(); setCurrentPage(1) }} style={{
-                fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
-              }}>↺ 전체 초기화</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {hasSearched && recommendations.length < 30 && (
+                  <button
+                    onClick={handleAddKeywords}
+                    disabled={aiLoading}
+                    style={{
+                      fontSize: '12px', fontWeight: 800, padding: '6px 14px', borderRadius: '20px',
+                      background: aiLoading ? 'var(--surface2)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                      border: 'none', color: aiLoading ? 'var(--text-muted)' : '#000',
+                      cursor: aiLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                      boxShadow: aiLoading ? 'none' : '0 4px 16px rgba(245,158,11,0.4)',
+                      animation: aiLoading ? 'none' : 'kwFloat 2.5s ease-in-out infinite',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {aiLoading ? '⟳ 생성중...' : '✦ 키워드 추가'}
+                  </button>
+                )}
+                <button onClick={() => { setRecommendations([]); onClearSeoKeyword(); setCurrentPage(1); setHasSearched(false); setAiAnalysis('') }} style={{
+                  fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+                }}>↺ 전체 초기화</button>
+              </div>
             </div>
 
             {/* 키워드 목록 */}
@@ -567,5 +636,6 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
       </div>
       )}
     </div>
+  </>
   )
 }
