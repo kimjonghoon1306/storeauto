@@ -70,7 +70,8 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
   }
 
   // 이미지 파일 → base64 dataURL 변환
-  const handleImageUpload = (field: 'thumbUrl' | 'img1Url' | 'img2Url' | 'img3Url') =>
+  type ImgField = 'thumbUrl' | 'img1Url' | 'img2Url' | 'img3Url'
+  const handleImageUpload = (field: ImgField) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
@@ -87,7 +88,7 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
     fontSize: '13px', fontFamily: 'inherit', outline: 'none', resize: 'vertical' as const,
   }
 
-  const imgUploadBox = (label: string, field: 'thumbUrl' | 'img1Url' | 'img2Url' | 'img3Url', desc: string) => (
+  const imgUploadBox = (label: string, field: ImgField, desc: string) => (
     <div>
       <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
         📷 {label} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{desc}</span>
@@ -96,11 +97,11 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
         border: '2px dashed var(--border)', borderRadius: '10px', padding: '20px',
         textAlign: 'center', background: 'var(--surface2)', position: 'relative',
       }}>
-        {data[field] ? (
+        {(data[field] as string) ? (
           <div style={{ position: 'relative' }}>
-            <img src={data[field]} alt="" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover' }} />
+            <img src={data[field] as string} alt="" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover' }} />
             <button
-              onClick={() => setData(p => ({ ...p, [field]: '' }))}
+              onClick={() => setData(p => ({ ...p, [field as string]: '' }))}
               style={{
                 position: 'absolute', top: '6px', right: '6px',
                 background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none',
