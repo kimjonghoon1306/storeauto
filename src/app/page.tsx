@@ -67,26 +67,55 @@ export default function Home() {
     try {
       const prompt = buildPrompt(input)
 
-      // 브라우저에서 직접 Gemini API 호출 (Vercel 서버 IP 우회)
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-          }),
-        }
-      )
+      const GEMINI_MODELS = [
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-1.5-flash-latest',
+      ]
 
-      if (!res.ok) {
-        const errData = await res.json()
-        throw new Error(errData?.error?.message || `API 오류 (${res.status})`)
+      let text = ''
+      let lastErr = ''
+
+      for (const model of GEMINI_MODELS) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+              }),
+            }
+          )
+
+          if (!res.ok) {
+            const errData = await res.json()
+            const msg = (errData?.error?.message || '').toLowerCase()
+            const status = res.status
+            if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) {
+              throw new Error('Gemini API 키가 잘못되었습니다. 확인해주세요.')
+            }
+            lastErr = `${model} 오류(${status})`
+            continue
+          }
+
+          const data = await res.json()
+          text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (!text) { lastErr = `${model} 빈 응답`; continue }
+          break
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : ''
+          if (msg.includes('API 키')) throw e
+          lastErr = msg
+          continue
+        }
       }
 
-      const data = await res.json()
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      if (!text) throw new Error(`생성 실패: ${lastErr}`)
+
       const cleaned = text.replace(/```json|```/g, '').trim()
       const parsed: GeneratedResult = JSON.parse(cleaned)
 
