@@ -87,22 +87,27 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
 최근 12개월 트렌드: ${results.map(d => `${d.period}:${d.ratio}`).join(', ')}
 트렌드 방향: ${trendDir} (최근 6개월 변화: ${trend > 0 ? '+' : ''}${trend.toFixed(1)})
 최고점: ${Math.max(...results.map(d => d.ratio))}, 최저점: ${Math.min(...results.map(d => d.ratio))}, 현재: ${results[results.length-1]?.ratio}
+
+다음 JSON 형식으로만 응답하세요. 쌍따옴표 절대 사용 금지. 한글만 사용:
+{
+  "analysis": "3문장 트렌드 분석",
+  "strategy": "2문장 판매 전략",
   "keywords": [
-    {"keyword": "추천키워드1", "reason": "추천이유 (20자 이내)", "score": 95},
-    {"keyword": "추천키워드2", "reason": "추천이유 (20자 이내)", "score": 92},
-    {"keyword": "추천키워드3", "reason": "추천이유 (20자 이내)", "score": 88},
-    {"keyword": "추천키워드4", "reason": "추천이유 (20자 이내)", "score": 85},
-    {"keyword": "추천키워드5", "reason": "추천이유 (20자 이내)", "score": 82},
-    {"keyword": "추천키워드6", "reason": "추천이유 (20자 이내)", "score": 78},
-    {"keyword": "추천키워드7", "reason": "추천이유 (20자 이내)", "score": 75},
-    {"keyword": "추천키워드8", "reason": "추천이유 (20자 이내)", "score": 71},
-    {"keyword": "추천키워드9", "reason": "추천이유 (20자 이내)", "score": 68},
-    {"keyword": "추천키워드10", "reason": "추천이유 (20자 이내)", "score": 65}
+    {"keyword": "추천키워드1", "reason": "추천이유20자이내", "score": 95},
+    {"keyword": "추천키워드2", "reason": "추천이유20자이내", "score": 92},
+    {"keyword": "추천키워드3", "reason": "추천이유20자이내", "score": 88},
+    {"keyword": "추천키워드4", "reason": "추천이유20자이내", "score": 85},
+    {"keyword": "추천키워드5", "reason": "추천이유20자이내", "score": 82},
+    {"keyword": "추천키워드6", "reason": "추천이유20자이내", "score": 78},
+    {"keyword": "추천키워드7", "reason": "추천이유20자이내", "score": 75},
+    {"keyword": "추천키워드8", "reason": "추천이유20자이내", "score": 71},
+    {"keyword": "추천키워드9", "reason": "추천이유20자이내", "score": 68},
+    {"keyword": "추천키워드10", "reason": "추천이유20자이내", "score": 65}
   ]
 }
 
 이미 추천된 키워드와 중복되지 않는 새로운 키워드로 만들어주세요.
-키워드는 "${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드로 만들어주세요. 한글만 사용.`
+한글만 사용. "${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드로 만들어주세요.`
       const aiText = await callAI(aiPrompt)
       const cleaned = aiText.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
