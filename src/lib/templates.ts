@@ -47,66 +47,63 @@ const imgBlock = (url: string) => url
 
 const base = (bg: string, accent: string, text: string, subBg: string, border: string, badgeBg: string, badgeText: string, heroTextColor: string) =>
   (d: EditableData) => `
-<div style="font-family:'Noto Sans KR',sans-serif;max-width:100%;margin:0 auto;background:${bg};color:${text};padding:0;">
+<style>
+  .sa-wrap{font-family:'Noto Sans KR',sans-serif;max-width:100%;margin:0 auto;background:${bg};color:${text};padding:0;}
+  .sa-hero{background:${accent};padding:60px 40px;text-align:center;}
+  .sa-hero h1{font-size:clamp(26px,5vw,42px);font-weight:900;color:${heroTextColor};margin-bottom:16px;line-height:1.25;}
+  .sa-hero p.sub{font-size:clamp(16px,3vw,22px);color:rgba(255,255,255,0.92);font-weight:500;line-height:1.6;}
+  .sa-hero .price{margin-top:24px;display:inline-block;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);border-radius:10px;padding:12px 32px;}
+  .sa-hero .price span{font-size:clamp(20px,4vw,28px);font-weight:900;color:${heroTextColor};}
+  .sa-badge{padding:clamp(24px,4vw,40px) clamp(20px,4vw,60px);display:flex;flex-wrap:wrap;gap:10px;justify-content:center;background:${subBg};border-bottom:1px solid ${border};}
+  .sa-badge span{background:${badgeBg};color:${badgeText};border-radius:24px;padding:clamp(8px,1.5vw,10px) clamp(16px,3vw,24px);font-size:clamp(14px,2.5vw,16px);font-weight:700;}
+  .sa-section{padding:clamp(32px,5vw,60px) clamp(20px,5vw,60px);border-bottom:1px solid ${border};}
+  .sa-section.alt{background:${subBg};}
+  .sa-section h2{font-size:clamp(20px,4vw,28px);font-weight:900;color:${accent};margin-bottom:clamp(16px,3vw,28px);padding-bottom:12px;border-bottom:2px solid ${accent};}
+  .sa-section p{font-size:clamp(15px,3vw,18px);line-height:2.1;white-space:pre-line;}
+  .sa-cta{padding:clamp(32px,5vw,60px) clamp(20px,5vw,60px);text-align:center;background:${accent};border-bottom:1px solid ${border};}
+  .sa-cta p{font-size:clamp(17px,3.5vw,22px);line-height:1.9;color:${heroTextColor};font-weight:700;}
+  .sa-faq{padding:clamp(32px,5vw,60px) clamp(20px,5vw,60px);border-bottom:1px solid ${border};}
+  .sa-faq h2{font-size:clamp(20px,4vw,28px);font-weight:900;color:${accent};margin-bottom:clamp(20px,3vw,32px);padding-bottom:12px;border-bottom:2px solid ${accent};}
+  .sa-faq-item{margin-bottom:clamp(16px,3vw,28px);background:${subBg};border-radius:12px;padding:clamp(16px,3vw,24px) clamp(16px,3vw,28px);border-left:4px solid ${accent};}
+  .sa-faq-item .q{font-weight:800;color:${text};margin-bottom:8px;font-size:clamp(15px,3vw,18px);}
+  .sa-faq-item .a{color:${text};opacity:0.75;font-size:clamp(14px,2.5vw,17px);line-height:1.9;}
+  .sa-keywords{padding:clamp(24px,4vw,40px) clamp(20px,4vw,60px) clamp(40px,6vw,60px);display:flex;flex-wrap:wrap;gap:8px;}
+  .sa-keywords span{background:${subBg};border:1px solid ${border};border-radius:8px;padding:clamp(6px,1.5vw,8px) clamp(12px,2vw,16px);font-size:clamp(13px,2.5vw,15px);color:${accent};font-weight:600;}
+  .sa-img{width:100%;line-height:0;}
+  .sa-img img{width:100%;display:block;object-fit:cover;max-height:600px;}
+  @media(max-width:640px){
+    .sa-hero{padding:40px 20px;}
+    .sa-section,.sa-faq,.sa-cta,.sa-keywords{padding-left:16px;padding-right:16px;}
+    .sa-badge{padding-left:16px;padding-right:16px;}
+  }
+</style>
+<div class="sa-wrap">
 
-  <!-- 썸네일 이미지 -->
-  ${d.thumbUrl ? `<div style="width:100%;line-height:0;"><img src="${d.thumbUrl}" alt="${d.productName}" style="width:100%;display:block;max-height:700px;object-fit:cover;" /></div>` : ''}
-
-  <!-- 히어로 -->
-  <div style="background:${accent};padding:70px 60px;text-align:center;">
-    <p style="font-size:14px;letter-spacing:4px;color:rgba(255,255,255,0.7);margin-bottom:16px;text-transform:uppercase;font-weight:500;">PREMIUM PRODUCT</p>
-    <h1 style="font-size:42px;font-weight:900;color:${heroTextColor};margin-bottom:20px;line-height:1.25;">${d.productName}</h1>
-    <p style="font-size:22px;color:rgba(255,255,255,0.92);font-weight:500;line-height:1.6;">${d.oneLiner}</p>
-    <div style="margin-top:32px;display:inline-block;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);border-radius:10px;padding:14px 40px;">
-      <span style="font-size:28px;font-weight:900;color:${heroTextColor};">${d.priceRange}</span>
-    </div>
+  ${d.thumbUrl ? `<div class="sa-img"><img src="${d.thumbUrl}" alt="${d.productName}" /></div>` : ''}
+  <div class="sa-hero">
+    <p style="font-size:13px;letter-spacing:4px;color:rgba(255,255,255,0.7);margin-bottom:14px;text-transform:uppercase;font-weight:500;">PREMIUM PRODUCT</p>
+    <h1>${d.productName}</h1>
+    <p class="sub">${d.oneLiner}</p>
+    <div class="price"><span>${d.priceRange}</span></div>
   </div>
-
-  <!-- 특징 뱃지 -->
-  <div style="padding:40px 60px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;background:${subBg};border-bottom:1px solid ${border};">
-    ${d.features.map(f => `<span style="background:${badgeBg};color:${badgeText};border-radius:24px;padding:10px 24px;font-size:16px;font-weight:700;">${f}</span>`).join('')}
+  <div class="sa-badge">${d.features.map(f => `<span>${f}</span>`).join('')}</div>
+  <div class="sa-section">
+    <h2>상품 상세 설명</h2>
+    <p>${d.description}</p>
   </div>
-
-  <!-- 상세 설명 -->
-  <div style="padding:60px;border-bottom:1px solid ${border};">
-    <h2 style="font-size:28px;font-weight:900;color:${accent};margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid ${accent};">상품 상세 설명</h2>
-    <p style="font-size:18px;line-height:2.1;color:${text};white-space:pre-line;">${d.description}</p>
-  </div>
-
-  <!-- 중간 이미지 1 -->
   ${imgBlock(d.img1Url)}
-
-  <!-- 추천 고객 -->
-  <div style="padding:60px;background:${subBg};border-bottom:1px solid ${border};">
-    <h2 style="font-size:28px;font-weight:900;color:${accent};margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid ${accent};">이런 분께 추천합니다</h2>
-    <p style="font-size:18px;line-height:2.1;white-space:pre-line;color:${text};">${d.recommendation}</p>
+  <div class="sa-section alt">
+    <h2>이런 분께 추천합니다</h2>
+    <p>${d.recommendation}</p>
   </div>
-
-  <!-- 중간 이미지 2 -->
   ${imgBlock(d.img2Url)}
-
-  <!-- CTA -->
-  <div style="padding:60px;text-align:center;border-bottom:1px solid ${border};background:${accent};">
-    <p style="font-size:22px;line-height:1.9;color:${heroTextColor};font-weight:700;">${d.cta}</p>
-  </div>
-
-  <!-- 중간 이미지 3 -->
+  <div class="sa-cta"><p>${d.cta}</p></div>
   ${imgBlock(d.img3Url)}
-
-  <!-- FAQ -->
-  <div style="padding:60px;border-bottom:1px solid ${border};">
-    <h2 style="font-size:28px;font-weight:900;color:${accent};margin-bottom:32px;padding-bottom:16px;border-bottom:2px solid ${accent};">자주 묻는 질문</h2>
-    ${d.faq.map(f => `
-    <div style="margin-bottom:28px;background:${subBg};border-radius:12px;padding:24px 28px;border-left:4px solid ${accent};">
-      <p style="font-weight:800;color:${text};margin-bottom:10px;font-size:18px;">Q. ${f.q}</p>
-      <p style="color:${text};opacity:0.75;font-size:17px;line-height:1.9;">A. ${f.a}</p>
-    </div>`).join('')}
+  <div class="sa-faq">
+    <h2>자주 묻는 질문</h2>
+    ${d.faq.map(f => `<div class="sa-faq-item"><p class="q">Q. ${f.q}</p><p class="a">A. ${f.a}</p></div>`).join('')}
   </div>
-
-  <!-- 키워드 -->
-  <div style="padding:40px 60px 60px;display:flex;flex-wrap:wrap;gap:10px;">
-    ${d.keywords.map(k => `<span style="background:${subBg};border:1px solid ${border};border-radius:8px;padding:8px 16px;font-size:15px;color:${accent};font-weight:600;">#${k}</span>`).join('')}
-  </div>
+  <div class="sa-keywords">${d.keywords.map(k => `<span>#${k}</span>`).join('')}</div>
 </div>`
 
 export const TEMPLATES: Template[] = [
