@@ -25,6 +25,7 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
   const [aiAnalysis, setAiAnalysis] = useState('')
   const [phase, setPhase] = useState<'idle' | 'trend' | 'ai' | 'done'>('idle')
   const [showResetWarning, setShowResetWarning] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   const hasNaverKey = !!naverClientId && !!naverClientSecret
   const maxRatio = Math.max(...trendData.map(d => d.ratio), 1)
@@ -144,13 +145,21 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
       marginBottom: '24px',
       position: 'relative',
     }}>
-      {/* 상단 헤더 */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(255,107,53,0.15) 0%, rgba(255,107,53,0.03) 100%)',
-        borderBottom: '1px solid var(--border)',
-        padding: 'clamp(16px, 3vw, 24px) clamp(16px, 4vw, 28px)',
-        display: 'flex', alignItems: 'center', gap: '14px',
-      }}>
+      {/* 상단 헤더 — 토글 버튼 */}
+      <button
+        onClick={() => setIsOpen(v => !v)}
+        style={{
+          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+          padding: 'clamp(16px, 3vw, 20px) clamp(16px, 4vw, 28px)',
+          display: 'flex', alignItems: 'center', gap: '14px',
+          borderBottom: isOpen ? '1px solid var(--border)' : 'none',
+          fontFamily: 'inherit', textAlign: 'left',
+          background: isOpen
+            ? 'linear-gradient(135deg, rgba(255,107,53,0.12) 0%, rgba(255,107,53,0.03) 100%)'
+            : 'linear-gradient(135deg, rgba(255,107,53,0.06) 0%, transparent 100%)',
+          transition: 'background 0.2s',
+        }}
+      >
         <div style={{
           width: '44px', height: '44px', borderRadius: '14px', flexShrink: 0,
           background: 'linear-gradient(135deg, #ff6b35, #ff9a35)',
@@ -158,30 +167,42 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
           fontSize: '20px', boxShadow: '0 4px 16px rgba(255,107,53,0.35)',
         }}>📊</div>
         <div style={{ flex: 1 }}>
-          <p style={{ fontWeight: 900, fontSize: 'clamp(14px, 3vw, 16px)', color: 'var(--text)', letterSpacing: '-0.3px' }}>
-            네이버 트렌드 & AI 키워드 추천
-          </p>
-          <p style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: 'var(--text-muted)', marginTop: '2px' }}>
-            검색량 분석 → AI 추천 키워드 → 상품 자동 반영
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <p style={{ fontWeight: 900, fontSize: 'clamp(14px, 3vw, 16px)', color: 'var(--text)', letterSpacing: '-0.3px' }}>
+              네이버 트렌드 & AI 키워드 추천
+            </p>
+            <span style={{
+              fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+              background: 'rgba(255,107,53,0.15)', color: 'var(--accent)',
+              border: '1px solid rgba(255,107,53,0.3)',
+            }}>선택사항</span>
+            {recommendations.length > 0 && (
+              <span style={{
+                fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+                background: 'rgba(0,229,160,0.15)', color: 'var(--green)',
+                border: '1px solid rgba(0,229,160,0.3)',
+              }}>키워드 {recommendations.length}개 저장됨</span>
+            )}
+          </div>
+          <p style={{ fontSize: 'clamp(11px, 2.5vw, 12px)', color: 'var(--text-muted)', marginTop: '3px' }}>
+            {isOpen ? '검색량 분석 → AI 추천 키워드 → 상품 자동 반영' : '클릭해서 펼치면 트렌드 분석을 시작할 수 있어요'}
           </p>
         </div>
-        {!hasNaverKey && (
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            <a href="https://developers.naver.com/apps/#/register" target="_blank" rel="noreferrer" style={{
-              background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)',
-              borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', textDecoration: 'none',
-              display: 'flex', alignItems: 'center',
-            }}>발급받기 →</a>
-            <button onClick={onGoSettings} style={{
-              background: 'var(--accent)', color: '#fff', border: 'none',
-              borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-            }}>키 설정 →</button>
-          </div>
-        )}
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          {!hasNaverKey && !isOpen && (
+            <span style={{ fontSize: '11px', color: '#ff6666', fontWeight: 600 }}>키 미등록</span>
+          )}
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '14px', transition: 'transform 0.3s',
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}>▾</div>
+        </div>
+      </button>
 
+      {isOpen && (
       <div style={{ padding: 'clamp(16px, 3vw, 24px) clamp(16px, 4vw, 28px)' }}>
 
         {/* 키 없을 때 안내 */}
@@ -477,6 +498,7 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
