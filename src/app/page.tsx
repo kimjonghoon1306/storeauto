@@ -126,25 +126,28 @@ export default function Home() {
     if (!result) return
     setRegenLoading(section)
     try {
+      const noHanja = '절대 한자, 일본어, 중국어 사용 금지. 오직 한글, 영어, 숫자만 사용.'
       const sectionPrompts: Record<RegenSection, string> = {
         keywords: `다음 상품의 네이버 검색 최적화 키워드 10개를 새롭게 생성해주세요.
 상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
+${noHanja}
 JSON 배열로만 응답: ["키워드1","키워드2","키워드3","키워드4","키워드5","키워드6","키워드7","키워드8","키워드9","키워드10"]`,
         oneLiner: `다음 상품의 핵심을 담은 감성적인 한 줄 카피를 새롭게 1개만 만들어주세요.
 상품명: ${input.productName}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
-따옴표 없이 카피 텍스트만 출력하세요. 25자 내외.`,
+${noHanja} 따옴표 없이 카피 텍스트만 출력하세요. 25자 내외.`,
         description: `다음 상품의 상세 설명을 새롭게 작성해주세요. 700자 이상, 줄바꿈은 \n 사용, 쌍따옴표 금지.
 상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}, 가격: ${input.priceRange}, 타겟: ${input.targetCustomer}
-텍스트만 출력하세요.`,
+${noHanja} 텍스트만 출력하세요.`,
         recommendation: `다음 상품을 추천하는 3가지 타입의 고객을 구체적 상황으로 묘사해주세요. 줄바꿈은 \n 사용, 쌍따옴표 금지.
 상품명: ${input.productName}, 특징: ${input.features.join(', ')}, 타겟: ${input.targetCustomer}
-텍스트만 출력하세요.`,
+${noHanja} 텍스트만 출력하세요.`,
         cta: `다음 상품의 구매 유도 멘트를 새롭게 3~4문장으로 작성해주세요. 긴급성과 혜택 강조. 줄바꿈은 \n 사용, 쌍따옴표 금지.
 상품명: ${input.productName}, 프로모션: ${input.promotions.join(', ') || '없음'}, 가격: ${input.priceRange}
-텍스트만 출력하세요.`,
+${noHanja} 텍스트만 출력하세요.`,
         faq: `다음 상품에 대해 실제 구매자가 궁금해할 FAQ 5개를 새롭게 만들어주세요.
 상품명: ${input.productName}, 카테고리: ${input.category}, 특징: ${input.features.join(', ')}
-JSON 배열로만 응답. 쌍따옴표 금지: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답변2"},{"q":"질문3","a":"답변3"},{"q":"질문4","a":"답변4"},{"q":"질문5","a":"답변5"}]`,
+${noHanja} 쌍따옴표 금지.
+JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답변2"},{"q":"질문3","a":"답변3"},{"q":"질문4","a":"답변4"},{"q":"질문5","a":"답변5"}]`,
       }
 
       const text = await callAI(sectionPrompts[section])
