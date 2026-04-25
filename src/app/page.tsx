@@ -45,7 +45,13 @@ export default function Home() {
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
+  const [naverClientId, setNaverClientId] = useState('')
+  const [naverClientSecret, setNaverClientSecret] = useState('')
+  const [trendData, setTrendData] = useState<{period: string; ratio: number}[] | null>(null)
+  const [trendLoading, setTrendLoading] = useState(false)
+  const [trendError, setTrendError] = useState('')
+  const [aiAnalysis, setAiAnalysis] = useState('')
+  const [analysisLoading, setAnalysisLoading] = useState(false)
   const router = useRouter()
 
   // 설정 페이지에서 저장한 키 불러오기
@@ -57,6 +63,8 @@ export default function Home() {
         if (parsed.gemini) setGeminiKey(parsed.gemini)
         if (parsed.openai) setOpenaiKey(parsed.openai)
         if (parsed.groq) setGroqKey(parsed.groq)
+        if (parsed.naverClient) setNaverClientId(parsed.naverClient)
+        if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
       }
       const savedTheme = localStorage.getItem('storeauto_theme')
       if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'pink')
@@ -184,6 +192,64 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       alert(e instanceof Error ? e.message : '재생성 중 오류가 발생했습니다.')
     } finally {
       setRegenLoading(null)
+    }
+  }
+
+  // 네이버 데이터랩 트렌드 조회
+  const fetchTrend = async (keyword: string) => {
+    if (!naverClientId || !naverClientSecret) {
+      setTrendError('⚙️ 설정 페이지에서 네이버 데이터랩 키를 등록해주세요.')
+      return
+    }
+    setTrendLoading(true)
+    setTrendError('')
+    setTrendData(null)
+    setAiAnalysis('')
+    try {
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setMonth(startDate.getMonth() - 12)
+      const fmt = (d: Date) => d.toISOString().slice(0, 10)
+
+      const res = await fetch('/api/naver-trend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: naverClientId,
+          clientSecret: naverClientSecret,
+          startDate: fmt(startDate),
+          endDate: fmt(endDate),
+          keyword,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || '트렌드 조회 실패')
+      }
+      const data = await res.json()
+      setTrendData(data.results)
+
+      // AI 분석
+      setAnalysisLoading(true)
+      const trendSummary = data.results.slice(-6).map((d: {period: string; ratio: number}) => `${d.period}: ${d.ratio}`).join(', ')
+      const analysisPrompt = `네이버 검색 트렌드 데이터를 분석해주세요.
+키워드: "${keyword}"
+최근 6개월 검색량 지수: ${trendSummary}
+(100이 최고, 0이 최저)
+
+다음을 3~4문장으로 분석해주세요:
+1. 트렌드 방향 (상승/하락/유지)
+2. 판매에 유리한 시기
+3. 이 키워드로 상품 판매 전략 제안
+한글로만 답변하세요.`
+
+      const analysis = await callAI(analysisPrompt)
+      setAiAnalysis(analysis)
+    } catch (e: unknown) {
+      setTrendError(e instanceof Error ? e.message : '트렌드 조회 중 오류가 발생했습니다.')
+    } finally {
+      setTrendLoading(false)
+      setAnalysisLoading(false)
     }
   }
 
@@ -493,20 +559,20 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
               </div>
             </div>
 
-            {/* AI 선택 + API 키 */}
+            {/* AI 선택 + 키 상태 표시 */}
             <div style={{
               background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
               borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
             }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 {([
-                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b' },
-                  { key: 'openai', label: '⬡ OpenAI', badge: '유료', badgeColor: '#ef4444' },
-                  { key: 'groq',   label: '⚡ Groq',   badge: '무료', badgeColor: '#00e5a0' },
+                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b', hasKey: !!geminiKey },
+                  { key: 'openai', label: '⬡ OpenAI', badge: '유료',    badgeColor: '#ef4444', hasKey: !!openaiKey },
+                  { key: 'groq',   label: '⚡ Groq',   badge: '무료',    badgeColor: '#00e5a0', hasKey: !!groqKey },
                 ] as const).map(p => (
                   <button key={p.key} onClick={() => setProvider(p.key)} style={{
                     flex: 1, padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px',
-                    fontSize: 'clamp(13px, 3vw, 14px)', fontWeight: 700,
+                    fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'inherit',
                     border: provider === p.key ? '1px solid var(--accent)' : '1px solid var(--border)',
                     background: provider === p.key ? 'var(--accent)' : 'var(--surface2)',
@@ -514,60 +580,42 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
                     position: 'relative' as const,
                   }}>
                     <span style={{ display: 'block' }}>{p.label}</span>
-                    <span style={{
-                      display: 'block', fontSize: '10px', fontWeight: 600, marginTop: '3px',
+                    <span style={{ display: 'block', fontSize: '10px', fontWeight: 600, marginTop: '2px',
                       color: provider === p.key ? 'rgba(255,255,255,0.85)' : p.badgeColor,
                     }}>{p.badge}</span>
                   </button>
                 ))}
               </div>
 
-              {/* 키 보기/숨기기 토글 */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-                <button onClick={() => setShowKey(v => !v)} style={{
-                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
-                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
-                  cursor: 'pointer', fontFamily: 'inherit',
+              {/* 키 상태 표시 */}
+              {(provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey) ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)' }} />
+                    <span style={{ fontSize: '13px', color: 'var(--green)', fontWeight: 600 }}>
+                      {provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Groq'} 키 등록됨
+                    </span>
+                  </div>
+                  <button onClick={() => router.push('/settings')} style={{
+                    background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                    padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>⚙️ 키 변경</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+                  background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)',
+                  borderRadius: '8px', padding: '10px 14px',
                 }}>
-                  {showKey ? '🙈 키 숨기기' : '👁 키 보기'}
-                </button>
-              </div>
-
-              {provider === 'gemini' && (
-                <>
-                  <Label>Gemini API 키 <Required /></Label>
-                  <input type={showKey ? 'text' : 'password'} value={geminiKey} onChange={e => setGeminiKey(e.target.value)}
-                    placeholder="AIza... (Google AI Studio에서 발급)" style={inputStyle} />
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    🔒 키는 브라우저에서만 사용됩니다 ·{' '}
-                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
-                      style={{ color: 'var(--accent)', textDecoration: 'none' }}>키 발급받기 →</a>
-                  </p>
-                </>
-              )}
-              {provider === 'openai' && (
-                <>
-                  <Label>OpenAI API 키 <Required /></Label>
-                  <input type={showKey ? 'text' : 'password'} value={openaiKey} onChange={e => setOpenaiKey(e.target.value)}
-                    placeholder="sk-..." style={inputStyle} />
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    🔒 키는 브라우저에서만 사용됩니다 ·{' '}
-                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer"
-                      style={{ color: 'var(--accent)', textDecoration: 'none' }}>키 발급받기 →</a>
-                  </p>
-                </>
-              )}
-              {provider === 'groq' && (
-                <>
-                  <Label>Groq API 키 <Required /></Label>
-                  <input type={showKey ? 'text' : 'password'} value={groqKey} onChange={e => setGroqKey(e.target.value)}
-                    placeholder="gsk_... (Groq Console에서 발급)" style={inputStyle} />
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    🔒 키는 브라우저에서만 사용됩니다 ·{' '}
-                    <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer"
-                      style={{ color: 'var(--accent)', textDecoration: 'none' }}>키 발급받기 →</a>
-                  </p>
-                </>
+                  <span style={{ fontSize: '13px', color: '#ff6666' }}>
+                    ⚠️ {provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Groq'} 키가 없습니다
+                  </span>
+                  <button onClick={() => router.push('/settings')} style={{
+                    background: 'var(--accent)', border: 'none', borderRadius: '6px',
+                    padding: '6px 14px', fontSize: '12px', color: '#fff', fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>⚙️ 키 설정하기</button>
+                </div>
               )}
             </div>
 
@@ -678,6 +726,137 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
             </button>
           </div>
         </div>
+
+        {/* 네이버 데이터랩 트렌드 */}
+        {result && (
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '24px', marginBottom: '24px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text)' }}>📊 네이버 검색 트렌드 분석</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>최근 12개월 검색량 변화</p>
+              </div>
+              <button
+                onClick={() => fetchTrend(input.productName)}
+                disabled={trendLoading}
+                style={{
+                  background: trendLoading ? 'var(--surface2)' : 'linear-gradient(135deg, #03c75a, #00a84a)',
+                  color: trendLoading ? 'var(--text-muted)' : '#fff',
+                  border: 'none', borderRadius: '10px', padding: '10px 20px',
+                  fontSize: '13px', fontWeight: 700, cursor: trendLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', transition: 'all 0.2s',
+                }}
+              >
+                {trendLoading ? '⟳ 조회중...' : '🔍 트렌드 조회'}
+              </button>
+            </div>
+
+            {!naverClientId && (
+              <div style={{
+                background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)',
+                borderRadius: '10px', padding: '14px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+              }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>⚙️ 네이버 데이터랩 키를 등록하면 트렌드를 볼 수 있어요</span>
+                <button onClick={() => router.push('/settings')} style={{
+                  background: 'var(--accent)', color: '#fff', border: 'none',
+                  borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>키 설정하기</button>
+              </div>
+            )}
+
+            {trendError && (
+              <p style={{ fontSize: '13px', color: '#ff6666', marginTop: '8px' }}>{trendError}</p>
+            )}
+
+            {trendData && trendData.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                {/* 그래프 */}
+                <div style={{ position: 'relative', height: '160px', marginBottom: '8px' }}>
+                  <svg width="100%" height="160" viewBox={`0 0 ${trendData.length * 30} 160`} preserveAspectRatio="none"
+                    style={{ display: 'block' }}>
+                    <defs>
+                      <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
+                      </linearGradient>
+                    </defs>
+                    {/* 배경 그리드 */}
+                    {[0,25,50,75,100].map(v => (
+                      <line key={v} x1="0" y1={140 - v * 1.3} x2={trendData.length * 30} y2={140 - v * 1.3}
+                        stroke="var(--border)" strokeWidth="0.5" strokeDasharray="4,4" />
+                    ))}
+                    {/* 면적 */}
+                    <polygon
+                      fill="url(#trendGrad)"
+                      points={[
+                        ...trendData.map((d, i) => `${i * 30 + 15},${140 - d.ratio * 1.3}`),
+                        `${(trendData.length - 1) * 30 + 15},140`,
+                        `15,140`,
+                      ].join(' ')}
+                    />
+                    {/* 선 */}
+                    <polyline
+                      fill="none"
+                      stroke="var(--accent)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={trendData.map((d, i) => `${i * 30 + 15},${140 - d.ratio * 1.3}`).join(' ')}
+                    />
+                    {/* 점 */}
+                    {trendData.map((d, i) => (
+                      <circle key={i} cx={i * 30 + 15} cy={140 - d.ratio * 1.3} r="3"
+                        fill="var(--accent)" stroke="var(--surface)" strokeWidth="2" />
+                    ))}
+                  </svg>
+                </div>
+                {/* 기간 라벨 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[0]?.period}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[Math.floor(trendData.length/2)]?.period}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[trendData.length-1]?.period}</span>
+                </div>
+                {/* 최고/최저 */}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: '최고', value: Math.max(...trendData.map(d => d.ratio)), color: 'var(--green)' },
+                    { label: '최저', value: Math.min(...trendData.map(d => d.ratio)), color: '#ff6666' },
+                    { label: '현재', value: trendData[trendData.length-1]?.ratio, color: 'var(--accent)' },
+                  ].map(s => (
+                    <div key={s.label} style={{
+                      flex: 1, background: 'var(--surface2)', borderRadius: '8px', padding: '10px',
+                      textAlign: 'center', border: '1px solid var(--border)',
+                    }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>{s.label}</p>
+                      <p style={{ fontSize: '20px', fontWeight: 900, color: s.color }}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AI 분석 */}
+            {analysisLoading && (
+              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--surface2)', borderRadius: '10px' }}>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>⟳ AI가 트렌드를 분석중입니다...</p>
+              </div>
+            )}
+            {aiAnalysis && (
+              <div style={{
+                marginTop: '16px', padding: '16px',
+                background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)',
+                borderRadius: '10px',
+              }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', marginBottom: '8px' }}>🤖 AI 트렌드 분석</p>
+                <p style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 1.8 }}>{aiAnalysis}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 결과 */}
         {result && (
