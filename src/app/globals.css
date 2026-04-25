@@ -16,6 +16,32 @@
   --green: #00e5a0;
 }
 
+/* 라이트 테마 */
+body.theme-light {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface2: #ebebef;
+  --border: #d0d0dc;
+  --accent: #ff6b35;
+  --accent2: #e6a800;
+  --text: #1a1a2e;
+  --text-muted: #666688;
+  --green: #00b37a;
+}
+
+/* 핑크 테마 */
+body.theme-pink {
+  --bg: #1a0a14;
+  --surface: #241018;
+  --surface2: #2e1520;
+  --border: #4a2035;
+  --accent: #ff4d8f;
+  --accent2: #ffb3d1;
+  --text: #fff0f5;
+  --text-muted: #cc88aa;
+  --green: #ff80c0;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
