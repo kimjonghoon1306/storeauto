@@ -30,6 +30,7 @@ export default function Home() {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
   }, [theme])
 
+  const [persona, setPersona] = useState<'A' | 'B' | 'C' | 'D'>('A')
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>('gemini')
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
@@ -71,7 +72,7 @@ export default function Home() {
     setResult(null)
 
     try {
-      const prompt = buildPrompt(input)
+      const prompt = buildPrompt(input, persona)
       let text = ''
 
       if (provider === 'gemini') {
@@ -251,6 +252,35 @@ export default function Home() {
           borderRadius: '16px', padding: 'clamp(20px, 4vw, 32px)', marginBottom: '32px',
         }}>
           <div style={{ display: 'grid', gap: 'clamp(16px, 3vw, 24px)' }}>
+
+            {/* 페르소나 선택 */}
+            <div style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
+            }}>
+              <Label>글쓰기 스타일 선택</Label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {([
+                  { key: 'A', emoji: '👥', label: '친근한 언니/오빠', desc: '솔직하고 편한 구어체' },
+                  { key: 'B', emoji: '🎓', label: '전문가 큐레이터', desc: '데이터 중심 신뢰감' },
+                  { key: 'C', emoji: '✨', label: '감성 스토리텔러', desc: '감정 이입 스토리' },
+                  { key: 'D', emoji: '💰', label: '실속파 소비자', desc: '가성비·실용성 중심' },
+                ] as const).map(p => (
+                  <button key={p.key} onClick={() => setPersona(p.key)} style={{
+                    padding: 'clamp(10px, 2vw, 12px)', borderRadius: '8px', cursor: 'pointer',
+                    fontFamily: 'inherit', textAlign: 'left',
+                    border: persona === p.key ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: persona === p.key ? 'rgba(255,107,53,0.1)' : 'var(--bg)',
+                    transition: 'all 0.15s',
+                  }}>
+                    <p style={{ fontSize: 'clamp(13px, 2.5vw, 14px)', fontWeight: 700, color: persona === p.key ? 'var(--accent)' : 'var(--text)', marginBottom: '2px' }}>
+                      {p.emoji} {p.label}
+                    </p>
+                    <p style={{ fontSize: 'clamp(11px, 2vw, 12px)', color: 'var(--text-muted)' }}>{p.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* AI 선택 + API 키 */}
             <div style={{
