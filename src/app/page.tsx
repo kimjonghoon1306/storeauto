@@ -403,29 +403,31 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '16px', padding: '20px', marginBottom: '24px',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent)' }}>📋 생성 기록</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent)' }}>📋 생성 기록</p>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  총 {history.length}개 · 이 기기 브라우저에만 저장됩니다
+                </p>
+              </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => {
-                  if (confirm('기록을 모두 삭제할까요?')) {
+                  if (confirm('기록을 모두 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) {
                     setHistory([])
                     localStorage.removeItem('storeauto_history')
                   }
                 }} style={{
-                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
-                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>전체 삭제</button>
+                  background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)',
+                  borderRadius: '8px', padding: '6px 12px', fontSize: '12px',
+                  color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
+                }}>🗑️ 전체 초기화</button>
                 <button onClick={() => setShowHistory(false)} style={{
-                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
-                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                  background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '8px',
+                  padding: '6px 12px', fontSize: '12px', color: 'var(--text-muted)',
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>닫기</button>
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              ⚠️ 이 기기 브라우저에만 저장됩니다. 캐시 삭제 시 사라집니다.
-            </p>
             <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
               {history.map(item => (
                 <div key={item.id} style={{
@@ -453,10 +455,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                       setHistory(updated)
                       try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
                     }} style={{
-                      background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
-                      padding: '6px 10px', fontSize: '12px', color: 'var(--text-muted)',
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}>삭제</button>
+                      background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.25)',
+                      borderRadius: '6px', padding: '6px 10px', fontSize: '12px',
+                      color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
+                    }}>🗑️</button>
                   </div>
                 </div>
               ))}
@@ -680,9 +682,18 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         {/* 결과 */}
         {result && (
           <div ref={resultRef} className="fade-up" style={{ display: 'grid', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
-              <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
+                <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
+              </div>
+              <button onClick={() => {
+                if (confirm('생성된 콘텐츠를 삭제할까요?')) setResult(null)
+              }} style={{
+                background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.25)',
+                borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: 700,
+                color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit',
+              }}>🗑️ 콘텐츠 삭제</button>
             </div>
 
             <div className="result-card">
