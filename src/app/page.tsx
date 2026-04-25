@@ -332,16 +332,25 @@ export default function Home() {
               borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
             }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                {(['gemini', 'openai', 'groq'] as const).map(p => (
-                  <button key={p} onClick={() => setProvider(p)} style={{
+                {([
+                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b' },
+                  { key: 'openai', label: '⬡ OpenAI', badge: '유료', badgeColor: '#ef4444' },
+                  { key: 'groq',   label: '⚡ Groq',   badge: '무료', badgeColor: '#00e5a0' },
+                ] as const).map(p => (
+                  <button key={p.key} onClick={() => setProvider(p.key)} style={{
                     flex: 1, padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px',
                     fontSize: 'clamp(13px, 3vw, 14px)', fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'inherit',
-                    border: provider === p ? '1px solid var(--accent)' : '1px solid var(--border)',
-                    background: provider === p ? 'var(--accent)' : 'var(--surface2)',
-                    color: provider === p ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s',
+                    border: provider === p.key ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: provider === p.key ? 'var(--accent)' : 'var(--surface2)',
+                    color: provider === p.key ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s',
+                    position: 'relative' as const,
                   }}>
-                    {p === 'gemini' ? '✦ Gemini' : p === 'openai' ? '⬡ OpenAI' : '⚡ Groq'}
+                    <span style={{ display: 'block' }}>{p.label}</span>
+                    <span style={{
+                      display: 'block', fontSize: '10px', fontWeight: 600, marginTop: '3px',
+                      color: provider === p.key ? 'rgba(255,255,255,0.85)' : p.badgeColor,
+                    }}>{p.badge}</span>
                   </button>
                 ))}
               </div>
