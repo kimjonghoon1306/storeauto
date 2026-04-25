@@ -7,13 +7,14 @@ interface KeywordRec { keyword: string; reason: string; score: number }
 
 interface Props {
   onKeywordSelect: (keyword: string) => void
+  onClearSeoKeyword: () => void
   callAI: (prompt: string) => Promise<string>
   naverClientId: string
   naverClientSecret: string
   onGoSettings: () => void
 }
 
-export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, naverClientSecret, onGoSettings }: Props) {
+export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI, naverClientId, naverClientSecret, onGoSettings }: Props) {
   const [query, setQuery] = useState('')
   const [trendData, setTrendData] = useState<TrendPoint[]>([])
   const [recommendations, setRecommendations] = useState<KeywordRec[]>([])
@@ -23,6 +24,7 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
   const [selectedKeyword, setSelectedKeyword] = useState('')
   const [aiAnalysis, setAiAnalysis] = useState('')
   const [phase, setPhase] = useState<'idle' | 'trend' | 'ai' | 'done'>('idle')
+  const [showResetWarning, setShowResetWarning] = useState(false)
 
   const hasNaverKey = !!naverClientId && !!naverClientSecret
   const maxRatio = Math.max(...trendData.map(d => d.ratio), 1)
@@ -34,8 +36,12 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
     setLoading(true)
     setError('')
     setTrendData([])
-    setRecommendations([])
     setAiAnalysis('')
+    // 30개 이상이면 초기화 경고
+    if (recommendations.length >= 30) {
+      setShowResetWarning(true)
+      return
+    }
     setPhase('trend')
 
     try {
@@ -80,22 +86,22 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
 최근 12개월 트렌드: ${results.map(d => `${d.period}:${d.ratio}`).join(', ')}
 트렌드 방향: ${trendDir} (최근 6개월 변화: ${trend > 0 ? '+' : ''}${trend.toFixed(1)})
 최고점: ${Math.max(...results.map(d => d.ratio))}, 최저점: ${Math.min(...results.map(d => d.ratio))}, 현재: ${results[results.length-1]?.ratio}
-
-다음을 JSON으로만 응답하세요. 쌍따옴표 대신 단따옴표 사용 금지, 값 안에 따옴표 절대 금지:
-{
-  "analysis": "3문장 트렌드 분석 (방향, 계절성, 판매 적기)",
-  "strategy": "2문장 판매 전략 제안",
   "keywords": [
     {"keyword": "추천키워드1", "reason": "추천이유 (20자 이내)", "score": 95},
-    {"keyword": "추천키워드2", "reason": "추천이유 (20자 이내)", "score": 88},
-    {"keyword": "추천키워드3", "reason": "추천이유 (20자 이내)", "score": 82},
-    {"keyword": "추천키워드4", "reason": "추천이유 (20자 이내)", "score": 76},
-    {"keyword": "추천키워드5", "reason": "추천이유 (20자 이내)", "score": 71}
+    {"keyword": "추천키워드2", "reason": "추천이유 (20자 이내)", "score": 92},
+    {"keyword": "추천키워드3", "reason": "추천이유 (20자 이내)", "score": 88},
+    {"keyword": "추천키워드4", "reason": "추천이유 (20자 이내)", "score": 85},
+    {"keyword": "추천키워드5", "reason": "추천이유 (20자 이내)", "score": 82},
+    {"keyword": "추천키워드6", "reason": "추천이유 (20자 이내)", "score": 78},
+    {"keyword": "추천키워드7", "reason": "추천이유 (20자 이내)", "score": 75},
+    {"keyword": "추천키워드8", "reason": "추천이유 (20자 이내)", "score": 71},
+    {"keyword": "추천키워드9", "reason": "추천이유 (20자 이내)", "score": 68},
+    {"keyword": "추천키워드10", "reason": "추천이유 (20자 이내)", "score": 65}
   ]
 }
 
+이미 추천된 키워드와 중복되지 않는 새로운 키워드로 만들어주세요.
 키워드는 "${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드로 만들어주세요. 한글만 사용.`
-
       const aiText = await callAI(aiPrompt)
       const cleaned = aiText.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
@@ -103,7 +109,13 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
         try {
           const parsed = JSON.parse(jsonMatch[0])
           setAiAnalysis(`${parsed.analysis || ''} ${parsed.strategy || ''}`.trim())
-          setRecommendations(parsed.keywords || [])
+          const newKeywords = (parsed.keywords || []).filter(
+            (nk: KeywordRec) => !recommendations.some(r => r.keyword === nk.keyword)
+          )
+          setRecommendations(prev => {
+            const merged = [...prev, ...newKeywords]
+            return merged.slice(0, 30)
+          })
         } catch {
           setAiAnalysis(cleaned.slice(0, 200))
         }
@@ -334,12 +346,77 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
           </div>
         )}
 
+        {/* 초기화 경고 팝업 */}
+        {showResetWarning && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 1001,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+          }} onClick={() => setShowResetWarning(false)}>
+            <div style={{
+              background: 'var(--surface)', border: '2px solid var(--accent)',
+              borderRadius: '20px', padding: '32px 28px', maxWidth: '400px', width: '100%',
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '14px' }}>⚠️</div>
+              <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text)', textAlign: 'center', marginBottom: '12px' }}>
+                키워드 30개 최대 도달
+              </h3>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.8, textAlign: 'center', marginBottom: '20px' }}>
+                키워드가 최대 30개에 도달했습니다.<br />
+                초기화하면 기존 키워드가 모두 삭제되고<br />
+                새로 10개를 생성합니다.
+              </p>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                <button onClick={() => {
+                  setRecommendations([])
+                  onClearSeoKeyword()
+                  setShowResetWarning(false)
+                }} style={{
+                  background: 'var(--accent)', color: '#fff', border: 'none',
+                  borderRadius: '10px', padding: '14px', fontSize: '14px', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>↺ 초기화 후 다시 분석</button>
+                <button onClick={() => setShowResetWarning(false)} style={{
+                  background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
+                  borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>취소</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* AI 추천 키워드 */}
         {recommendations.length > 0 && (
           <div>
-            <p style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)', marginBottom: '10px' }}>
-              ✦ AI 추천 키워드 — 클릭하면 상품명에 자동 반영됩니다
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <p style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)' }}>
+                  ✦ AI 추천 SEO 키워드
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                  클릭하면 생성 시 글 전체에 자연스럽게 5회 이상 반영됩니다
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                  background: recommendations.length >= 30 ? 'rgba(255,68,68,0.15)' : 'rgba(255,107,53,0.15)',
+                  color: recommendations.length >= 30 ? '#ff6666' : 'var(--accent)',
+                  border: `1px solid ${recommendations.length >= 30 ? 'rgba(255,68,68,0.3)' : 'rgba(255,107,53,0.3)'}`,
+                }}>
+                  {recommendations.length}/30
+                  {recommendations.length >= 30 && ' 최대'}
+                </span>
+                {recommendations.length > 0 && (
+                  <button onClick={() => { setRecommendations([]); onClearSeoKeyword() }} style={{
+                    fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+                  }}>↺ 초기화</button>
+                )}
+              </div>
+            </div>
             <div style={{ display: 'grid', gap: '8px' }}>
               {recommendations.map((rec, i) => (
                 <button
