@@ -86,7 +86,7 @@ export default function Home() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
               }),
             }
           )
@@ -117,7 +117,10 @@ export default function Home() {
       if (!text) throw new Error(`생성 실패: ${lastErr}`)
 
       const cleaned = text.replace(/```json|```/g, '').trim()
-      const parsed: GeneratedResult = JSON.parse(cleaned)
+      // JSON 블록만 추출
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
+      const parsed: GeneratedResult = JSON.parse(jsonMatch[0])
 
       setResult(parsed)
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
