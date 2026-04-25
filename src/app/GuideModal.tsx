@@ -100,14 +100,24 @@ export default function GuideModal() {
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1001,
           background: 'rgba(0,0,0,0.8)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          padding: '20px', overflowY: 'auto',
         }} onClick={() => setShowSaveWarning(false)}>
           <div style={{
             background: '#0f0f1a', border: '2px solid #ff4d8f',
-            borderRadius: '20px', padding: '36px 32px', maxWidth: '440px', width: '100%',
+            borderRadius: '20px', padding: '32px 28px 28px', maxWidth: '440px', width: '100%',
+            margin: 'auto', position: 'relative',
           }} onClick={e => e.stopPropagation()}>
+            {/* 닫기 버튼 */}
+            <button onClick={() => setShowSaveWarning(false)} style={{
+              position: 'absolute', top: '14px', right: '14px',
+              background: 'rgba(255,77,143,0.2)', border: '1px solid #ff4d8f',
+              color: '#ff4d8f', borderRadius: '8px', width: '32px', height: '32px',
+              cursor: 'pointer', fontSize: '16px', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>×</button>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🔐</div>
+              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔐</div>
               <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#fff0f5', marginBottom: '6px' }}>
                 저장 데이터 주의사항
               </h3>
