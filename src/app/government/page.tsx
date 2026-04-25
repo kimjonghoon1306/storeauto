@@ -289,12 +289,16 @@ export default function GovernmentPage() {
 
     const clean = text
       .replace(/[\u4E00-\u9FFF\u3400-\u4DBF]/g, '')
+      .replace(/[ăắặảãầấậẩẫđêếềệểễôốồộổỗơớờợởỡưứừựửữỹỷịỉ]/gi, (c) => {
+        const m: Record<string, string> = {'ă':'a','ắ':'a','ặ':'a','ả':'a','ã':'a','ầ':'a','ấ':'a','ậ':'a','ẩ':'a','ẫ':'a','đ':'d','ê':'e','ế':'e','ề':'e','ệ':'e','ể':'e','ễ':'e','ô':'o','ố':'o','ồ':'o','ộ':'o','ổ':'o','ỗ':'o','ơ':'o','ớ':'o','ờ':'o','ợ':'o','ở':'o','ỡ':'o','ư':'u','ứ':'u','ừ':'u','ự':'u','ử':'u','ữ':'u','ỹ':'y','ỷ':'y','ị':'i','ỉ':'i'}
+        return m[c.toLowerCase()] || ''
+      })
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/^#{1,3}\s*/gm, '')
       .replace(/\n{3,}/g, '\n\n')
 
-    const URL_REGEX = /(https?:\/\/[^\s)]+)/g
+    const URL_REGEX = /(https?:\/\/[^\s)]+|www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s)]*)/g
     const lines = clean.split('\n')
     const result: React.ReactNode[] = []
     let numCount = 0
@@ -313,10 +317,11 @@ export default function GovernmentPage() {
         const parts = trimmed.split(URL_REGEX)
         const nodes: React.ReactNode[] = []
         parts.forEach((part, j) => {
-          if (/^https?:\/\//.test(part)) {
-            const domain = part.replace(/https?:\/\//, '').split('/')[0]
+          if (/^https?:\/\//.test(part) || /^www\./.test(part)) {
+            const href = /^https?:\/\//.test(part) ? part : 'https://' + part
+            const domain = href.replace(/https?:\/\//, '').split('/')[0]
             nodes.push(
-              <a key={j} href={part} target="_blank" rel="noopener noreferrer" style={{
+              <a key={j} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))',
                 border: '1px solid rgba(99,179,237,0.4)',
