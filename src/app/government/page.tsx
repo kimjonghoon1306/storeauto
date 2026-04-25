@@ -139,7 +139,6 @@ export default function GovernmentPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [adminData, setAdminData] = useState<AdminData[]>([])
-  const [showAdmin, setShowAdmin] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -149,9 +148,23 @@ export default function GovernmentPage() {
       if (savedTheme && savedTheme !== 'dark') {
         document.body.className = 'theme-' + savedTheme
       }
-      const saved = localStorage.getItem('gov_admin_data')
-      if (saved) setAdminData(JSON.parse(saved) as AdminData[])
     } catch (_e) { /* ignore */ }
+
+    // Supabase에서 정부지원 데이터 로드
+    const loadGovData = async () => {
+      try {
+        const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '') + '/rest/v1/gov_support?order=created_at.desc'
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        if (!url || !key) return
+        const res = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } })
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) setAdminData(data)
+        }
+      } catch (_e) { /* ignore */ }
+    }
+    loadGovData()
+
     return () => { document.body.className = '' }
   }, [])
 
@@ -271,20 +284,145 @@ export default function GovernmentPage() {
   }
 
   const formatMessage = (text: string) => {
-    const lines = text.split('\n')
-    return lines.map((line, i) => (
-      <span key={i}>
-        {line}
-        {i < lines.length - 1 && <br />}
-      </span>
-    ))
-  }
+    const NUM_COLORS = ['#ff6b35','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899']
+    const DASH_COLORS = ['#34d399','#60a5fa','#f472b6','#fbbf24','#a78bfa','#fb7185']
 
-  const handleAdminChange = (data: AdminData[]) => {
-    setAdminData(data)
-    try {
-      localStorage.setItem('gov_admin_data', JSON.stringify(data))
-    } catch (_e) { /* ignore */ }
+    const clean = text
+      .replace(/[\u4E00-\u9FFF\u3400-\u4DBF]/g, '')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/^#{1,3}\s*/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+
+    const URL_REGEX = /(https?:\/\/[^\s)]+)/g
+    const lines = clean.split('\n')
+    const result: React.ReactNode[] = []
+    let numCount = 0
+    let dashCount = 0
+
+    lines.forEach((line, i) => {
+      const trimmed = line.trim()
+      if (!trimmed) {
+        result.push(<div key={'sp' + i} style={{ height: '6px' }} />)
+        return
+      }
+
+      // URL 포함 줄 → 링크 버튼 박스
+      if (URL_REGEX.test(trimmed)) {
+        URL_REGEX.lastIndex = 0
+        const parts = trimmed.split(URL_REGEX)
+        const nodes: React.ReactNode[] = []
+        parts.forEach((part, j) => {
+          if (/^https?:\/\//.test(part)) {
+            const domain = part.replace(/https?:\/\//, '').split('/')[0]
+            nodes.push(
+              <a key={j} href={part} target="_blank" rel="noopener noreferrer" style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))',
+                border: '1px solid rgba(99,179,237,0.4)',
+                borderRadius: '10px', padding: '6px 14px', margin: '3px 2px',
+                color: '#60a5fa', fontSize: '13px', fontWeight: 700,
+                textDecoration: 'none', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(59,130,246,0.15)',
+                transition: 'all 0.15s',
+              }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.25))'
+                  el.style.transform = 'translateY(-1px)'
+                  el.style.boxShadow = '0 4px 16px rgba(59,130,246,0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))'
+                  el.style.transform = 'translateY(0)'
+                  el.style.boxShadow = '0 2px 8px rgba(59,130,246,0.15)'
+                }}
+              >🔗 {domain}</a>
+            )
+          } else if (part.trim()) {
+            nodes.push(<span key={j} style={{ fontSize: '13px', color: 'inherit' }}>{part}</span>)
+          }
+        })
+        result.push(
+          <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px', margin: '2px 0', lineHeight: '2' }}>
+            {nodes}
+          </div>
+        )
+        return
+      }
+
+      // 번호 목록
+      const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/)
+      if (numMatch) {
+        const color = NUM_COLORS[numCount % NUM_COLORS.length]
+        numCount++
+        result.push(
+          <div key={i} style={{
+            display: 'flex', gap: '10px', alignItems: 'flex-start', margin: '5px 0',
+            padding: '8px 12px',
+            background: color + '11',
+            border: '1px solid ' + color + '33',
+            borderRadius: '10px',
+            borderLeft: '3px solid ' + color,
+          }}>
+            <span style={{
+              flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%',
+              background: color, color: 'white',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 900,
+            }}>{numMatch[1]}</span>
+            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.6', paddingTop: '2px' }}>{numMatch[2]}</span>
+          </div>
+        )
+        return
+      }
+
+      // 대시 목록
+      const dashMatch = trimmed.match(/^[-•·]\s+(.+)/)
+      if (dashMatch) {
+        const color = DASH_COLORS[dashCount % DASH_COLORS.length]
+        dashCount++
+        result.push(
+          <div key={i} style={{
+            display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0',
+            padding: '6px 10px',
+            background: color + '0d',
+            borderRadius: '8px',
+          }}>
+            <span style={{
+              flexShrink: 0, fontSize: '10px', color: color, fontWeight: 900, marginTop: '4px',
+              background: color + '22', borderRadius: '50%', width: '18px', height: '18px',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>▸</span>
+            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.6', color: 'inherit' }}>{dashMatch[1]}</span>
+          </div>
+        )
+        return
+      }
+
+      // 콜론으로 끝나는 제목줄
+      if (trimmed.endsWith(':') || trimmed.endsWith('：')) {
+        result.push(
+          <div key={i} style={{
+            fontSize: '13px', fontWeight: 900, color: '#fbbf24',
+            borderBottom: '1px solid rgba(251,191,36,0.2)',
+            paddingBottom: '4px', marginBottom: '4px', marginTop: '10px',
+            letterSpacing: '0.3px',
+          }}>{trimmed}</div>
+        )
+        numCount = 0
+        dashCount = 0
+        return
+      }
+
+      // 일반 텍스트
+      result.push(
+        <div key={i} style={{ fontSize: '14px', lineHeight: '1.75', margin: '2px 0' }}>{trimmed}</div>
+      )
+    })
+
+    return <>{result}</>
   }
 
   const dotDelays = [0, 0.2, 0.4]
@@ -327,17 +465,11 @@ export default function GovernmentPage() {
           </div>
         </div>
 
-        <button onClick={() => setShowAdmin(!showAdmin)} style={{
-          background: showAdmin ? 'rgba(255,107,53,0.15)' : 'var(--surface2)',
-          border: '1px solid ' + (showAdmin ? 'var(--accent)' : 'var(--border)'),
-          color: showAdmin ? 'var(--accent)' : 'var(--text-muted)',
-          borderRadius: '8px', padding: '7px 12px',
-          cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0,
-        }}>⚙️ 관리{adminData.length > 0 ? ' (' + adminData.length + ')' : ''}</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--green)', flexShrink: 0 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
+          AI
+        </div>
       </div>
-
-      {/* 관리자 패널 */}
-      {showAdmin && <AdminPanel adminData={adminData} onChange={handleAdminChange} />}
 
       {/* 채팅 영역 */}
       <div style={{
@@ -452,135 +584,3 @@ export default function GovernmentPage() {
   )
 }
 
-interface AdminPanelProps {
-  adminData: AdminData[]
-  onChange: (data: AdminData[]) => void
-}
-
-function AdminPanel({ adminData, onChange }: AdminPanelProps) {
-  const [form, setForm] = useState({ category: '지자체지원금', title: '', content: '', region: '전국' })
-
-  const categories = ['지자체지원금', '정책자금', '무상지원', '창업지원', '기타']
-  const regions = ['전국', '서울', '부산', '인천', '대구', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
-
-  const add = () => {
-    if (!form.title.trim() || !form.content.trim()) return
-    const newItem: AdminData = {
-      id: Date.now().toString(),
-      category: form.category,
-      title: form.title,
-      content: form.content,
-      region: form.region,
-      createdAt: new Date().toLocaleDateString('ko-KR'),
-    }
-    onChange([...adminData, newItem])
-    setForm({ category: '지자체지원금', title: '', content: '', region: '전국' })
-  }
-
-  const remove = (id: string) => {
-    onChange(adminData.filter((d) => d.id !== id))
-  }
-
-  return (
-    <div style={{
-      background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
-      padding: '16px',
-    }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px', color: 'var(--accent)' }}>
-          ⚙️ 지원정보 직접 등록 (챗봇이 우선 참고)
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-          <select
-            value={form.region}
-            onChange={(e) => setForm({ ...form, region: e.target.value })}
-            style={{
-              background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
-              borderRadius: '8px', padding: '8px 10px', fontSize: '13px', cursor: 'pointer',
-            }}
-          >
-            {regions.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            style={{
-              background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
-              borderRadius: '8px', padding: '8px 10px', fontSize: '13px', cursor: 'pointer',
-            }}
-          >
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="지원사업명"
-            style={{
-              flex: 1, minWidth: '140px', background: 'var(--surface)', border: '1px solid var(--border)',
-              color: 'var(--text)', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', outline: 'none',
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <textarea
-            value={form.content}
-            onChange={(e) => setForm({ ...form, content: e.target.value })}
-            placeholder="지원 내용, 신청 방법, 금액, 대상, URL 등 상세 내용"
-            rows={3}
-            style={{
-              flex: 1, background: 'var(--surface)', border: '1px solid var(--border)',
-              color: 'var(--text)', borderRadius: '8px', padding: '10px 12px',
-              fontSize: '13px', outline: 'none', resize: 'vertical',
-            }}
-          />
-          <button
-            onClick={add}
-            style={{
-              background: 'var(--accent)', color: 'white', border: 'none',
-              borderRadius: '8px', padding: '0 16px', fontSize: '13px',
-              fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-            }}
-          >등록</button>
-        </div>
-
-        {adminData.length > 0 && (
-          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '2px' }}>
-              등록된 정보 {adminData.length}건
-            </div>
-            {adminData.map((d) => (
-              <div key={d.id} style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: '8px', padding: '10px 12px',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px',
-              }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>
-                    [{d.region}] {d.title}
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '6px' }}>{d.category} · {d.createdAt}</span>
-                  </div>
-                  <div style={{
-                    fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {d.content}
-                  </div>
-                </div>
-                <button
-                  onClick={() => remove(d.id)}
-                  style={{
-                    background: 'none', border: 'none', color: 'var(--text-muted)',
-                    cursor: 'pointer', fontSize: '18px', flexShrink: 0, padding: '0',
-                    lineHeight: 1,
-                  }}
-                >×</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
