@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import DetailPageBuilder from './DetailPageBuilder'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { buildPrompt } from '@/lib/prompt'
 
@@ -588,6 +589,13 @@ const handleSubmit = async () => {
           >
             {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 텍스트 복사'}
           </button>
+
+          <DetailPageBuilder
+            result={result}
+            productName={input.productName}
+            priceRange={input.priceRange}
+            features={input.features}
+          />
         </div>
       )}
     </div>
