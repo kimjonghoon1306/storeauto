@@ -26,7 +26,6 @@ export default function Home() {
   const [copied, setCopied] = useState<string | null>(null)
   const [history, setHistory] = useState<{id: number; date: string; productName: string; result: GeneratedResult}[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [showHistoryWarning, setShowHistoryWarning] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light' | 'pink'>('dark')
 
   useEffect(() => {
@@ -273,45 +272,6 @@ export default function Home() {
     <>
       <GuideModal />
 
-      {/* 저장 경고 팝업 - 최초 1회 */}
-      {showStorageWarning && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1001,
-          background: 'rgba(0,0,0,0.75)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
-        }}>
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '32px', maxWidth: '420px', width: '100%',
-          }}>
-            <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '16px' }}>⚠️</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text)', textAlign: 'center', marginBottom: '16px' }}>
-              저장 데이터 안내
-            </h3>
-            <div style={{
-              background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
-              borderRadius: '10px', padding: '16px', marginBottom: '20px',
-            }}>
-              <p style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 2 }}>
-                📱 <strong>이 기기 브라우저에만</strong> 저장됩니다.<br />
-                💻 다른 기기나 다른 브라우저에서는 보이지 않아요.<br />
-                🗑️ 브라우저 캐시/쿠키를 삭제하면 데이터가 사라집니다.<br />
-                🔄 시크릿 모드에서는 저장되지 않습니다.
-              </p>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '20px' }}>
-              중요한 내용은 반드시 복사해두세요!
-            </p>
-            <button onClick={() => setShowStorageWarning(false)} style={{
-              width: '100%', background: 'var(--accent)', color: '#fff', border: 'none',
-              borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-              확인했습니다 ✓
-            </button>
-          </div>
-        </div>
-      )}
 
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 20px) 80px' }}>
 
