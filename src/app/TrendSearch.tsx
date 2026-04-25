@@ -81,57 +81,40 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
         : 0
       const trendDir = trend > 10 ? '급상승' : trend > 0 ? '상승' : trend < -10 ? '급하락' : '하락' 
 
-      const aiPrompt = `네이버 검색 트렌드 분석 및 키워드 추천을 해주세요.
+      // 1차: 분석 글 (텍스트)
+      const analysisPrompt = `네이버 검색 트렌드를 분석해주세요.
+키워드: "${query.trim()}"
+최근 12개월 검색량: ${results.map(d => d.period.slice(0,7)+":"+d.ratio).join(", ")}
+트렌드 방향: ${trendDir}
+최고: ${Math.max(...results.map(d => d.ratio))}, 현재: ${results[results.length-1]?.ratio}, 최저: ${Math.min(...results.map(d => d.ratio))}
 
-검색 키워드: "${query.trim()}"
-최근 12개월 트렌드: ${results.map(d => `${d.period}:${d.ratio}`).join(', ')}
-트렌드 방향: ${trendDir} (최근 6개월 변화: ${trend > 0 ? '+' : ''}${trend.toFixed(1)})
-최고점: ${Math.max(...results.map(d => d.ratio))}, 최저점: ${Math.min(...results.map(d => d.ratio))}, 현재: ${results[results.length-1]?.ratio}
+3~4문장으로 분석해주세요: 트렌드 방향, 계절성, 판매 적기, 전략 제안.
+한글로만 답변. 별표나 마크다운 기호 사용 금지.`
 
-다음 JSON 형식으로만 응답하세요. 쌍따옴표 절대 사용 금지. 한글만 사용:
-{
-  "analysis": "3문장 트렌드 분석",
-  "strategy": "2문장 판매 전략",
-  "keywords": [
-    {"keyword": "추천키워드1", "reason": "추천이유20자이내", "score": 95},
-    {"keyword": "추천키워드2", "reason": "추천이유20자이내", "score": 92},
-    {"keyword": "추천키워드3", "reason": "추천이유20자이내", "score": 88},
-    {"keyword": "추천키워드4", "reason": "추천이유20자이내", "score": 85},
-    {"keyword": "추천키워드5", "reason": "추천이유20자이내", "score": 82},
-    {"keyword": "추천키워드6", "reason": "추천이유20자이내", "score": 78},
-    {"keyword": "추천키워드7", "reason": "추천이유20자이내", "score": 75},
-    {"keyword": "추천키워드8", "reason": "추천이유20자이내", "score": 71},
-    {"keyword": "추천키워드9", "reason": "추천이유20자이내", "score": 68},
-    {"keyword": "추천키워드10", "reason": "추천이유20자이내", "score": 65}
-  ]
-}
+      const analysisText = await callAI(analysisPrompt)
+      setAiAnalysis(analysisText.replace(/[*#_]/g, '').trim())
 
-이미 추천된 키워드와 중복되지 않는 새로운 키워드로 만들어주세요.
-한글만 사용. "${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드로 만들어주세요.`
-      const aiText = await callAI(aiPrompt)
-      console.log('[TrendSearch] aiText:', aiText?.slice(0, 200))
-      const cleaned = aiText.replace(/```json|```/g, '').trim()
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
-      console.log('[TrendSearch] jsonMatch:', !!jsonMatch)
-      if (jsonMatch) {
+      // 2차: 키워드 추천 (JSON 배열만)
+      const keywordPrompt = `"${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드 10개를 추천해주세요.
+
+반드시 아래 형식의 JSON 배열만 출력. 다른 텍스트 절대 금지:
+[{"keyword":"키워드","reason":"이유","score":95},{"keyword":"키워드","reason":"이유","score":90}]
+
+규칙: 한글만, 2~6단어 롱테일, score는 65~95 범위, reason은 15자 이내`
+
+      const keywordText = await callAI(keywordPrompt)
+      const kwCleaned = keywordText.replace(/```json|```/g, '').trim()
+      const arrMatch = kwCleaned.match(/\[[\s\S]*\]/)
+      if (arrMatch) {
         try {
-          const parsed = JSON.parse(jsonMatch[0])
-          console.log('[TrendSearch] parsed keywords:', parsed.keywords?.length)
-          setAiAnalysis(`${parsed.analysis || ''} ${parsed.strategy || ''}`.trim())
-          const newKeywords = (parsed.keywords || []).filter(
+          const parsed: KeywordRec[] = JSON.parse(arrMatch[0])
+          const newKeywords = parsed.filter(
             (nk: KeywordRec) => !recommendations.some(r => r.keyword === nk.keyword)
           )
-          setRecommendations(prev => {
-            const merged = [...prev, ...newKeywords]
-            return merged.slice(0, 30)
-          })
-        } catch (parseErr) {
-          console.error('[TrendSearch] parse error:', parseErr)
-          setAiAnalysis(cleaned.slice(0, 200))
+          setRecommendations(prev => [...prev, ...newKeywords].slice(0, 30))
+        } catch {
+          // 파싱 실패 시 무시
         }
-      } else {
-        console.log('[TrendSearch] no JSON found in:', cleaned.slice(0, 300))
-        setAiAnalysis(cleaned.slice(0, 300))
       }
       setPhase('done')
     } catch (e: unknown) {
