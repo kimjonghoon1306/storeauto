@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { buildPrompt } from '@/lib/prompt'
 
@@ -27,6 +27,12 @@ export default function Home() {
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [theme, setTheme] = useState<'dark' | 'light' | 'pink'>('dark')
+
+  useEffect(() => {
+    document.body.className = theme === 'dark' ? '' : `theme-${theme}`
+  }, [theme])
+
   const [provider, setProvider] = useState<'gemini' | 'openai'>('gemini')
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
@@ -187,17 +193,46 @@ const handleSubmit = async () => {
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '40px 20px 80px' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '48px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <div style={{
-            background: 'var(--accent)',
-            color: '#fff',
-            fontWeight: 900,
-            fontSize: '13px',
-            letterSpacing: '2px',
-            padding: '4px 10px',
-            borderRadius: '4px',
-          }}>STORE AUTO</div>
-          <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>AI 상품설명 자동화</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              background: 'var(--accent)',
+              color: '#fff',
+              fontWeight: 900,
+              fontSize: '13px',
+              letterSpacing: '2px',
+              padding: '4px 10px',
+              borderRadius: '4px',
+            }}>STORE AUTO</div>
+            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>AI 상품설명 자동화</span>
+          </div>
+          {/* 테마 버튼 */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {([
+              { key: 'dark', label: '🌙 다크' },
+              { key: 'light', label: '☀️ 라이트' },
+              { key: 'pink', label: '🌸 핑크' },
+            ] as const).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTheme(t.key)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  border: theme === t.key ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  background: theme === t.key ? 'rgba(255,107,53,0.15)' : 'var(--surface2)',
+                  color: theme === t.key ? 'var(--accent)' : 'var(--text-muted)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
         <h1 style={{ fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 900, lineHeight: 1.15 }}>
           스마트스토어 상세페이지<br />
