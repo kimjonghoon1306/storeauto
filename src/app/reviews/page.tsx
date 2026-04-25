@@ -48,6 +48,7 @@ export default function ReviewsPage() {
   const [tone, setTone] = useState<ReplyTone>('warm')
   const [loading, setLoading] = useState(false)
   const [generatedReply, setGeneratedReply] = useState('')
+  const [replyError, setReplyError] = useState('')
   const [copied, setCopied] = useState(false)
   const [history, setHistory] = useState<ReviewItem[]>([])
   const [activeTab, setActiveTab] = useState<'write' | 'history'>('write')
@@ -114,6 +115,7 @@ export default function ReviewsPage() {
     if (!reviewText.trim()) return
     setLoading(true)
     setGeneratedReply('')
+    setReplyError('')
     try {
       const toneGuide = {
         warm: '따뜻하고 친근하게. 고객을 가족처럼 대하는 느낌. 감사함을 충분히 표현.',
@@ -137,6 +139,7 @@ export default function ReviewsPage() {
 
       const reply = await callAI(prompt)
       const cleaned = reply.replace(/[*#_`]/g, '').trim()
+      if (!cleaned) throw new Error('AI 응답이 비어있습니다. 다시 시도해주세요.')
       setGeneratedReply(cleaned)
 
       const newItem: ReviewItem = {
@@ -154,7 +157,7 @@ export default function ReviewsPage() {
         return updated
       })
     } catch (e: unknown) {
-      setGeneratedReply(e instanceof Error ? `오류: ${e.message}` : '오류가 발생했습니다.')
+      setReplyError(e instanceof Error ? e.message : '오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
@@ -440,6 +443,14 @@ export default function ReviewsPage() {
             </button>
 
             {/* 생성된 답글 */}
+            {replyError && (
+              <div style={{
+                padding: '12px 16px', borderRadius: '10px',
+                background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)',
+                fontSize: '13px', color: '#ff6666',
+              }}>⚠️ {replyError}</div>
+            )}
+
             {generatedReply && (
               <div className="fade-up" style={{
                 background: t.surface, border: `2px solid ${t.accent}`,
@@ -572,4 +583,3 @@ export default function ReviewsPage() {
     </>
   )
 }
-
