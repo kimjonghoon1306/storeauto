@@ -149,11 +149,11 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
       <button
         onClick={() => setIsOpen(v => !v)}
         style={{
-          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+          width: '100%', border: 'none', cursor: 'pointer',
           padding: 'clamp(16px, 3vw, 20px) clamp(16px, 4vw, 28px)',
           display: 'flex', alignItems: 'center', gap: '14px',
           borderBottom: isOpen ? '1px solid var(--border)' : 'none',
-          fontFamily: 'inherit', textAlign: 'left',
+          fontFamily: 'inherit', textAlign: 'left' as const,
           background: isOpen
             ? 'linear-gradient(135deg, rgba(255,107,53,0.12) 0%, rgba(255,107,53,0.03) 100%)'
             : 'linear-gradient(135deg, rgba(255,107,53,0.06) 0%, transparent 100%)',
