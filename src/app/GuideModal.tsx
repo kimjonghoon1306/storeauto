@@ -36,7 +36,7 @@ export default function GuideModal() {
       ],
     },
     {
-      emoji: '🖼️',
+      emoji: '🖼',
       title: '1단계 — AI 이미지 분석 (선택)',
       desc: '상품 사진을 올리면 AI가 상품 정보를
 자동으로 읽어서 입력폼을 채워줍니다.
@@ -44,7 +44,7 @@ export default function GuideModal() {
       sub: 'Gemini 또는 OpenAI 키가 필요합니다.
 Groq는 이미지 분석을 지원하지 않습니다.',
       img: [
-        '① 🖼️ AI 이미지 분석 섹션 클릭해서 펼치기',
+        '① AI 이미지 분석 섹션 클릭해서 펼치기',
         '② 상품 사진 업로드 (클릭 또는 드래그)',
         '③ AI 이미지 분석 시작 버튼 클릭',
         '④ 상품명·카테고리·특징이 아래 입력폼에 자동 입력됨',
