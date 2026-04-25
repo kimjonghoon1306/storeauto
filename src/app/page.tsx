@@ -456,21 +456,6 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="result-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '8px', flexWrap: 'wrap' }}>
-                <h3>{'</>'} HTML 코드</h3>
-                <CopyBtn text={result.htmlCode} id="html" />
-              </div>
-              <div style={{
-                background: 'var(--bg)', border: '1px solid var(--border)',
-                borderRadius: '8px', padding: '14px', maxHeight: '200px', overflowY: 'auto',
-              }}>
-                <pre className="mono" style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                  {result.htmlCode}
-                </pre>
-              </div>
-            </div>
-
             <button
               onClick={() => copyText(
                 `[키워드]\n${result.keywords.join(', ')}\n\n[카피]\n${result.oneLiner}\n\n[상세설명]\n${result.description}\n\n[추천고객]\n${result.recommendation}\n\n[구매유도]\n${result.cta}\n\n[FAQ]\n${result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')}`,
