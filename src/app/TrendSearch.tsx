@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 interface TrendPoint { period: string; ratio: number }
 interface KeywordRec { keyword: string; reason: string; score: number }
@@ -12,10 +12,18 @@ interface Props {
   naverClientId: string
   naverClientSecret: string
   onGoSettings: () => void
+  initialQuery?: string
 }
 
-export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI, naverClientId, naverClientSecret, onGoSettings }: Props) {
-  const [query, setQuery] = useState('')
+export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI, naverClientId, naverClientSecret, onGoSettings, initialQuery }: Props) {
+  const [query, setQuery] = useState(initialQuery || '')
+
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery)
+      setIsOpen(true)
+    }
+  }, [initialQuery])
   const [trendData, setTrendData] = useState<TrendPoint[]>([])
   const [recommendations, setRecommendations] = useState<KeywordRec[]>([])
   const [loading, setLoading] = useState(false)
@@ -86,30 +94,20 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
 
       // 1차: 분석 글 - 최초 1회만
       if (!hasSearched) {
-      const analysisPrompt = `네이버 검색 트렌드를 분석해주세요.
-키워드: "${query.trim()}"
-최근 12개월 검색량: ${results.map(d => d.period.slice(0,7)+":"+d.ratio).join(", ")}
-트렌드 방향: ${trendDir}
-최고: ${Math.max(...results.map(d => d.ratio))}, 현재: ${results[results.length-1]?.ratio}, 최저: ${Math.min(...results.map(d => d.ratio))}
-
-3~4문장으로 분석해주세요: 트렌드 방향, 계절성, 판매 적기, 전략 제안.
-한글로만 답변. 별표나 마크다운 기호 사용 금지.`
+      const recentTrend = results.slice(-3).map(d => d.period.slice(5)+":"+d.ratio).join(",")
+      const analysisPrompt = `키워드:"${query.trim()}" 트렌드:${recentTrend} 방향:${trendDir} 최고:${Math.max(...results.map(d=>d.ratio))} 현재:${results[results.length-1]?.ratio}
+위 데이터로 3문장 트렌드 분석. 판매 적기와 전략 포함. 한글만. 마크다운 금지.`
 
       const analysisText = await callAI(analysisPrompt)
       setAiAnalysis(analysisText.replace(/[*#_]/g, '').trim())
       } // end if !hasSearched
 
       // 2차: 키워드 추천 (JSON 배열만)
-      const existingKws = recommendations.map(r => r.keyword).join(', ')
-      const keywordPrompt = `"${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드 10개를 추천해주세요.
-${existingKws ? `
-이미 존재하는 키워드 (절대 중복 금지): ${existingKws}
-` : ''}
-반드시 아래 형식의 JSON 배열만 출력. 다른 텍스트 절대 금지:
-[{"keyword":"키워드","reason":"이유","score":95},{"keyword":"키워드","reason":"이유","score":90}]
-
-규칙: 한글만, 2~6단어 롱테일, score는 65~95 범위, reason은 15자 이내, 위 목록과 완전히 다른 키워드`
-
+      const existingKws = recommendations.map(r => r.keyword).join(",")
+      const keywordPrompt = `"${query.trim()}" 네이버 롱테일 키워드 10개. JSON배열만:
+[{"keyword":"키워드","reason":"이유15자","score":95}]
+${existingKws ? `중복금지: ${existingKws}` : ""}
+한글만. 2~6단어.`
       const keywordText = await callAI(keywordPrompt)
       const kwCleaned = keywordText.replace(/```json|```/g, '').trim()
       const arrMatch = kwCleaned.match(/\[[\s\S]*\]/)
@@ -142,15 +140,11 @@ ${existingKws ? `
     setAiLoading(true)
     setError('')
     try {
-      const existingList = recommendations.map(r => r.keyword).join(', ')
-      const keywordPrompt = `"${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드 10개를 추천해주세요.
-
-이미 있는 키워드 (절대 중복 금지): ${existingList}
-
-반드시 아래 형식의 JSON 배열만 출력. 다른 텍스트 절대 금지:
-[{"keyword":"키워드","reason":"이유","score":95}]
-
-규칙: 한글만, 2~6단어, score는 65~95 범위, reason은 15자 이내, 위 목록과 다른 새 키워드만`
+      const existingList = recommendations.map(r => r.keyword).join(',')
+      const keywordPrompt = `"${query.trim()}" 네이버 롱테일 키워드 10개. JSON배열만:
+[{"keyword":"키워드","reason":"이유15자","score":95}]
+중복금지: ${existingList}
+한글만. 2~6단어.`
 
       const keywordText = await callAI(keywordPrompt)
       const kwCleaned = keywordText.replace(/```json|```/g, '').trim()
