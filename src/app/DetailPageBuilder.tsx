@@ -18,6 +18,7 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
     resultToEditable(result, productName, priceRange, features)
   )
   const [downloading, setDownloading] = useState(false)
+  const [htmlCopied, setHtmlCopied] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const tpl = TEMPLATES[selectedTemplate]
@@ -277,6 +278,42 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
                 borderRadius: '10px', padding: 'clamp(12px, 3vw, 14px)', fontSize: 'clamp(13px, 3vw, 14px)',
                 fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
               }}>← 편집으로 돌아가기</button>
+            </div>
+
+            {/* HTML 코드 복사 */}
+            <div style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: '12px', padding: '20px', marginTop: '8px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent)' }}>{'</>'} 스마트스토어 HTML 코드</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(html)
+                    setHtmlCopied(true)
+                    setTimeout(() => setHtmlCopied(false), 2000)
+                  }}
+                  style={{
+                    background: htmlCopied ? 'var(--green)' : 'var(--accent)',
+                    color: htmlCopied ? '#000' : '#fff', border: 'none',
+                    borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {htmlCopied ? '✓ 복사됨!' : '📋 HTML 복사'}
+                </button>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                스마트스토어 상품 등록 → 상세 설명 → HTML 편집기에 붙여넣기
+              </p>
+              <div style={{
+                background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '12px', maxHeight: '180px', overflowY: 'auto',
+              }}>
+                <pre style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                  {html.slice(0, 500)}...
+                </pre>
+              </div>
             </div>
             {/* 인라인 미리보기 (PC용) */}
             <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'none' }}>
