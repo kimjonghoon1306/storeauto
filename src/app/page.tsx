@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import DetailPageBuilder from './DetailPageBuilder'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
-import { buildPrompt } from '@/lib/prompt'
+
 
 const CATEGORIES = [
   '패션의류', '패션잡화', '뷰티', '식품', '주방용품', '생활용품',
@@ -72,7 +72,51 @@ export default function Home() {
     setResult(null)
 
     try {
-      const prompt = buildPrompt(input, persona)
+      const PERSONA_GUIDES: Record<string, string> = {
+        A: '친근한 이웃 언니/오빠처럼 써주세요. 솔직하고 편한 구어체, 단점도 언급하되 결국 추천. 이거 진짜 써봤는데요, 처음엔 저도 반신반의했어요 같은 표현 사용.',
+        B: '전문가 큐레이터처럼 써주세요. 구체적 수치와 기술적 근거 중심, 객관적이고 신뢰감 있는 톤, 비슷한 제품과의 차별점 명확히 제시.',
+        C: '감성 스토리텔러처럼 써주세요. 사용 전 불편함 → 발견 → 사용 후 변화 스토리 구조, 감정 이입, 계절감과 일상 장면 묘사.',
+        D: '실속파 소비자처럼 써주세요. 가성비, 실용성, 직접 비교 중심. 이 가격에 이 퀄리티면, 돈 아깝지 않아요 같은 표현.',
+      }
+      const prompt = `당신은 대한민국 최고의 스마트스토어 상품 상세페이지 전문 카피라이터입니다.
+
+[상품 정보]
+- 상품명: ${input.productName}
+- 카테고리: ${input.category}
+- 핵심 특징: ${input.features.join(', ')}
+- 타겟 고객: ${input.targetCustomer}
+- 가격대: ${input.priceRange}
+- 프로모션: ${input.promotions.length > 0 ? input.promotions.join(', ') : '없음'}
+- 추가 정보: ${input.extraInfo || '없음'}
+
+[글쓰기 스타일] ${PERSONA_GUIDES[persona]}
+
+[작성 원칙]
+1. AI 느낌 절대 금지, 실제 사람이 쓴 것처럼
+2. 키워드를 자연스럽게 7회 이상 녹여내기
+3. description은 반드시 700자 이상
+4. recommendation은 3가지 타입 고객을 구체적 상황으로 각 2~3문장
+5. faq는 실제 구매자가 궁금해할 현실적 질문과 상세한 답변
+6. cta는 긴급성과 혜택 강조 3~4문장
+7. 절대로 JSON 값 안에 쌍따옴표 사용 금지. 줄바꿈은 \\n 으로만
+
+아래 JSON 형식으로만 응답하세요. 마크다운 코드블록 없이 순수 JSON만:
+
+{
+  "keywords": ["키워드1","키워드2","키워드3","키워드4","키워드5","키워드6","키워드7","키워드8","키워드9","키워드10"],
+  "oneLiner": "감성적이고 클릭하고 싶은 한 줄 카피 25자 내외",
+  "description": "700자 이상 상세 설명. 줄바꿈은 \\n 사용",
+  "recommendation": "3가지 타입 고객 묘사. 줄바꿈은 \\n 사용",
+  "cta": "구매 유도 멘트 3~4문장. 줄바꿈은 \\n 사용",
+  "faq": [
+    {"q": "질문1", "a": "답변1"},
+    {"q": "질문2", "a": "답변2"},
+    {"q": "질문3", "a": "답변3"},
+    {"q": "질문4", "a": "답변4"},
+    {"q": "질문5", "a": "답변5"}
+  ],
+  "htmlCode": ""
+}`
       let text = ''
 
       if (provider === 'gemini') {
