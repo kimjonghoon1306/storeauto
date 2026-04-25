@@ -843,6 +843,19 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           </div>
         )}
       </div>
+
+      {/* 숨겨진 관리자 버튼 */}
+      <button onClick={() => router.push('/admin')} style={{
+        position: 'fixed', bottom: '16px', right: '16px',
+        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+        color: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 8px',
+        cursor: 'pointer', fontSize: '14px', zIndex: 50,
+        transition: 'all 0.3s',
+      }}
+        onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,107,53,0.6)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,107,53,0.2)' }}
+        onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,0.15)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' }}
+        title="관리자"
+      >⚙️</button>
     </>
   )
 }
