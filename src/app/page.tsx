@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { ProductInput, GeneratedResult } from '@/lib/types'
+import { buildPrompt } from '@/lib/prompt'
 
 const CATEGORIES = [
   '패션의류', '패션잡화', '뷰티', '식품', '주방용품', '생활용품',
@@ -26,6 +27,7 @@ export default function Home() {
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [apiKey, setApiKey] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -54,19 +56,41 @@ export default function Home() {
       setError('필수 항목을 모두 입력해주세요.')
       return
     }
+    if (!apiKey.trim()) {
+      setError('Gemini API 키를 입력해주세요.')
+      return
+    }
     setError('')
     setLoading(true)
     setResult(null)
 
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      })
+      const prompt = buildPrompt(input)
+
+      // 브라우저에서 직접 Gemini API 호출 (Vercel 서버 IP 우회)
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+          }),
+        }
+      )
+
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData?.error?.message || `API 오류 (${res.status})`)
+      }
+
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setResult(data)
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const cleaned = text.replace(/```json|```/g, '').trim()
+      const parsed: GeneratedResult = JSON.parse(cleaned)
+
+      setResult(parsed)
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다.')
@@ -134,6 +158,30 @@ export default function Home() {
         marginBottom: '32px',
       }}>
         <div style={{ display: 'grid', gap: '24px' }}>
+
+          {/* API 키 입력 */}
+          <div style={{
+            background: 'rgba(255,107,53,0.08)',
+            border: '1px solid rgba(255,107,53,0.3)',
+            borderRadius: '10px',
+            padding: '16px',
+          }}>
+            <Label>Gemini API 키 <Required /></Label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="AIza... (Google AI Studio에서 발급)"
+              style={inputStyle}
+            />
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+              🔒 키는 브라우저에서만 사용되며 서버에 저장되지 않습니다 ·{' '}
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
+                style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                키 발급받기 →
+              </a>
+            </p>
+          </div>
 
           {/* 상품명 */}
           <div>
@@ -291,7 +339,6 @@ export default function Home() {
             <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
           </div>
 
-          {/* 키워드 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>🔍 네이버 검색 최적화 키워드</h3>
@@ -311,7 +358,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 한줄 카피 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>✦ 핵심 카피</h3>
@@ -320,7 +366,6 @@ export default function Home() {
             <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent2)' }}>{result.oneLiner}</p>
           </div>
 
-          {/* 상세 설명 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>📝 상세 설명</h3>
@@ -329,7 +374,6 @@ export default function Home() {
             <p style={{ lineHeight: 1.8, whiteSpace: 'pre-line', color: 'var(--text)' }}>{result.description}</p>
           </div>
 
-          {/* 추천 고객 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>👤 이런 분께 추천</h3>
@@ -338,7 +382,6 @@ export default function Home() {
             <p style={{ lineHeight: 2, whiteSpace: 'pre-line', color: 'var(--text)' }}>{result.recommendation}</p>
           </div>
 
-          {/* 구매 유도 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>🛒 구매 유도 멘트</h3>
@@ -347,7 +390,6 @@ export default function Home() {
             <p style={{ lineHeight: 1.8, color: 'var(--accent)', fontWeight: 500 }}>{result.cta}</p>
           </div>
 
-          {/* FAQ */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>❓ FAQ</h3>
@@ -363,7 +405,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* HTML 코드 */}
           <div className="result-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3>{'</>'} HTML 코드 (스마트스토어 바로 붙여넣기)</h3>
@@ -383,7 +424,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 전체 복사 */}
           <button
             onClick={() => copyText(
               `[키워드]\n${result.keywords.join(', ')}\n\n[카피]\n${result.oneLiner}\n\n[상세설명]\n${result.description}\n\n[추천고객]\n${result.recommendation}\n\n[구매유도]\n${result.cta}\n\n[FAQ]\n${result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')}`,
@@ -410,7 +450,6 @@ export default function Home() {
   )
 }
 
-// 헬퍼 컴포넌트
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.5px' }}>
