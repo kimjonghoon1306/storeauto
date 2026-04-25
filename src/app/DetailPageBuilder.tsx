@@ -35,6 +35,18 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
     doc.close()
   }, [html])
 
+  const handleOpenPreview = () => {
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0;}body{margin:0;padding:0;}</style>
+</head><body>${html}</body></html>`
+    const blob = new Blob([fullHtml], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  }
+
   const handleDownload = async () => {
     setDownloading(true)
     try {
@@ -239,25 +251,35 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
         {/* STEP 3: 미리보기 + 다운로드 */}
         {step === 'preview' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>미리보기 — <strong style={{ color: 'var(--accent)' }}>{tpl.name}</strong> 템플릿</p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setStep('edit')} style={{
-                  background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
-                  borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>← 편집</button>
-                <button onClick={handleDownload} disabled={downloading} style={{
-                  background: downloading ? 'var(--surface2)' : 'var(--green)',
-                  color: downloading ? 'var(--text-muted)' : '#000',
-                  border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: 700,
-                  cursor: downloading ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-                }}>
-                  {downloading ? '변환 중...' : '⬇ PNG 다운로드'}
-                </button>
-              </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              미리보기 — <strong style={{ color: 'var(--accent)' }}>{tpl.name}</strong> 템플릿
+            </p>
+            {/* 버튼 그룹 */}
+            <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
+              <button onClick={handleOpenPreview} style={{
+                background: 'var(--accent)', color: '#fff', border: 'none',
+                borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)', fontSize: 'clamp(14px, 3vw, 15px)',
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+              }}>
+                🖥️ 전체 화면으로 미리보기 (새 탭)
+              </button>
+              <button onClick={handleDownload} disabled={downloading} style={{
+                background: downloading ? 'var(--surface2)' : 'var(--green)',
+                color: downloading ? 'var(--text-muted)' : '#000',
+                border: 'none', borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
+                fontSize: 'clamp(14px, 3vw, 15px)', fontWeight: 700,
+                cursor: downloading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', width: '100%',
+              }}>
+                {downloading ? '변환 중...' : '⬇ PNG 다운로드'}
+              </button>
+              <button onClick={() => setStep('edit')} style={{
+                background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)',
+                borderRadius: '10px', padding: 'clamp(12px, 3vw, 14px)', fontSize: 'clamp(13px, 3vw, 14px)',
+                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+              }}>← 편집으로 돌아가기</button>
             </div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden' }}>
+            {/* 인라인 미리보기 (PC용) */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflow: 'hidden', display: 'none' }}>
               <iframe
                 ref={iframeRef}
                 onLoad={updateIframe}
@@ -265,6 +287,9 @@ export default function DetailPageBuilder({ result, productName, priceRange, fea
                 title="상세페이지 미리보기"
               />
             </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+              💡 미리보기 버튼을 누르면 새 탭에서 실제 상세페이지를 확인할 수 있습니다
+            </p>
           </div>
         )}
       </div>
