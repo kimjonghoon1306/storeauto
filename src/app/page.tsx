@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import DetailPageBuilder from './DetailPageBuilder'
+import TrendSearch from './TrendSearch'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 
@@ -47,11 +48,6 @@ export default function Home() {
   const [groqKey, setGroqKey] = useState('')
   const [naverClientId, setNaverClientId] = useState('')
   const [naverClientSecret, setNaverClientSecret] = useState('')
-  const [trendData, setTrendData] = useState<{period: string; ratio: number}[] | null>(null)
-  const [trendLoading, setTrendLoading] = useState(false)
-  const [trendError, setTrendError] = useState('')
-  const [aiAnalysis, setAiAnalysis] = useState('')
-  const [analysisLoading, setAnalysisLoading] = useState(false)
   const router = useRouter()
 
   // 설정 페이지에서 저장한 키 불러오기
@@ -93,7 +89,7 @@ export default function Home() {
   }
 
   // 공통 AI 호출 함수
-  const callAI = async (prompt: string): Promise<string> => {
+  const callAI = useCallback(async (prompt: string): Promise<string> => {
     let text = ''
     if (provider === 'gemini') {
       const GEMINI_MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash','gemini-1.5-flash-latest']
@@ -143,7 +139,7 @@ export default function Home() {
       text = data.choices?.[0]?.message?.content || ''
     }
     return text
-  }
+  }, [provider, geminiKey, openaiKey, groqKey])
 
   // 섹션별 재생성
   type RegenSection = 'keywords' | 'oneLiner' | 'description' | 'recommendation' | 'cta' | 'faq'
@@ -192,64 +188,6 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       alert(e instanceof Error ? e.message : '재생성 중 오류가 발생했습니다.')
     } finally {
       setRegenLoading(null)
-    }
-  }
-
-  // 네이버 데이터랩 트렌드 조회
-  const fetchTrend = async (keyword: string) => {
-    if (!naverClientId || !naverClientSecret) {
-      setTrendError('⚙️ 설정 페이지에서 네이버 데이터랩 키를 등록해주세요.')
-      return
-    }
-    setTrendLoading(true)
-    setTrendError('')
-    setTrendData(null)
-    setAiAnalysis('')
-    try {
-      const endDate = new Date()
-      const startDate = new Date()
-      startDate.setMonth(startDate.getMonth() - 12)
-      const fmt = (d: Date) => d.toISOString().slice(0, 10)
-
-      const res = await fetch('/api/naver-trend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: naverClientId,
-          clientSecret: naverClientSecret,
-          startDate: fmt(startDate),
-          endDate: fmt(endDate),
-          keyword,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || '트렌드 조회 실패')
-      }
-      const data = await res.json()
-      setTrendData(data.results)
-
-      // AI 분석
-      setAnalysisLoading(true)
-      const trendSummary = data.results.slice(-6).map((d: {period: string; ratio: number}) => `${d.period}: ${d.ratio}`).join(', ')
-      const analysisPrompt = `네이버 검색 트렌드 데이터를 분석해주세요.
-키워드: "${keyword}"
-최근 6개월 검색량 지수: ${trendSummary}
-(100이 최고, 0이 최저)
-
-다음을 3~4문장으로 분석해주세요:
-1. 트렌드 방향 (상승/하락/유지)
-2. 판매에 유리한 시기
-3. 이 키워드로 상품 판매 전략 제안
-한글로만 답변하세요.`
-
-      const analysis = await callAI(analysisPrompt)
-      setAiAnalysis(analysis)
-    } catch (e: unknown) {
-      setTrendError(e instanceof Error ? e.message : '트렌드 조회 중 오류가 발생했습니다.')
-    } finally {
-      setTrendLoading(false)
-      setAnalysisLoading(false)
     }
   }
 
@@ -530,6 +468,15 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
         }}>
           <div style={{ display: 'grid', gap: 'clamp(16px, 3vw, 24px)' }}>
 
+            {/* 네이버 트렌드 & AI 키워드 */}
+            <TrendSearch
+              onKeywordSelect={(kw) => setInput(prev => ({ ...prev, productName: kw }))}
+              callAI={callAI}
+              naverClientId={naverClientId}
+              naverClientSecret={naverClientSecret}
+              onGoSettings={() => router.push('/settings')}
+            />
+
             {/* 페르소나 선택 */}
             <div style={{
               background: 'var(--surface2)', border: '1px solid var(--border)',
@@ -726,138 +673,6 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
             </button>
           </div>
         </div>
-
-        {/* 네이버 데이터랩 트렌드 */}
-        {result && (
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '24px', marginBottom: '24px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text)' }}>📊 네이버 검색 트렌드 분석</p>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>최근 12개월 검색량 변화</p>
-              </div>
-              <button
-                onClick={() => fetchTrend(input.productName)}
-                disabled={trendLoading}
-                style={{
-                  background: trendLoading ? 'var(--surface2)' : 'linear-gradient(135deg, #03c75a, #00a84a)',
-                  color: trendLoading ? 'var(--text-muted)' : '#fff',
-                  border: 'none', borderRadius: '10px', padding: '10px 20px',
-                  fontSize: '13px', fontWeight: 700, cursor: trendLoading ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit', transition: 'all 0.2s',
-                }}
-              >
-                {trendLoading ? '⟳ 조회중...' : '🔍 트렌드 조회'}
-              </button>
-            </div>
-
-            {!naverClientId && (
-              <div style={{
-                background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)',
-                borderRadius: '10px', padding: '14px 16px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
-              }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>⚙️ 네이버 데이터랩 키를 등록하면 트렌드를 볼 수 있어요</span>
-                <button onClick={() => router.push('/settings')} style={{
-                  background: 'var(--accent)', color: '#fff', border: 'none',
-                  borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>키 설정하기</button>
-              </div>
-            )}
-
-            {trendError && (
-              <p style={{ fontSize: '13px', color: '#ff6666', marginTop: '8px' }}>{trendError}</p>
-            )}
-
-            {trendData && trendData.length > 0 && (
-              <div style={{ marginTop: '16px' }}>
-                {/* 그래프 */}
-                <div style={{ position: 'relative', height: '160px', marginBottom: '8px' }}>
-                  <svg width="100%" height="160" viewBox={`0 0 ${trendData.length * 30} 160`} preserveAspectRatio="none"
-                    style={{ display: 'block' }}>
-                    <defs>
-                      <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
-                      </linearGradient>
-                    </defs>
-                    {/* 배경 그리드 */}
-                    {[0,25,50,75,100].map(v => (
-                      <line key={v} x1="0" y1={140 - v * 1.3} x2={trendData.length * 30} y2={140 - v * 1.3}
-                        stroke="var(--border)" strokeWidth="0.5" strokeDasharray="4,4" />
-                    ))}
-                    {/* 면적 */}
-                    <polygon
-                      fill="url(#trendGrad)"
-                      points={[
-                        ...trendData.map((d, i) => `${i * 30 + 15},${140 - d.ratio * 1.3}`),
-                        `${(trendData.length - 1) * 30 + 15},140`,
-                        `15,140`,
-                      ].join(' ')}
-                    />
-                    {/* 선 */}
-                    <polyline
-                      fill="none"
-                      stroke="var(--accent)"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={trendData.map((d, i) => `${i * 30 + 15},${140 - d.ratio * 1.3}`).join(' ')}
-                    />
-                    {/* 점 */}
-                    {trendData.map((d, i) => (
-                      <circle key={i} cx={i * 30 + 15} cy={140 - d.ratio * 1.3} r="3"
-                        fill="var(--accent)" stroke="var(--surface)" strokeWidth="2" />
-                    ))}
-                  </svg>
-                </div>
-                {/* 기간 라벨 */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[0]?.period}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[Math.floor(trendData.length/2)]?.period}</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{trendData[trendData.length-1]?.period}</span>
-                </div>
-                {/* 최고/최저 */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
-                  {[
-                    { label: '최고', value: Math.max(...trendData.map(d => d.ratio)), color: 'var(--green)' },
-                    { label: '최저', value: Math.min(...trendData.map(d => d.ratio)), color: '#ff6666' },
-                    { label: '현재', value: trendData[trendData.length-1]?.ratio, color: 'var(--accent)' },
-                  ].map(s => (
-                    <div key={s.label} style={{
-                      flex: 1, background: 'var(--surface2)', borderRadius: '8px', padding: '10px',
-                      textAlign: 'center', border: '1px solid var(--border)',
-                    }}>
-                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>{s.label}</p>
-                      <p style={{ fontSize: '20px', fontWeight: 900, color: s.color }}>{s.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* AI 분석 */}
-            {analysisLoading && (
-              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--surface2)', borderRadius: '10px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>⟳ AI가 트렌드를 분석중입니다...</p>
-              </div>
-            )}
-            {aiAnalysis && (
-              <div style={{
-                marginTop: '16px', padding: '16px',
-                background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)',
-                borderRadius: '10px',
-              }}>
-                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', marginBottom: '8px' }}>🤖 AI 트렌드 분석</p>
-                <p style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 1.8 }}>{aiAnalysis}</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* 결과 */}
         {result && (
           <div ref={resultRef} className="fade-up" style={{ display: 'grid', gap: '16px' }}>
