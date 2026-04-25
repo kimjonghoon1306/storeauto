@@ -69,7 +69,7 @@ export default function Home() {
 
       // 브라우저에서 직접 Gemini API 호출 (Vercel 서버 IP 우회)
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
