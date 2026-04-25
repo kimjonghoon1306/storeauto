@@ -154,11 +154,19 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
           </p>
         </div>
         {!hasNaverKey && (
-          <button onClick={onGoSettings} style={{
-            background: 'var(--accent)', color: '#fff', border: 'none',
-            borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-          }}>키 설정 →</button>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <a href="https://developers.naver.com/apps/#/register" target="_blank" rel="noreferrer" style={{
+              background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)',
+              borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', textDecoration: 'none',
+              display: 'flex', alignItems: 'center',
+            }}>발급받기 →</a>
+            <button onClick={onGoSettings} style={{
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+            }}>키 설정 →</button>
+          </div>
         )}
       </div>
 
