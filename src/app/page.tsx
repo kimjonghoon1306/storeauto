@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import DetailPageBuilder from './DetailPageBuilder'
 import TrendSearch from './TrendSearch'
+import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 
@@ -68,6 +69,7 @@ export default function Home() {
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
   const [seoKeyword, setSeoKeyword] = useState('')
+  const [trendQuery, setTrendQuery] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -473,6 +475,25 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         }}>
           <div style={{ display: 'grid', gap: 'clamp(16px, 3vw, 24px)' }}>
 
+            {/* AI 이미지 분석 */}
+            <ImageAnalyzer
+              geminiKey={geminiKey}
+              openaiKey={openaiKey}
+              onResult={(result) => {
+                setInput(prev => ({
+                  ...prev,
+                  productName: result.productName || prev.productName,
+                  category: result.category || prev.category,
+                  features: result.features?.length ? result.features : prev.features,
+                  targetCustomer: result.targetCustomer || prev.targetCustomer,
+                  priceRange: result.priceRange || prev.priceRange,
+                  extraInfo: result.extraInfo || prev.extraInfo,
+                }))
+                if (result.productName) setTrendQuery(result.productName)
+              }}
+              onGoSettings={() => router.push('/settings')}
+            />
+
             {/* 네이버 트렌드 & AI 키워드 */}
             <TrendSearch
               onKeywordSelect={(kw) => setSeoKeyword(kw)}
@@ -481,6 +502,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               naverClientId={naverClientId}
               naverClientSecret={naverClientSecret}
               onGoSettings={() => router.push('/settings')}
+              initialQuery={trendQuery}
             />
 
             {/* 페르소나 선택 */}
