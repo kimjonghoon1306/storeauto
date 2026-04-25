@@ -213,7 +213,7 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
             )}
           </div>
           <p style={{ fontSize: 'clamp(11px,2.5vw,12px)', color: 'var(--text-muted)', marginTop: '3px' }}>
-            {isOpen ? '상품 이미지 업로드 → AI가 상품 정보 자동 입력 → 트렌드 검색 자동 연결' : '클릭해서 펼치면 이미지로 상품 정보를 자동 입력할 수 있어요'}
+            {isOpen ? '상품 사진 업로드 → AI가 상품명·특징·카테고리 분석 → 아래 입력폼 자동 완성 → 트렌드 분석으로 연결' : '📸 상품 사진 한 장으로 입력폼을 자동으로 채워줍니다. 클릭해서 펼쳐보세요'}
           </p>
         </div>
         <div style={{
@@ -242,20 +242,29 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
                 fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit',
               }}>{showGuide ? '접기 ▲' : '자세히 ▼'}</button>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.7 }}>
-              상품 이미지를 업로드하면 AI가 자동으로 상품명, 카테고리, 특징, 타겟 고객을 분석합니다.
+            <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.8 }}>
+              상품 사진을 올리면 AI가 상품명, 카테고리, 핵심 특징, 타겟 고객, 가격대를 자동으로 읽어서<br />
+              아래 입력폼에 바로 채워줍니다. 직접 타이핑할 필요가 없어요!
             </p>
             {showGuide && (
-              <div style={{ marginTop: '10px', display: 'grid', gap: '6px' }}>
+              <div style={{ marginTop: '12px', display: 'grid', gap: '10px' }}>
                 {[
-                  { icon: '📸', text: '상품 사진, 패키지 사진, 상세페이지 캡처 등 어떤 이미지든 가능합니다.' },
-                  { icon: '⚡', text: '분석 완료 후 상품명이 트렌드 검색창에 자동으로 입력됩니다.' },
-                  { icon: '✏️', text: '자동 입력된 내용은 아래 입력폼에서 직접 수정할 수 있습니다.' },
-                  { icon: '🔑', text: 'Gemini 또는 OpenAI 키가 필요합니다. Groq는 이미지 분석을 지원하지 않습니다.' },
+                  { icon: '📸', title: '어떤 사진이든 가능해요', text: '상품 단독 사진, 패키지 박스 사진, 쇼핑몰 상세페이지 캡처 등 상품이 보이는 사진이면 됩니다.' },
+                  { icon: '🤖', title: 'AI가 알아서 분석해요', text: '상품명, 카테고리(식품/의류 등), 핵심 특징 4가지, 타겟 고객, 예상 가격대를 자동으로 파악합니다.' },
+                  { icon: '📝', title: '입력폼이 자동으로 채워져요', text: '분석이 끝나면 아래 상품 입력폼(상품명, 카테고리, 특징 등)이 자동으로 입력됩니다. 내용이 맞지 않으면 직접 수정하시면 됩니다.' },
+                  { icon: '🔍', title: '트렌드 검색도 자동 연결돼요', text: '분석된 상품명이 위의 네이버 트렌드 검색창에 자동으로 입력됩니다. 분석 버튼만 누르면 검색량도 바로 확인할 수 있어요.' },
+                  { icon: '⚠️', title: '주의: 글에 들어가는 키워드와는 달라요', text: '이미지 분석은 입력폼을 편리하게 채워주는 기능입니다. 글 안에 반복 포함되는 SEO 키워드는 위의 트렌드 분석에서 선택하세요.' },
+                  { icon: '🔑', title: '필요한 키: Gemini 또는 OpenAI', text: 'Groq는 이미지를 볼 수 없어서 이 기능을 지원하지 않습니다. 설정 페이지에서 Gemini(무료) 또는 OpenAI(유료) 키를 등록해주세요.' },
                 ].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.7 }}>{item.text}</p>
+                  <div key={i} style={{
+                    display: 'flex', gap: '10px', alignItems: 'flex-start',
+                    background: 'rgba(99,102,241,0.05)', borderRadius: '8px', padding: '10px 12px',
+                  }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.icon}</span>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>{item.title}</p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.7 }}>{item.text}</p>
+                    </div>
                   </div>
                 ))}
               </div>
