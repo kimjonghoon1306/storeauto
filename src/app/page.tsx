@@ -33,7 +33,6 @@ export default function Home() {
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
-    localStorage.setItem('storeauto_theme', theme)
   }, [theme])
 
   useEffect(() => {
@@ -361,28 +360,18 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => router.push('/settings')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid var(--accent)', background: 'rgba(255,107,53,0.1)',
                 color: 'var(--accent)', transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}>⚙️ 설정</button>
+              }}>⚙️ 키 설정</button>
               <button onClick={() => router.push('/reviews')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)',
                 color: '#f59e0b', transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}>💬 리뷰</button>
-              <button onClick={() => router.push('/government')} style={{
-                padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit',
-                border: '1px solid #34d399', background: 'rgba(52,211,153,0.1)',
-                color: '#34d399', transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}>🏛️ 지원</button>
+              }}>💬 리뷰 답글</button>
               {history.length > 0 && (
                 <button onClick={() => setShowHistory(v => !v)} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
@@ -559,9 +548,9 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 {([
-                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b', hasKey: !!geminiKey },
-                  { key: 'openai', label: '⬡ OpenAI', badge: '유료',    badgeColor: '#ef4444', hasKey: !!openaiKey },
-                  { key: 'groq',   label: '⚡ Groq',   badge: '무료',    badgeColor: '#00e5a0', hasKey: !!groqKey },
+                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b', hasKey: !!geminiKey, cap: '글쓰기만 가능', capColor: '#f59e0b' },
+                  { key: 'openai', label: '⬡ OpenAI', badge: '유료',    badgeColor: '#ef4444', hasKey: !!openaiKey, cap: '이미지분석 + 글쓰기', capColor: '#34d399' },
+                  { key: 'groq',   label: '⚡ Groq',   badge: '무료',    badgeColor: '#00e5a0', hasKey: !!groqKey,   cap: '글쓰기만 가능', capColor: '#60a5fa' },
                 ] as const).map(p => (
                   <button key={p.key} onClick={() => setProvider(p.key)} style={{
                     flex: 1, padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px',
@@ -576,6 +565,9 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                     <span style={{ display: 'block', fontSize: '10px', fontWeight: 600, marginTop: '2px',
                       color: provider === p.key ? 'rgba(255,255,255,0.85)' : p.badgeColor,
                     }}>{p.badge}</span>
+                    <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, marginTop: '3px',
+                      color: provider === p.key ? 'rgba(255,255,255,0.9)' : p.capColor,
+                    }}>{p.cap}</span>
                   </button>
                 ))}
               </div>
@@ -843,19 +835,6 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           </div>
         )}
       </div>
-
-      {/* 숨겨진 관리자 버튼 */}
-      <button onClick={() => router.push('/admin')} style={{
-        position: 'fixed', bottom: '16px', right: '16px',
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-        color: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 8px',
-        cursor: 'pointer', fontSize: '14px', zIndex: 50,
-        transition: 'all 0.3s',
-      }}
-        onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,107,53,0.6)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,107,53,0.2)' }}
-        onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,0.15)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' }}
-        title="관리자"
-      >⚙️</button>
     </>
   )
 }
