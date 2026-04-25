@@ -67,6 +67,7 @@ export default function Home() {
     } catch {}
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
+  const [seoKeyword, setSeoKeyword] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -222,13 +223,15 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
 - 가격대: ${input.priceRange}
 - 프로모션: ${input.promotions.length > 0 ? input.promotions.join(', ') : '없음'}
 - 추가 정보: ${input.extraInfo || '없음'}
+${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 description, recommendation, cta 전체에 자연스럽게 최소 5회 이상 반드시 포함)` : ''}
 
 [글쓰기 스타일] ${PERSONA_GUIDES[persona]}
 
 [작성 원칙]
 1. AI 느낌 절대 금지, 실제 사람이 쓴 것처럼
 2. 키워드를 자연스럽게 7회 이상 녹여내기
-3. description은 반드시 700자 이상
+3. description은 반드시 700자 이상${seoKeyword ? `
+4. SEO 타겟 키워드 "${seoKeyword}"를 description에 5회 이상 자연스럽게 포함` : ''}
 4. recommendation은 3가지 타입 고객을 구체적 상황으로 각 2~3문장
 5. faq는 실제 구매자가 궁금해할 현실적 질문과 상세한 답변
 6. cta는 긴급성과 혜택 강조 3~4문장
@@ -470,7 +473,7 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
 
             {/* 네이버 트렌드 & AI 키워드 */}
             <TrendSearch
-              onKeywordSelect={(kw) => setInput(prev => ({ ...prev, productName: kw }))}
+              onKeywordSelect={(kw) => setSeoKeyword(kw)}
               callAI={callAI}
               naverClientId={naverClientId}
               naverClientSecret={naverClientSecret}
