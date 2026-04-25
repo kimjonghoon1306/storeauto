@@ -393,7 +393,7 @@ export default function TrendSearch({ onKeywordSelect, callAI, naverClientId, na
               }}>
                 <span style={{ fontSize: '16px' }}>✓</span>
                 <p style={{ fontSize: '13px', color: 'var(--green)', fontWeight: 700 }}>
-                  <strong>{selectedKeyword}</strong> 키워드가 상품명에 반영됐습니다
+                  <strong>{selectedKeyword}</strong> 키워드가 선택됐습니다. 생성 시 글 전체에 자연스럽게 반영됩니다
                 </p>
               </div>
             )}
