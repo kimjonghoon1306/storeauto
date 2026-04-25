@@ -70,20 +70,91 @@ export default function GuideModal() {
     },
   ]
 
+  const [showSaveWarning, setShowSaveWarning] = useState(false)
+
   if (!open) return (
-    <button
-      onClick={() => { setStep(0); setOpen(true) }}
-      style={{
-        position: 'fixed', bottom: '24px', right: '24px', zIndex: 999,
-        background: 'var(--accent)', color: '#fff', border: 'none',
-        borderRadius: '50px', padding: '12px 20px', fontSize: '14px',
-        fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-        boxShadow: '0 4px 20px rgba(255,107,53,0.4)',
-        display: 'flex', alignItems: 'center', gap: '8px',
-      }}
-    >
-      ❓ 사용 방법
-    </button>
+    <>
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes float2 {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        .btn-float { animation: float 3s ease-in-out infinite; }
+        .btn-float2 { animation: float2 3s ease-in-out infinite; animation-delay: 0.5s; }
+      `}</style>
+
+      {/* 저장 경고 팝업 */}
+      {showSaveWarning && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1001,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+        }} onClick={() => setShowSaveWarning(false)}>
+          <div style={{
+            background: '#1a0a14', border: '1px solid #ff4d8f',
+            borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '16px' }}>⚠️</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#fff0f5', textAlign: 'center', marginBottom: '16px' }}>
+              데이터 저장 안내
+            </h3>
+            <div style={{
+              background: 'rgba(255,77,143,0.1)', border: '1px solid rgba(255,77,143,0.3)',
+              borderRadius: '10px', padding: '16px', marginBottom: '20px',
+            }}>
+              <p style={{ fontSize: '14px', color: '#fff0f5', lineHeight: 2.1 }}>
+                📱 <strong>이 기기 브라우저에만</strong> 저장됩니다.<br />
+                💻 다른 기기나 다른 브라우저에서는 보이지 않아요.<br />
+                🗑️ 브라우저 캐시·쿠키를 삭제하면 데이터가 사라집니다.<br />
+                🔒 시크릿 모드에서는 저장되지 않습니다.<br />
+                📋 중요한 내용은 반드시 <strong>복사</strong>해두세요!
+              </p>
+            </div>
+            <button onClick={() => setShowSaveWarning(false)} style={{
+              width: '100%', background: '#ff4d8f', color: '#fff', border: 'none',
+              borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>확인했습니다 ✓</button>
+          </div>
+        </div>
+      )}
+
+      {/* 플로팅 버튼 2개 */}
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-end' }}>
+        <button
+          className="btn-float2"
+          onClick={() => setShowSaveWarning(true)}
+          style={{
+            background: '#ff4d8f', color: '#fff', border: 'none',
+            borderRadius: '50px', padding: '12px 20px', fontSize: '14px',
+            fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 4px 24px rgba(255,77,143,0.5)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ⚠️ 저장 안내
+        </button>
+        <button
+          className="btn-float"
+          onClick={() => { setStep(0); setOpen(true) }}
+          style={{
+            background: '#ff4d8f', color: '#fff', border: 'none',
+            borderRadius: '50px', padding: '12px 20px', fontSize: '14px',
+            fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            boxShadow: '0 4px 24px rgba(255,77,143,0.5)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ❓ 사용 방법
+        </button>
+      </div>
+    </>
   )
 
   const current = steps[step]
