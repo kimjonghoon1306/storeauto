@@ -26,6 +26,8 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
   const [phase, setPhase] = useState<'idle' | 'trend' | 'ai' | 'done'>('idle')
   const [showResetWarning, setShowResetWarning] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   const hasNaverKey = !!naverClientId && !!naverClientSecret
   const maxRatio = Math.max(...trendData.map(d => d.ratio), 1)
@@ -111,7 +113,8 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
           const newKeywords = parsed.filter(
             (nk: KeywordRec) => !recommendations.some(r => r.keyword === nk.keyword)
           )
-          setRecommendations(prev => [...prev, ...newKeywords].slice(0, 30))
+          setRecommendations(prev => [...newKeywords, ...prev].slice(0, 30))
+          setCurrentPage(1)
         } catch {
           // 파싱 실패 시 무시
         }
@@ -386,6 +389,7 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
                 <button onClick={() => {
                   setRecommendations([])
                   onClearSeoKeyword()
+                  setCurrentPage(1)
                   setShowResetWarning(false)
                 }} style={{
                   background: 'var(--accent)', color: '#fff', border: 'none',
@@ -403,48 +407,71 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
         )}
 
         {/* AI 추천 키워드 */}
-        {recommendations.length > 0 && (
+        {recommendations.length > 0 && (() => {
+          const totalPages = Math.ceil(recommendations.length / ITEMS_PER_PAGE)
+          const pageItems = recommendations.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+          return (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
+            {/* 설명서 */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(255,107,53,0.08), rgba(255,107,53,0.03))',
+              border: '1px solid rgba(255,107,53,0.2)',
+              borderRadius: '12px', padding: '14px 16px', marginBottom: '14px',
+            }}>
+              <p style={{ fontWeight: 800, fontSize: '13px', color: 'var(--accent)', marginBottom: '8px' }}>
+                📖 키워드 사용 방법
+              </p>
+              <div style={{ display: 'grid', gap: '6px' }}>
+                {[
+                  { icon: '👆', text: '키워드를 클릭하면 선택됩니다. 선택된 키워드는 상품 설명 생성 시 글 전체에 자연스럽게 5회 이상 포함됩니다.' },
+                  { icon: '🔄', text: '분석 버튼을 다시 누르면 10개씩 추가 생성됩니다. 최신 생성 키워드가 항상 1페이지 맨 앞으로 옵니다.' },
+                  { icon: '📄', text: `최대 30개까지 누적 저장됩니다. 현재 ${recommendations.length}개 저장됨. 10개씩 페이지로 나뉩니다.` },
+                  { icon: '↺', text: '초기화 버튼을 누르면 전체 삭제 후 다시 시작할 수 있습니다.' },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '14px', flexShrink: 0 }}>{item.icon}</span>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.7 }}>{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 헤더 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <p style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)' }}>
                   ✦ AI 추천 SEO 키워드
                 </p>
-                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                  클릭하면 생성 시 글 전체에 자연스럽게 5회 이상 반영됩니다
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{
-                  fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                  fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '20px',
                   background: recommendations.length >= 30 ? 'rgba(255,68,68,0.15)' : 'rgba(255,107,53,0.15)',
                   color: recommendations.length >= 30 ? '#ff6666' : 'var(--accent)',
                   border: `1px solid ${recommendations.length >= 30 ? 'rgba(255,68,68,0.3)' : 'rgba(255,107,53,0.3)'}`,
-                }}>
-                  {recommendations.length}/30
-                  {recommendations.length >= 30 && ' 최대'}
-                </span>
-                {recommendations.length > 0 && (
-                  <button onClick={() => { setRecommendations([]); onClearSeoKeyword() }} style={{
-                    fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
-                    background: 'var(--surface2)', border: '1px solid var(--border)',
-                    color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
-                  }}>↺ 초기화</button>
-                )}
+                }}>{recommendations.length}/30{recommendations.length >= 30 ? ' 최대' : ''}</span>
               </div>
+              <button onClick={() => { setRecommendations([]); onClearSeoKeyword(); setCurrentPage(1) }} style={{
+                fontSize: '12px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
+                color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+              }}>↺ 전체 초기화</button>
             </div>
+
+            {/* 키워드 목록 */}
             <div style={{ display: 'grid', gap: '8px' }}>
-              {recommendations.map((rec, i) => (
+              {pageItems.map((rec, i) => {
+                const globalIdx = (currentPage - 1) * ITEMS_PER_PAGE + i
+                const isNew = globalIdx < ITEMS_PER_PAGE && currentPage === 1
+                return (
                 <button
-                  key={i}
+                  key={globalIdx}
                   onClick={() => handleSelect(rec.keyword)}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: selectedKeyword === rec.keyword ? 'rgba(255,107,53,0.12)' : 'var(--surface2)',
                     border: selectedKeyword === rec.keyword ? '2px solid var(--accent)' : '1px solid var(--border)',
                     borderRadius: '12px', padding: 'clamp(10px, 2vw, 14px) clamp(12px, 3vw, 16px)',
-                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    transition: 'all 0.2s', gap: '12px',
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' as const,
+                    transition: 'all 0.2s', gap: '12px', position: 'relative' as const,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
@@ -453,31 +480,76 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
                       background: selectedKeyword === rec.keyword ? 'var(--accent)' : 'var(--surface)',
                       border: '1px solid var(--border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', fontWeight: 900,
+                      fontSize: '11px', fontWeight: 900,
                       color: selectedKeyword === rec.keyword ? '#fff' : 'var(--text-muted)',
-                    }}>{i+1}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{
-                        fontWeight: 800, fontSize: 'clamp(13px, 3vw, 15px)',
-                        color: selectedKeyword === rec.keyword ? 'var(--accent)' : 'var(--text)',
-                        marginBottom: '2px',
-                      }}>{rec.keyword}</p>
+                    }}>{globalIdx + 1}</div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <p style={{
+                          fontWeight: 800, fontSize: 'clamp(13px, 3vw, 15px)',
+                          color: selectedKeyword === rec.keyword ? 'var(--accent)' : 'var(--text)',
+                        }}>{rec.keyword}</p>
+                        {isNew && globalIdx < 10 && (
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '10px',
+                            background: 'rgba(0,229,160,0.2)', color: 'var(--green)',
+                            border: '1px solid rgba(0,229,160,0.3)',
+                          }}>NEW</span>
+                        )}
+                      </div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rec.reason}</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {/* 점수 바 */}
-                    <div style={{ width: '60px', height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ width: `${rec.score}%`, height: '100%', background: 'var(--accent)', borderRadius: '2px', transition: 'width 0.5s' }} />
+                    <div style={{ width: '50px', height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${rec.score}%`, height: '100%', background: 'var(--accent)', borderRadius: '2px' }} />
                     </div>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', minWidth: '28px' }}>{rec.score}</span>
-                    {selectedKeyword === rec.keyword && (
-                      <span style={{ fontSize: '16px' }}>✓</span>
-                    )}
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', minWidth: '24px' }}>{rec.score}</span>
+                    {selectedKeyword === rec.keyword && <span style={{ fontSize: '14px' }}>✓</span>}
                   </div>
                 </button>
-              ))}
+              )})}
             </div>
+
+            {/* 페이지네이션 */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '14px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '10px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    color: currentPage === 1 ? 'var(--border)' : 'var(--text)', fontSize: '16px',
+                    fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}
+                >‹</button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button key={p} onClick={() => setCurrentPage(p)} style={{
+                    width: '36px', height: '36px', borderRadius: '10px', cursor: 'pointer',
+                    background: currentPage === p ? 'var(--accent)' : 'var(--surface2)',
+                    border: currentPage === p ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    color: currentPage === p ? '#fff' : 'var(--text-muted)',
+                    fontSize: '13px', fontWeight: 700, fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}>{p}</button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '10px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    color: currentPage === totalPages ? 'var(--border)' : 'var(--text)', fontSize: '16px',
+                    fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}
+                >›</button>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                  {currentPage}/{totalPages} 페이지
+                </span>
+              </div>
+            )}
+
+            {/* 선택된 키워드 */}
             {selectedKeyword && (
               <div style={{
                 marginTop: '12px', padding: '10px 16px', borderRadius: '10px',
@@ -486,12 +558,12 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
               }}>
                 <span style={{ fontSize: '16px' }}>✓</span>
                 <p style={{ fontSize: '13px', color: 'var(--green)', fontWeight: 700 }}>
-                  <strong>{selectedKeyword}</strong> 키워드가 선택됐습니다. 생성 시 글 전체에 자연스럽게 반영됩니다
+                  <strong>{selectedKeyword}</strong> 선택됨 — 생성 시 글 전체에 자연스럽게 5회 이상 포함됩니다
                 </p>
               </div>
             )}
           </div>
-        )}
+        )})()}
       </div>
       )}
     </div>
