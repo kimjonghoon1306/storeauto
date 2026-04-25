@@ -30,9 +30,11 @@ export default function Home() {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
   }, [theme])
 
-  const [provider, setProvider] = useState<'gemini' | 'openai'>('gemini')
+  const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>('gemini')
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
+  const [groqKey, setGroqKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -59,9 +61,9 @@ export default function Home() {
       setError('필수 항목을 모두 입력해주세요.')
       return
     }
-    const currentKey = provider === 'gemini' ? geminiKey : openaiKey
+    const currentKey = provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey
     if (!currentKey.trim()) {
-      setError(`${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API 키를 입력해주세요.`)
+      setError(`${provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Groq'} API 키를 입력해주세요.`)
       return
     }
     setError('')
@@ -128,6 +130,26 @@ export default function Home() {
         const data = await res.json()
         text = data.choices?.[0]?.message?.content || ''
         if (!text) throw new Error('OpenAI 응답이 비어있습니다.')
+      } else {
+        // Groq
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey.trim()}` },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 8192, temperature: 0.7,
+          }),
+        })
+        if (!res.ok) {
+          const errData = await res.json()
+          const status = res.status
+          if (status === 401) throw new Error('Groq API 키가 잘못되었습니다. 확인해주세요.')
+          throw new Error(`Groq 오류 (${status}): ${errData?.error?.message || ''}`)
+        }
+        const data = await res.json()
+        text = data.choices?.[0]?.message?.content || ''
+        if (!text) throw new Error('Groq 응답이 비어있습니다.')
       }
 
       const cleaned = text.replace(/```json|```/g, '').trim()
@@ -237,7 +259,7 @@ export default function Home() {
               borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
             }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-                {(['gemini', 'openai'] as const).map(p => (
+                {(['gemini', 'openai', 'groq'] as const).map(p => (
                   <button key={p} onClick={() => setProvider(p)} style={{
                     flex: 1, padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px',
                     fontSize: 'clamp(13px, 3vw, 14px)', fontWeight: 700,
@@ -246,15 +268,26 @@ export default function Home() {
                     background: provider === p ? 'var(--accent)' : 'var(--surface2)',
                     color: provider === p ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s',
                   }}>
-                    {p === 'gemini' ? '✦ Gemini' : '⬡ OpenAI'}
+                    {p === 'gemini' ? '✦ Gemini' : p === 'openai' ? '⬡ OpenAI' : '⚡ Groq'}
                   </button>
                 ))}
+              </div>
+
+              {/* 키 보기/숨기기 토글 */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <button onClick={() => setShowKey(v => !v)} style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: '6px',
+                  padding: '4px 10px', fontSize: '12px', color: 'var(--text-muted)',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                  {showKey ? '🙈 키 숨기기' : '👁 키 보기'}
+                </button>
               </div>
 
               {provider === 'gemini' && (
                 <>
                   <Label>Gemini API 키 <Required /></Label>
-                  <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)}
+                  <input type={showKey ? 'text' : 'password'} value={geminiKey} onChange={e => setGeminiKey(e.target.value)}
                     placeholder="AIza... (Google AI Studio에서 발급)" style={inputStyle} />
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
                     🔒 키는 브라우저에서만 사용됩니다 ·{' '}
@@ -266,11 +299,23 @@ export default function Home() {
               {provider === 'openai' && (
                 <>
                   <Label>OpenAI API 키 <Required /></Label>
-                  <input type="password" value={openaiKey} onChange={e => setOpenaiKey(e.target.value)}
+                  <input type={showKey ? 'text' : 'password'} value={openaiKey} onChange={e => setOpenaiKey(e.target.value)}
                     placeholder="sk-..." style={inputStyle} />
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
                     🔒 키는 브라우저에서만 사용됩니다 ·{' '}
                     <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer"
+                      style={{ color: 'var(--accent)', textDecoration: 'none' }}>키 발급받기 →</a>
+                  </p>
+                </>
+              )}
+              {provider === 'groq' && (
+                <>
+                  <Label>Groq API 키 <Required /></Label>
+                  <input type={showKey ? 'text' : 'password'} value={groqKey} onChange={e => setGroqKey(e.target.value)}
+                    placeholder="gsk_... (Groq Console에서 발급)" style={inputStyle} />
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    🔒 키는 브라우저에서만 사용됩니다 ·{' '}
+                    <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer"
                       style={{ color: 'var(--accent)', textDecoration: 'none' }}>키 발급받기 →</a>
                   </p>
                 </>
