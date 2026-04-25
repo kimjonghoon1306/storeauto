@@ -29,9 +29,9 @@ export function buildPrompt(input: ProductInput): string {
     {"q": "자주 묻는 질문4", "a": "답변4"},
     {"q": "자주 묻는 질문5", "a": "답변5"}
   ],
-  "htmlCode": "스마트스토어 에디터에 바로 붙여넣기 가능한 HTML 코드 (인라인 스타일 포함, 깔끔한 상세페이지 레이아웃)"
+  "htmlCode": ""
 }
 
-HTML 코드는 외부 CSS 없이 인라인 스타일만 사용하고, 모바일 친화적으로 작성해주세요.
+htmlCode는 빈 문자열로 두세요.
 `
 }
