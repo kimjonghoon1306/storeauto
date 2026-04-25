@@ -133,7 +133,25 @@ export default function Home() {
       const cleaned = text.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
-      const parsed: GeneratedResult = JSON.parse(jsonMatch[0])
+
+      // htmlCode 필드 내부의 줄바꿈/따옴표로 인한 JSON 파싱 오류 방지
+      let jsonStr = jsonMatch[0]
+      try {
+        JSON.parse(jsonStr)
+      } catch {
+        // htmlCode 값만 추출해서 따로 처리
+        jsonStr = jsonStr.replace(
+          /"htmlCode"\s*:\s*"([\s\S]*?)"(?=\s*[}])/,
+          (_, v) => `"htmlCode": ${JSON.stringify(v.replace(/\\n/g, '\n'))}`
+        )
+        // 그래도 안되면 htmlCode를 빈값으로
+        try {
+          JSON.parse(jsonStr)
+        } catch {
+          jsonStr = jsonStr.replace(/"htmlCode"\s*:\s*"[\s\S]*?"(?=\s*[}])/, '"htmlCode": ""')
+        }
+      }
+      const parsed: GeneratedResult = JSON.parse(jsonStr)
       setResult(parsed)
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch (e: unknown) {
