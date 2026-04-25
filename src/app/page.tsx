@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import DetailPageBuilder from './DetailPageBuilder'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
@@ -45,6 +46,22 @@ export default function Home() {
   const [openaiKey, setOpenaiKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
   const [showKey, setShowKey] = useState(false)
+  const router = useRouter()
+
+  // 설정 페이지에서 저장한 키 불러오기
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('storeauto_keys')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.gemini) setGeminiKey(parsed.gemini)
+        if (parsed.openai) setOpenaiKey(parsed.openai)
+        if (parsed.groq) setGroqKey(parsed.groq)
+      }
+      const savedTheme = localStorage.getItem('storeauto_theme')
+      if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'pink')
+    } catch {}
+  }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
 
@@ -230,84 +247,7 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
   ],
   "htmlCode": ""
 }`
-      let text = ''
-
-      if (provider === 'gemini') {
-        const GEMINI_MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash','gemini-1.5-flash-latest']
-        let lastErr = ''
-        for (const model of GEMINI_MODELS) {
-          try {
-            const res = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-                }),
-              }
-            )
-            if (!res.ok) {
-              const errData = await res.json()
-              const msg = (errData?.error?.message || '').toLowerCase()
-              const status = res.status
-              if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) {
-                throw new Error('Gemini API 키가 잘못되었습니다. 확인해주세요.')
-              }
-              lastErr = `${model} 오류(${status})`
-              continue
-            }
-            const data = await res.json()
-            text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            if (!text) { lastErr = `${model} 빈 응답`; continue }
-            break
-          } catch (e: unknown) {
-            const msg = e instanceof Error ? e.message : ''
-            if (msg.includes('API 키')) throw e
-            lastErr = msg
-            continue
-          }
-        }
-        if (!text) throw new Error(`생성 실패: ${lastErr}`)
-      } else if (provider === 'openai') {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey.trim()}` },
-          body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
-        })
-        if (!res.ok) {
-          const errData = await res.json()
-          const msg = (errData?.error?.message || '').toLowerCase()
-          const status = res.status
-          if (status === 401 || msg.includes('api key') || msg.includes('incorrect')) {
-            throw new Error('OpenAI API 키가 잘못되었습니다. 확인해주세요.')
-          }
-          throw new Error(`OpenAI 오류 (${status}): ${errData?.error?.message || ''}`)
-        }
-        const data = await res.json()
-        text = data.choices?.[0]?.message?.content || ''
-        if (!text) throw new Error('OpenAI 응답이 비어있습니다.')
-      } else {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey.trim()}` },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 8192, temperature: 0.7,
-          }),
-        })
-        if (!res.ok) {
-          const errData = await res.json()
-          const status = res.status
-          if (status === 401) throw new Error('Groq API 키가 잘못되었습니다. 확인해주세요.')
-          throw new Error(`Groq 오류 (${status}): ${errData?.error?.message || ''}`)
-        }
-        const data = await res.json()
-        text = data.choices?.[0]?.message?.content || ''
-        if (!text) throw new Error('Groq 응답이 비어있습니다.')
-      }
+      const text = await callAI(prompt)
 
       const cleaned = text.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
@@ -407,8 +347,24 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
               }}>STORE AUTO</div>
               <span style={{ color: 'var(--text-muted)', fontSize: 'clamp(11px, 2.5vw, 13px)' }}>AI 상품설명 자동화</span>
             </div>
-            {/* 테마 버튼 */}
-            <div style={{ display: 'flex', gap: '6px' }}>
+            {/* 설정 + 히스토리 + 테마 버튼 */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => router.push('/settings')} style={{
+                padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid var(--accent)', background: 'rgba(255,107,53,0.1)',
+                color: 'var(--accent)', transition: 'all 0.15s',
+              }}>⚙️ 키 설정</button>
+              {history.length > 0 && (
+                <button onClick={() => setShowHistory(v => !v)} style={{
+                  padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                  borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid var(--border)', background: 'var(--surface2)',
+                  color: 'var(--text-muted)', transition: 'all 0.15s',
+                }}>📋 기록 ({history.length})</button>
+              )}
               {([
                 { key: 'dark', label: '🌙' },
                 { key: 'light', label: '☀️' },
