@@ -27,7 +27,9 @@ export default function Home() {
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
-  const [apiKey, setApiKey] = useState('')
+  const [provider, setProvider] = useState<'gemini' | 'openai'>('gemini')
+  const [geminiKey, setGeminiKey] = useState('')
+  const [openaiKey, setOpenaiKey] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
 
   const addFeature = () => {
@@ -51,13 +53,14 @@ export default function Home() {
     }))
   }
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
     if (!input.productName || !input.category || input.features.length === 0 || !input.targetCustomer || !input.priceRange) {
       setError('필수 항목을 모두 입력해주세요.')
       return
     }
-    if (!apiKey.trim()) {
-      setError('Gemini API 키를 입력해주세요.')
+    const currentKey = provider === 'gemini' ? geminiKey : openaiKey
+    if (!currentKey.trim()) {
+      setError(`${provider === 'gemini' ? 'Gemini' : 'OpenAI'} API 키를 입력해주세요.`)
       return
     }
     setError('')
@@ -66,58 +69,82 @@ export default function Home() {
 
     try {
       const prompt = buildPrompt(input)
-
-      const GEMINI_MODELS = [
-        'gemini-2.0-flash',
-        'gemini-2.0-flash-lite',
-        'gemini-2.5-flash',
-        'gemini-1.5-flash-latest',
-      ]
-
       let text = ''
-      let lastErr = ''
 
-      for (const model of GEMINI_MODELS) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-              }),
+      if (provider === 'gemini') {
+        const GEMINI_MODELS = [
+          'gemini-2.0-flash',
+          'gemini-2.0-flash-lite',
+          'gemini-2.5-flash',
+          'gemini-1.5-flash-latest',
+        ]
+        let lastErr = ''
+        for (const model of GEMINI_MODELS) {
+          try {
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+                }),
+              }
+            )
+            if (!res.ok) {
+              const errData = await res.json()
+              const msg = (errData?.error?.message || '').toLowerCase()
+              const status = res.status
+              if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) {
+                throw new Error('Gemini API 키가 잘못되었습니다. 확인해주세요.')
+              }
+              lastErr = `${model} 오류(${status})`
+              continue
             }
-          )
-
-          if (!res.ok) {
-            const errData = await res.json()
-            const msg = (errData?.error?.message || '').toLowerCase()
-            const status = res.status
-            if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) {
-              throw new Error('Gemini API 키가 잘못되었습니다. 확인해주세요.')
-            }
-            lastErr = `${model} 오류(${status})`
+            const data = await res.json()
+            text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            if (!text) { lastErr = `${model} 빈 응답`; continue }
+            break
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : ''
+            if (msg.includes('API 키')) throw e
+            lastErr = msg
             continue
           }
-
-          const data = await res.json()
-          text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          if (!text) { lastErr = `${model} 빈 응답`; continue }
-          break
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : ''
-          if (msg.includes('API 키')) throw e
-          lastErr = msg
-          continue
         }
+        if (!text) throw new Error(`생성 실패: ${lastErr}`)
+
+      } else {
+        // OpenAI
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey.trim()}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 8192,
+            temperature: 0.7,
+          }),
+        })
+        if (!res.ok) {
+          const errData = await res.json()
+          const msg = (errData?.error?.message || '').toLowerCase()
+          const status = res.status
+          if (status === 401 || msg.includes('api key') || msg.includes('incorrect')) {
+            throw new Error('OpenAI API 키가 잘못되었습니다. 확인해주세요.')
+          }
+          throw new Error(`OpenAI 오류 (${status}): ${errData?.error?.message || ''}`)
+        }
+        const data = await res.json()
+        text = data.choices?.[0]?.message?.content || ''
+        if (!text) throw new Error('OpenAI 응답이 비어있습니다.')
       }
 
-      if (!text) throw new Error(`생성 실패: ${lastErr}`)
-
       const cleaned = text.replace(/```json|```/g, '').trim()
-      // JSON 블록만 추출
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
       const parsed: GeneratedResult = JSON.parse(jsonMatch[0])
@@ -191,28 +218,78 @@ export default function Home() {
       }}>
         <div style={{ display: 'grid', gap: '24px' }}>
 
-          {/* API 키 입력 */}
+          {/* AI 선택 + API 키 */}
           <div style={{
             background: 'rgba(255,107,53,0.08)',
             border: '1px solid rgba(255,107,53,0.3)',
             borderRadius: '10px',
             padding: '16px',
           }}>
-            <Label>Gemini API 키 <Required /></Label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              placeholder="AIza... (Google AI Studio에서 발급)"
-              style={inputStyle}
-            />
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
-              🔒 키는 브라우저에서만 사용되며 서버에 저장되지 않습니다 ·{' '}
-              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
-                style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                키 발급받기 →
-              </a>
-            </p>
+            {/* 탭 선택 */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              {(['gemini', 'openai'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setProvider(p)}
+                  style={{
+                    padding: '6px 18px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    border: provider === p ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: provider === p ? 'var(--accent)' : 'var(--surface2)',
+                    color: provider === p ? '#fff' : 'var(--text-muted)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {p === 'gemini' ? '✦ Gemini' : '⬡ OpenAI'}
+                </button>
+              ))}
+            </div>
+
+            {/* Gemini 키 */}
+            {provider === 'gemini' && (
+              <>
+                <Label>Gemini API 키 <Required /></Label>
+                <input
+                  type="password"
+                  value={geminiKey}
+                  onChange={e => setGeminiKey(e.target.value)}
+                  placeholder="AIza... (Google AI Studio에서 발급)"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  🔒 키는 브라우저에서만 사용됩니다 ·{' '}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
+                    style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                    키 발급받기 →
+                  </a>
+                </p>
+              </>
+            )}
+
+            {/* OpenAI 키 */}
+            {provider === 'openai' && (
+              <>
+                <Label>OpenAI API 키 <Required /></Label>
+                <input
+                  type="password"
+                  value={openaiKey}
+                  onChange={e => setOpenaiKey(e.target.value)}
+                  placeholder="sk-... (OpenAI에서 발급)"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  🔒 키는 브라우저에서만 사용됩니다 ·{' '}
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer"
+                    style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                    키 발급받기 →
+                  </a>
+                </p>
+              </>
+            )}
           </div>
 
           {/* 상품명 */}
