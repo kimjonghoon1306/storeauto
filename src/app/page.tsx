@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import DetailPageBuilder from './DetailPageBuilder'
+import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { buildPrompt } from '@/lib/prompt'
 
@@ -191,6 +192,8 @@ const handleSubmit = async () => {
   )
 
   return (
+    <>
+    <GuideModal />
     <div style={{ maxWidth: '860px', margin: '0 auto', padding: '40px 20px 80px' }}>
       {/* 헤더 */}
       <div style={{ marginBottom: '48px' }}>
@@ -599,6 +602,7 @@ const handleSubmit = async () => {
         </div>
       )}
     </div>
+  </>
   )
 }
 
