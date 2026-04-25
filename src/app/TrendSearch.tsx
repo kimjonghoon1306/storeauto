@@ -109,11 +109,14 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
 이미 추천된 키워드와 중복되지 않는 새로운 키워드로 만들어주세요.
 한글만 사용. "${query.trim()}" 관련 네이버 검색 최적화 롱테일 키워드로 만들어주세요.`
       const aiText = await callAI(aiPrompt)
+      console.log('[TrendSearch] aiText:', aiText?.slice(0, 200))
       const cleaned = aiText.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+      console.log('[TrendSearch] jsonMatch:', !!jsonMatch)
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0])
+          console.log('[TrendSearch] parsed keywords:', parsed.keywords?.length)
           setAiAnalysis(`${parsed.analysis || ''} ${parsed.strategy || ''}`.trim())
           const newKeywords = (parsed.keywords || []).filter(
             (nk: KeywordRec) => !recommendations.some(r => r.keyword === nk.keyword)
@@ -122,9 +125,13 @@ export default function TrendSearch({ onKeywordSelect, onClearSeoKeyword, callAI
             const merged = [...prev, ...newKeywords]
             return merged.slice(0, 30)
           })
-        } catch {
+        } catch (parseErr) {
+          console.error('[TrendSearch] parse error:', parseErr)
           setAiAnalysis(cleaned.slice(0, 200))
         }
+      } else {
+        console.log('[TrendSearch] no JSON found in:', cleaned.slice(0, 300))
+        setAiAnalysis(cleaned.slice(0, 300))
       }
       setPhase('done')
     } catch (e: unknown) {
