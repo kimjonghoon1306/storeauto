@@ -372,6 +372,13 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)',
                 color: '#f59e0b', transition: 'all 0.15s',
               }}>💬 리뷰 답글</button>
+              <button onClick={() => router.push('/government')} style={{
+                padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid #34d399', background: 'rgba(52,211,153,0.1)',
+                color: '#34d399', transition: 'all 0.15s', whiteSpace: 'nowrap',
+              }}>🏛️ 지원</button>
               {history.length > 0 && (
                 <button onClick={() => setShowHistory(v => !v)} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
