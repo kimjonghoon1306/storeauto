@@ -246,9 +246,6 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
               상품 사진을 올리면 AI가 상품명, 카테고리, 핵심 특징, 타겟 고객, 가격대를 자동으로 읽어서<br />
               아래 입력폼에 바로 채워줍니다. 직접 타이핑할 필요가 없어요!
             </p>
-            <p style={{ fontSize: '13px', fontWeight: 800, color: '#ff4444', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              🚨 이미지 분석은 OpenAI 키만 사용됩니다
-            </p>
             {showGuide && (
               <div style={{ marginTop: '12px', display: 'grid', gap: '10px' }}>
                 {[
