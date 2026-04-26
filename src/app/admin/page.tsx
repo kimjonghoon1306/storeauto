@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabaseQuery } from '@/lib/supabase'
 
 type Tab = 'keys' | 'popup' | 'gov' | 'password'
-type Theme = 'dark' | 'light' | 'pink'
+type Theme = 'dark' | 'light' | 'yellow'
 
 interface PopupItem {
   id?: string
@@ -88,13 +88,13 @@ export default function AdminPage() {
   const [showP2, setShowP2]   = useState(false)
 
   const isDark = theme === 'dark'
-  const isPink = theme === 'pink'
+  const isYellow = theme === 'yellow'
 
-  const BG      = isDark ? '#050510' : isPink ? '#0f0814' : '#f0f2ff'
-  const SURFACE = isDark ? 'rgba(255,255,255,0.04)' : isPink ? 'rgba(255,120,200,0.06)' : 'rgba(255,255,255,0.85)'
-  const BORDER  = isDark ? 'rgba(255,255,255,0.08)' : isPink ? 'rgba(255,100,200,0.15)' : 'rgba(0,0,0,0.08)'
-  const TEXT    = isDark ? '#f0f0ff' : isPink ? '#ffe4f5' : '#1a1a2e'
-  const MUTED   = isDark ? '#44446a' : isPink ? '#aa66bb' : '#9999bb'
+  const BG      = isDark ? '#050510' : isYellow ? '#0f0e00' : '#f0f2ff'
+  const SURFACE = isDark ? 'rgba(255,255,255,0.04)' : isYellow ? 'rgba(255,215,0,0.06)' : 'rgba(255,255,255,0.85)'
+  const BORDER  = isDark ? 'rgba(255,255,255,0.08)' : isYellow ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.08)'
+  const TEXT    = isDark ? '#f0f0ff' : isYellow ? '#fff8dc' : '#1a1a2e'
+  const MUTED   = isDark ? '#44446a' : isYellow ? '#aa9900' : '#9999bb'
   const ACCENT  = '#ff6b35'
 
   const pop = useCallback((msg: string, ok = true) => {
@@ -304,9 +304,9 @@ export default function AdminPage() {
 
       {/* 테마 버튼 */}
       <div style={{ position:'fixed', top:20, right:20, display:'flex', gap:8, zIndex:10 }}>
-        {(['dark','light','pink'] as Theme[]).map((t) => (
-          <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:34, height:34, borderRadius:'50%', border:'2px solid '+(theme===t ? ACCENT : 'transparent'), cursor:'pointer', fontSize:'16px', transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#f0f2ff':'#1f0a1a', boxShadow:theme===t?'0 0 16px '+ACCENT+'66':'' }}>
-            {t==='dark'?'🌙':t==='light'?'☀️':'🌸'}
+        {(['dark','light','yellow'] as Theme[]).map((t) => (
+          <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:34, height:34, borderRadius:'50%', border:'2px solid '+(theme===t ? ACCENT : 'transparent'), cursor:'pointer', fontSize:'16px', transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#f0f2ff':'#1a1600', boxShadow:theme===t?'0 0 16px '+ACCENT+'66':'' }}>
+            {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
           </button>
         ))}
       </div>
@@ -394,9 +394,9 @@ export default function AdminPage() {
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {/* 테마 */}
           <div style={{ display:'flex', gap:6 }}>
-            {(['dark','light','pink'] as Theme[]).map((t) => (
-              <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:30, height:30, borderRadius:'50%', border:'2px solid '+(theme===t?ACCENT:'transparent'), cursor:'pointer', fontSize:14, transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1f0a1a', boxShadow:theme===t?'0 0 12px '+ACCENT+'88':'' }}>
-                {t==='dark'?'🌙':t==='light'?'☀️':'🌸'}
+            {(['dark','light','yellow'] as Theme[]).map((t) => (
+              <button key={t} onClick={() => setThemeAndSave(t)} style={{ width:30, height:30, borderRadius:'50%', border:'2px solid '+(theme===t?ACCENT:'transparent'), cursor:'pointer', fontSize:14, transition:'all 0.2s', background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', boxShadow:theme===t?'0 0 12px '+ACCENT+'88':'' }}>
+                {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
               </button>
             ))}
           </div>
