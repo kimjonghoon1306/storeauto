@@ -28,16 +28,16 @@ body.theme-light {
   --green: #00b37a;
 }
 
-body.theme-pink {
-  --bg: #1a0a14;
-  --surface: #241018;
-  --surface2: #2e1520;
-  --border: #4a2035;
-  --accent: #ff4d8f;
-  --accent2: #ffb3d1;
-  --text: #fff0f5;
-  --text-muted: #cc88aa;
-  --green: #ff80c0;
+body.theme-yellow {
+  --bg: #0a0900;
+  --surface: #1a1500;
+  --surface2: #1e1a00;
+  --border: #3a3000;
+  --accent: #ff6b35;
+  --accent2: #ffd700;
+  --text: #fff8dc;
+  --text-muted: #aa9900;
+  --green: #00e5a0;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
