@@ -1,1 +1,408 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { loadSession, signOut, getProfile, upsertProfile, getUsageStats, getBookmarks, deleteBookmark, type Profile, type AuthUser } from '@/lib/auth'
+
+type Theme = 'dark' | 'light' | 'yellow'
+type Tab = 'profile' | 'stats' | 'history' | 'bookmark' | 'keys'
+
+const THEMES = {
+  dark:   { bg: '#050510', surface: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', surface2: 'rgba(255,255,255,0.02)', card: 'rgba(255,255,255,0.06)' },
+  light:  { bg: '#f0f2ff', surface: 'rgba(255,255,255,0.9)',  border: 'rgba(0,0,0,0.08)',       text: '#1a1a2e', muted: '#9999bb', surface2: 'rgba(255,255,255,0.7)', card: 'rgba(255,255,255,0.95)' },
+  yellow: { bg: '#0a0900', surface: 'rgba(255,215,0,0.06)',   border: 'rgba(255,215,0,0.15)',    text: '#fff8dc', muted: '#aa9900', surface2: 'rgba(255,215,0,0.03)', card: 'rgba(255,215,0,0.08)' },
+}
+
+const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
+  { key: 'profile',  icon: '👤', label: '프로필',   color: '#ff6b35' },
+  { key: 'stats',    icon: '📊', label: '통계',     color: '#3b82f6' },
+  { key: 'history',  icon: '📋', label: '히스토리', color: '#10b981' },
+  { key: 'bookmark', icon: '⭐', label: '즐겨찾기', color: '#f59e0b' },
+  { key: 'keys',     icon: '🔑', label: 'API 키',   color: '#8b5cf6' },
+]
+
+const BUSINESS_TYPES = ['음식점/카페', '소매업/편의점', '온라인 쇼핑몰', '제조업', '서비스업', '뷰티/미용', '학원/교육', '의류/패션', '농업/축산', '기타']
+const REGIONS = ['서울', '부산', '인천', '대구', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
+
+export default function MyPage() {
+  const router = useRouter()
+  const [theme, setTheme] = useState<Theme>('dark')
+  const [tab, setTab] = useState<Tab>('profile')
+  const [session, setSession] = useState<AuthUser | null>(null)
+  const [profile, setProfile] = useState<Partial<Profile>>({})
+  const [usageStats, setUsageStats] = useState<{ type: string; created_at: string }[]>([])
+  const [bookmarks, setBookmarks] = useState<{ id: string; title: string; url: string; category: string }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState('')
+  const [keys, setKeys] = useState({ gemini: '', openai: '', groq: '' })
+
+  const T = THEMES[theme]
+  const ACCENT = '#ff6b35'
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
+
+  const saveTheme = (t: Theme) => {
+    setTheme(t)
+    try { localStorage.setItem('storeauto_theme', t) } catch (_e) { /* ignore */ }
+  }
+
+  const loadData = useCallback(async (sess: AuthUser) => {
+    try {
+      const [p, u, b] = await Promise.all([
+        getProfile(sess.id, sess.access_token),
+        getUsageStats(sess.id, sess.access_token),
+        getBookmarks(sess.id, sess.access_token),
+      ])
+      if (p) setProfile(p)
+      setUsageStats(u)
+      setBookmarks(b)
+    } catch (_e) { /* ignore */ }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem('storeauto_theme') as Theme
+      if (t && THEMES[t]) setTheme(t)
+      const k = JSON.parse(localStorage.getItem('storeauto_keys') || '{}')
+      setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
+    } catch (_e) { /* ignore */ }
+
+    const sess = loadSession()
+    if (!sess) { router.push('/login'); return }
+    setSession(sess)
+    loadData(sess)
+  }, [router, loadData])
+
+  const handleSaveProfile = async () => {
+    if (!session) return
+    setSaving(true)
+    try {
+      await upsertProfile({ ...profile, id: session.id, email: session.email }, session.access_token)
+      showToast('✅ 프로필 저장 완료!')
+    } catch (_e) { showToast('❌ 저장 실패') }
+    setSaving(false)
+  }
+
+  const handleSaveKeys = () => {
+    try {
+      localStorage.setItem('storeauto_keys', JSON.stringify(keys))
+      showToast('✅ API 키 저장 완료!')
+    } catch (_e) { showToast('❌ 저장 실패') }
+  }
+
+  const handleLogout = async () => {
+    if (session) await signOut(session.access_token)
+    router.push('/login')
+  }
+
+  const handleDeleteBookmark = async (id: string) => {
+    if (!session) return
+    await deleteBookmark(id, session.access_token)
+    setBookmarks(prev => prev.filter(b => b.id !== id))
+  }
+
+  // 통계 계산
+  const thisMonth = usageStats.filter(u => new Date(u.created_at).getMonth() === new Date().getMonth())
+  const statsByType = usageStats.reduce((acc: Record<string, number>, u) => { acc[u.type] = (acc[u.type] || 0) + 1; return acc }, {})
+
+  const TYPE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
+    detail_page: { label: '상세페이지', emoji: '📄', color: '#ff6b35' },
+    review:      { label: '리뷰 답글',  emoji: '💬', color: '#10b981' },
+    government:  { label: '정부지원',   emoji: '🏛️', color: '#3b82f6' },
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
+    borderRadius: 12, padding: '11px 14px', color: T.text,
+    fontSize: 14, outline: 'none', fontFamily: "'Noto Sans KR',sans-serif",
+    transition: 'all 0.2s',
+  }
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR',sans-serif" }}>
+      <div style={{ fontSize: 14, color: T.muted }}>불러오는 중...</div>
+    </div>
+  )
+
+  return (
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: "'Noto Sans KR',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes toastIn { from{opacity:0;transform:translateX(60px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes glow { 0%,100%{opacity:0.2} 50%{opacity:0.5} }
+        input::placeholder, textarea::placeholder { color: ${T.muted}; }
+        select option { background: #1a1a2e; }
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 4px; }
+        .tab-btn:hover { background: rgba(255,107,53,0.08) !important; }
+      `}</style>
+
+      {/* 토스트 */}
+      {toast && (
+        <div style={{ position:'fixed', top:20, right:20, zIndex:9999, padding:'12px 20px', borderRadius:12, fontSize:14, fontWeight:700, background:toast.includes('✅')?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${toast.includes('✅')?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, color:toast.includes('✅')?'#34d399':'#f87171', animation:'toastIn 0.3s ease', backdropFilter:'blur(20px)' }}>
+          {toast}
+        </div>
+      )}
+
+      {/* 헤더 */}
+      <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '0 20px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(30px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => router.push('/')} style={{ background: T.surface2, border: `1px solid ${T.border}`, color: T.text, borderRadius: 10, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', fontWeight: 700 }}>← 홈</button>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: `0 0 16px ${ACCENT}44`, animation: 'bounce 2.5s ease-in-out infinite' }}>👤</div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 900 }}>마이페이지</div>
+            <div style={{ fontSize: 11, color: T.muted }}>{session?.email}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {(['dark','light','yellow'] as Theme[]).map(t => (
+            <button key={t} onClick={() => saveTheme(t)} style={{ width: 30, height: 30, borderRadius: '50%', border: `2px solid ${theme===t?ACCENT:'transparent'}`, cursor: 'pointer', fontSize: 14, background: t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', boxShadow: theme===t?`0 0 12px ${ACCENT}88`:'' }}>
+              {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
+            </button>
+          ))}
+          <button onClick={handleLogout} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>로그아웃</button>
+        </div>
+      </div>
+
+      {/* 바디 */}
+      <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)' }}>
+
+        {/* 사이드바 */}
+        <div style={{ width: 200, flexShrink: 0, background: T.surface, borderRight: `1px solid ${T.border}`, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: 4 }} className="pc-sidebar">
+          {/* 프로필 카드 */}
+          <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14, padding: '14px 12px', marginBottom: 12, textAlign: 'center' }}>
+            <div style={{ width: 50, height: 50, borderRadius: '50%', background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 8px', boxShadow: `0 0 20px ${ACCENT}33` }}>
+              {profile.name ? profile.name[0] : '😊'}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{profile.name || '이름 없음'}</div>
+            <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{profile.business_type || '업종 미설정'}</div>
+            {profile.region && <div style={{ fontSize: 11, color: ACCENT, marginTop: 2, fontWeight: 700 }}>📍 {profile.region}</div>}
+          </div>
+
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} className="tab-btn" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 12, cursor: 'pointer', border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 800, textAlign: 'left', width: '100%', transition: 'all 0.2s', background: tab===t.key?`${t.color}18`:'transparent', color: tab===t.key?t.color:T.muted, borderLeft: tab===t.key?`3px solid ${t.color}`:'3px solid transparent' }}>
+              <span style={{ fontSize: 18 }}>{t.icon}</span>{t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 컨텐츠 */}
+        <div style={{ flex: 1, padding: 'clamp(16px,3vw,32px)', overflowY: 'auto', animation: 'fadeIn 0.3s ease' }}>
+
+          {/* 프로필 탭 */}
+          {tab === 'profile' && (
+            <div style={{ maxWidth: 560 }}>
+              <SHead icon="👤" title="프로필 수정" color={ACCENT} />
+              <div style={{ display: 'grid', gap: 14 }}>
+                {[
+                  { label:'이름', key:'name', placeholder:'홍길동', type:'text' },
+                  { label:'상호명', key:'business_name', placeholder:'OO마트', type:'text' },
+                  { label:'연락처', key:'phone', placeholder:'010-0000-0000', type:'tel' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>{f.label}</div>
+                    <input type={f.type} value={(profile as Record<string, string>)[f.key] || ''} onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={inputStyle}
+                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
+                      onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                    />
+                  </div>
+                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>업종</div>
+                    <select value={profile.business_type || ''} onChange={e => setProfile(p => ({ ...p, business_type: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                      <option value="">선택</option>
+                      {BUSINESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>지역</div>
+                    <select value={profile.region || ''} onChange={e => setProfile(p => ({ ...p, region: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                      <option value="">선택</option>
+                      {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.15)', fontSize: 13, color: ACCENT, lineHeight: 1.7 }}>
+                  💡 업종과 지역을 설정하면 정부지원 챗봇에서 맞춤 지원사업을 추천해드려요!
+                </div>
+                <GlowBtn onClick={handleSaveProfile} loading={saving} label="💾 저장하기" color={`linear-gradient(135deg,${ACCENT},#ffd700)`} glow={`${ACCENT}44`} />
+              </div>
+            </div>
+          )}
+
+          {/* 통계 탭 */}
+          {tab === 'stats' && (
+            <div>
+              <SHead icon="📊" title="사용 통계" color="#3b82f6" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
+                <StatCard label="이번 달 사용" value={thisMonth.length} emoji="🔥" color={ACCENT} />
+                <StatCard label="전체 사용" value={usageStats.length} emoji="📈" color="#3b82f6" />
+                <StatCard label="상세페이지" value={statsByType['detail_page'] || 0} emoji="📄" color="#8b5cf6" />
+                <StatCard label="리뷰 답글" value={statsByType['review'] || 0} emoji="💬" color="#10b981" />
+                <StatCard label="정부지원 상담" value={statsByType['government'] || 0} emoji="🏛️" color="#f59e0b" />
+              </div>
+
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '20px' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>기능별 사용 비중</div>
+                {Object.entries(TYPE_LABELS).map(([type, info]) => {
+                  const count = statsByType[type] || 0
+                  const pct = usageStats.length > 0 ? Math.round((count / usageStats.length) * 100) : 0
+                  return (
+                    <div key={type} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 13 }}>
+                        <span style={{ fontWeight: 700 }}>{info.emoji} {info.label}</span>
+                        <span style={{ color: T.muted }}>{count}회 ({pct}%)</span>
+                      </div>
+                      <div style={{ height: 6, background: T.border, borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${info.color},${info.color}88)`, borderRadius: 6, transition: 'width 0.6s ease' }} />
+                      </div>
+                    </div>
+                  )
+                })}
+                {usageStats.length === 0 && <div style={{ textAlign: 'center', padding: '30px', color: T.muted, fontSize: 14 }}>아직 사용 기록이 없어요 😊</div>}
+              </div>
+            </div>
+          )}
+
+          {/* 히스토리 탭 */}
+          {tab === 'history' && (
+            <div>
+              <SHead icon="📋" title="사용 히스토리" color="#10b981" />
+              {usageStats.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📋</div>
+                  아직 사용 기록이 없어요
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {usageStats.slice(0, 50).map((u, i) => {
+                    const info = TYPE_LABELS[u.type] || { label: u.type, emoji: '📌', color: ACCENT }
+                    return (
+                      <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 20, flexShrink: 0 }}>{info.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: info.color }}>{info.label}</div>
+                          <div style={{ fontSize: 11, color: T.muted }}>{new Date(u.created_at).toLocaleString('ko-KR')}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 즐겨찾기 탭 */}
+          {tab === 'bookmark' && (
+            <div>
+              <SHead icon="⭐" title="즐겨찾기 정부지원" color="#f59e0b" />
+              <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 12, fontSize: 13, color: '#f59e0b', lineHeight: 1.7 }}>
+                💡 정부지원 챗봇에서 마음에 드는 지원사업을 즐겨찾기에 추가할 수 있어요. (기능 준비 중)
+              </div>
+              {bookmarks.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>⭐</div>
+                  저장된 즐겨찾기가 없어요
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {bookmarks.map(b => (
+                    <div key={b.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 20 }}>⭐</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>{b.title}</div>
+                        {b.url && <a href={b.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>{b.url}</a>}
+                        <div style={{ fontSize: 11, color: T.muted }}>{b.category}</div>
+                      </div>
+                      <button onClick={() => handleDeleteBookmark(b.id)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13 }}>🗑</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* API 키 탭 */}
+          {tab === 'keys' && (
+            <div style={{ maxWidth: 520 }}>
+              <SHead icon="🔑" title="API 키 관리" color="#8b5cf6" />
+              <div style={{ padding: '14px 16px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 12, fontSize: 13, color: '#a78bfa', lineHeight: 1.7, marginBottom: 20 }}>
+                🔒 API 키는 이 기기에만 저장되며 서버로 전송되지 않아요.<br />
+                Gemini는 무료 | OpenAI는 유료 (이미지 분석용) | Groq는 완전 무료
+              </div>
+              {[
+                { label:'Gemini API 키', badge:'무료', badgeColor:'#10b981', key:'gemini', ph:'AIza...' },
+                { label:'OpenAI API 키', badge:'유료', badgeColor:'#ef4444', key:'openai', ph:'sk-...' },
+                { label:'Groq API 키', badge:'무료', badgeColor:'#00e5a0', key:'groq', ph:'gsk_...' },
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px' }}>{f.label}</span>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: `${f.badgeColor}22`, color: f.badgeColor, fontWeight: 700 }}>{f.badge}</span>
+                  </div>
+                  <input type="password" value={(keys as Record<string, string>)[f.key] || ''} onChange={e => setKeys(k => ({ ...k, [f.key]: e.target.value }))} placeholder={f.ph} style={inputStyle}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = '#8b5cf6' }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                  />
+                </div>
+              ))}
+              <GlowBtn onClick={handleSaveKeys} loading={false} label="💾 저장하기" color="linear-gradient(135deg,#8b5cf6,#6366f1)" glow="rgba(139,92,246,0.4)" />
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* 모바일 탭바 */}
+      <div style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: T.surface, borderTop: `1px solid ${T.border}`, paddingBottom: 'env(safe-area-inset-bottom)', backdropFilter: 'blur(30px)' }} id="mobile-tab">
+        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '6px 0' }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', flex: 1, background: 'transparent', border: 'none', cursor: 'pointer', color: tab===t.key?t.color:T.muted, fontFamily: 'inherit', fontSize: 9, fontWeight: 800 }}>
+              <span style={{ fontSize: 20 }}>{t.icon}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .pc-sidebar { display: none !important; }
+          #mobile-tab { display: block !important; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function SHead({ icon, title, color }: { icon: string; title: string; color: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: `0 0 16px ${color}30` }}>{icon}</div>
+      <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.3px' }}>{title}</div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, emoji, color }: { label: string; value: number; emoji: string; color: string }) {
+  return (
+    <div style={{ background: `${color}10`, border: `1px solid ${color}25`, borderRadius: 16, padding: '20px 16px', textAlign: 'center', animation: 'bounce 3s ease-in-out infinite' }}>
+      <div style={{ fontSize: 28, marginBottom: 6 }}>{emoji}</div>
+      <div style={{ fontSize: 28, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color, opacity: 0.7, marginTop: 4, fontWeight: 700 }}>{label}</div>
+    </div>
+  )
+}
+
+function GlowBtn({ onClick, loading, label, color, glow }: { onClick: () => void; loading: boolean; label: string; color: string; glow: string }) {
+  return (
+    <button onClick={onClick} disabled={loading} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', cursor: loading?'not-allowed':'pointer', fontFamily: "'Noto Sans KR',sans-serif", fontSize: 14, fontWeight: 800, color: 'white', background: loading?'rgba(255,255,255,0.1)':color, boxShadow: loading?'none':`0 6px 20px ${glow}`, opacity: loading?0.6:1, transition: 'all 0.2s' }}>{loading?'저장 중...':label}</button>
+  )
+}
 
