@@ -334,64 +334,114 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 
 ---
 
-## 13. 사업계획서 작성법 (상세)
+## 13. 사업계획서 작성법 (완전 가이드)
 
-### 정부지원용 사업계획서 필수 구성
+### 사업계획서란?
+사업의 목표, 전략, 재무계획을 체계적으로 정리한 문서. 정부지원 심사, 투자유치, 은행대출 모두 사업계획서가 필수다.
+
+### 정부지원용 사업계획서 표준 목차 (10장 구성)
 
 1. 사업 개요 (Executive Summary)
-- 사업명, 대표자 약력, 창업 아이템 한 줄 요약
-- 목표 시장 규모, 예상 매출 3년
+- 사업명, 대표자 이름·약력 (1~2줄)
+- 핵심 아이템 한 줄 요약: "무엇을, 누구에게, 어떻게"
+- 목표 매출 3년 요약, 고용 계획
+- 신청 지원금 사용 용도 명시
 
-2. 사업 배경 및 필요성
-- 시장의 불편·문제점 데이터로 증명 (통계청·KOSIS 인용)
-- 우리 아이템이 그 문제를 해결하는 방법
+2. 창업 배경 및 사업 필요성
+- 시장의 문제점·불편 데이터로 입증 (통계청·KOSIS·닐슨코리아 인용)
+- 기존 해결책의 한계
+- 우리 아이템이 이 문제를 해결하는 방법
+- "왜 지금인가" - 시장 타이밍 설명
 
 3. 시장 분석
-- TAM (전체 시장): 국내·글로벌 규모
-- SAM (서비스 가능 시장): 실제 공략 가능 시장
-- SOM (목표 시장): 초기 3년 내 점유 목표
-- 경쟁사 분석: 장단점 비교표
-- 차별화 포인트: 기술·가격·서비스·디자인
+- TAM (전체 시장규모): 국내·글로벌 합산
+- SAM (서비스 가능 시장): 실제 공략 가능한 범위
+- SOM (목표 점유 시장): 3년 내 달성 목표
+- 경쟁사 분석표: 경쟁사 3~5개 장단점 비교
+- 차별화 포인트: 기술력·가격·서비스·브랜드
 
-4. 제품·서비스 소개
-- 핵심 기능·특장점
-- 현재 개발 현황 (MVP·프로토타입 여부)
-- 향후 개발 로드맵
+4. 제품·서비스 상세 소개
+- 핵심 기능 및 특장점 (스펙 아닌 고객 혜택 중심으로)
+- 현재 개발·서비스 현황 (MVP, 프로토타입, 특허 여부)
+- 향후 개발 로드맵 (분기별)
+- 지식재산권: 특허·상표·디자인 등록 현황
 
 5. 비즈니스 모델 (수익 구조)
-- 수익 창출 방법 (구독·판매·수수료·광고)
-- 가격 정책 근거
-- 유통 채널 (온라인·오프라인·B2B·B2C)
+- 수익 창출 방법: 판매·구독·수수료·광고·라이선스
+- 가격 정책과 그 근거 (원가+마진, 경쟁사 비교)
+- 유통 채널: 온라인/오프라인, B2B/B2C/B2G
+- 핵심 파트너십 및 공급망
 
-6. 마케팅 전략
-- 타겟 고객 페르소나
-- 홍보 채널 (SNS·검색광고·체험단·PR)
-- 고객 확보 비용(CAC) vs 고객 생애가치(LTV)
+6. 마케팅·영업 전략
+- 목표 고객 페르소나 (나이·직업·행동패턴·구매동기)
+- 고객 획득 채널: SNS·검색광고·오프라인·입소문
+- 월별 마케팅 예산 및 기대 효과
+- 고객 유지(재구매) 전략
 
 7. 운영 계획
-- 조직도 및 핵심 인력 역량
-- 생산·서비스 프로세스
-- 파트너·협력사
+- 조직도 및 핵심 인력 소개 (경력·역량 강조)
+- 생산·서비스 제공 프로세스 (흐름도 포함 권장)
+- 외주·협력사 계획
+- 사무공간·장비·시설 계획
 
-8. 재무 계획 (3년)
-- 초기 투자비용 내역
-- 월별 매출·비용 예측
-- 손익분기점(BEP) 계산
-- 자금 조달 계획 (자기자본·정부지원·투자유치)
+8. 재무 계획 (3개년)
+- 초기 투자비용 내역 (지원금 사용처 포함)
+- 월별 매출 예측 근거 (가정 명시 필수)
+- 월별 비용 계획 (인건비·임대료·마케팅·재료비)
+- 손익분기점(BEP) 달성 시점
+- 자금 조달 계획: 자기자본 + 정부지원 + 기타
 
-9. 위험 요소 및 대응
-- 시장·경쟁·법규 리스크 및 구체적 대응 방안
+9. 위험 요소 및 대응 방안
+- 시장 리스크: 수요 부진, 경쟁 심화
+- 운영 리스크: 인력난, 공급망 문제
+- 법규 리스크: 규제 변화, 인허가 문제
+- 각 리스크별 구체적 대응 방안
 
 10. 향후 성장 전략
-- 2~3년 후 확장 계획 (해외진출·신제품·M&A)
+- 단기 (1년): 초기 고객 100명 확보, 제품 안정화
+- 중기 (3년): 시장점유율 목표, 신규 서비스 추가
+- 장기 (5년): 해외 진출, 기업 공개(IPO) 또는 M&A
 
-### 심사 통과 핵심 TIP
-- 숫자와 근거: 모든 주장에 데이터 (통계청·한국은행·업계 보고서 인용)
-- 창업자 적합성: 아이템과 대표자 경력·역량의 연결고리
-- 실현 가능성: 과도한 매출 예측 지양, 현실적 성장 곡선
-- 사회적 가치: 일자리 창출·지역 기여·환경 고려 → 가점 요소
-- 정책 방향 일치: 해당 연도 정부 중점 정책 (디지털 전환·탄소중립·지역균형) 포함
-- 차별화: "왜 지금", "왜 우리 팀"을 명확히
+### 사업계획서 표준 템플릿 (바로 쓰는 양식)
+
+[표지]
+사업계획서
+사업명: OOO
+대표자: OOO
+사업자등록번호: OOO (예정 포함)
+제출일: 2025년 O월 O일
+신청 지원사업: OOO
+
+[목차]
+1. 사업 개요 ··· 1p
+2. 창업 배경 ··· 2p
+3. 시장 분석 ··· 3p
+4. 제품·서비스 ··· 4p
+5. 비즈니스 모델 ··· 5p
+6. 마케팅 전략 ··· 6p
+7. 운영 계획 ··· 7p
+8. 재무 계획 ··· 8p
+9. 리스크 관리 ··· 9p
+10. 성장 전략 ··· 10p
+
+### 심사 통과 핵심 전략 10가지
+
+1. 숫자로 말하라: 모든 주장에 데이터 (통계청·한국은행·업계보고서)
+2. 창업자 적합성: 아이템과 대표자 경력의 연결고리 명확히
+3. 현실적 매출 예측: 과도한 낙관보다 근거 있는 보수적 예측
+4. 사회적 가치: 일자리 창출·지역경제·환경 기여 → 가점
+5. 정책 방향 일치: 디지털전환·탄소중립·지역균형발전 키워드
+6. 차별화: "왜 우리가 해야 하는가" 설득력 있게
+7. MVP 존재: 이미 만들어진 것, 테스트한 것 있으면 강점
+8. 팀 역량: 혼자보다 팀, 각자 역할과 경력 명시
+9. 지원금 사용처 명확: 어디에 얼마를 쓸지 세부 계획
+10. 깔끔한 디자인: 표·그래프 활용, 한 페이지에 1가지 핵심
+
+### 사업계획서 작성 무료 지원
+- 소상공인시장진흥공단 경영컨설팅: 1357 (무료)
+- 창업진흥원 창업지원단: 1357 (무료)
+- 중소벤처기업진흥공단 온라인: www.sbc.or.kr
+- 기업마당 사업계획서 샘플: www.bizinfo.go.kr
 
 ---
 
@@ -636,34 +686,49 @@ export default function GovernmentPage() {
   }
 
   const formatMessage = (text: string) => {
-    const NUM_COLORS = ['#ff6b35','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899']
-    const DASH_COLORS = ['#34d399','#60a5fa','#f472b6','#fbbf24','#a78bfa','#fb7185']
-
+    // 텍스트 정제
     const clean = text
       .replace(/[\u4E00-\u9FFF\u3400-\u4DBF]/g, '')
       .replace(/[ăắặảãầấậẩẫđêếềệểễôốồộổỗơớờợởỡưứừựửữỹỷịỉ]/gi, (c) => {
         const m: Record<string, string> = {'ă':'a','ắ':'a','ặ':'a','ả':'a','ã':'a','ầ':'a','ấ':'a','ậ':'a','ẩ':'a','ẫ':'a','đ':'d','ê':'e','ế':'e','ề':'e','ệ':'e','ể':'e','ễ':'e','ô':'o','ố':'o','ồ':'o','ộ':'o','ổ':'o','ỗ':'o','ơ':'o','ớ':'o','ờ':'o','ợ':'o','ở':'o','ỡ':'o','ư':'u','ứ':'u','ừ':'u','ự':'u','ử':'u','ữ':'u','ỹ':'y','ỷ':'y','ị':'i','ỉ':'i'}
         return m[c.toLowerCase()] || ''
       })
-      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*\*(.+?)\*\*/g, '〔$1〕')
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/^#{1,3}\s*/gm, '')
+      .replace(/^---+$/gm, '')
       .replace(/\n{3,}/g, '\n\n')
 
     const URL_REGEX = /(https?:\/\/[^\s)]+|www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s)]*)/g
     const lines = clean.split('\n')
     const result: React.ReactNode[] = []
-    let numCount = 0
-    let dashCount = 0
+    let numIdx = 0
+
+    const renderInline = (str: string, key: string): React.ReactNode => {
+      // 굵게 처리 〔〕
+      const parts = str.split(/(〔.+?〕)/)
+      return (
+        <span key={key}>
+          {parts.map((p, i) => {
+            if (p.startsWith('〔') && p.endsWith('〕')) {
+              return <strong key={i} style={{ color: 'var(--text)', fontWeight: 800 }}>{p.slice(1, -1)}</strong>
+            }
+            return <span key={i}>{p}</span>
+          })}
+        </span>
+      )
+    }
 
     lines.forEach((line, i) => {
       const trimmed = line.trim()
+
+      // 빈 줄
       if (!trimmed) {
-        result.push(<div key={'sp' + i} style={{ height: '6px' }} />)
+        result.push(<div key={'sp'+i} style={{ height: '10px' }} />)
         return
       }
 
-      // URL 포함 줄 → 링크 버튼 박스
+      // URL 포함 → 링크 카드
       if (URL_REGEX.test(trimmed)) {
         URL_REGEX.lastIndex = 0
         const parts = trimmed.split(URL_REGEX)
@@ -674,112 +739,80 @@ export default function GovernmentPage() {
             const domain = href.replace(/https?:\/\//, '').split('/')[0]
             nodes.push(
               <a key={j} href={href} target="_blank" rel="noopener noreferrer" style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))',
-                border: '1px solid rgba(99,179,237,0.4)',
-                borderRadius: '10px', padding: '6px 14px', margin: '3px 2px',
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                background: 'rgba(59,130,246,0.12)',
+                border: '1px solid rgba(59,130,246,0.3)',
+                borderRadius: '8px', padding: '5px 12px', margin: '2px 2px',
                 color: '#60a5fa', fontSize: '13px', fontWeight: 700,
-                textDecoration: 'none', cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(59,130,246,0.15)',
-                transition: 'all 0.15s',
-              }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.25))'
-                  el.style.transform = 'translateY(-1px)'
-                  el.style.boxShadow = '0 4px 16px rgba(59,130,246,0.3)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.15))'
-                  el.style.transform = 'translateY(0)'
-                  el.style.boxShadow = '0 2px 8px rgba(59,130,246,0.15)'
-                }}
-              >🔗 {domain}</a>
+                textDecoration: 'none',
+              }}>🔗 {domain}</a>
             )
           } else if (part.trim()) {
-            nodes.push(<span key={j} style={{ fontSize: '13px', color: 'inherit' }}>{part}</span>)
+            nodes.push(<span key={j} style={{ fontSize: '14px' }}>{part}</span>)
           }
         })
         result.push(
-          <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px', margin: '2px 0', lineHeight: '2' }}>
+          <div key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px', margin: '6px 0' }}>
             {nodes}
           </div>
         )
         return
       }
 
-      // 번호 목록
-      const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/)
+      // 구분선 (----)
+      if (/^[-─━]+$/.test(trimmed)) {
+        result.push(<div key={i} style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 0' }} />)
+        return
+      }
+
+      // 번호 목록 (1. 2. 3.)
+      const numMatch = trimmed.match(/^(\d+)[.)]\s+(.+)/)
       if (numMatch) {
-        const color = NUM_COLORS[numCount % NUM_COLORS.length]
-        numCount++
+        const colors = ['#ff6b35','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899']
+        const color = colors[numIdx % colors.length]
+        numIdx++
         result.push(
-          <div key={i} style={{
-            display: 'flex', gap: '10px', alignItems: 'flex-start', margin: '5px 0',
-            padding: '8px 12px',
-            background: color + '11',
-            border: '1px solid ' + color + '33',
-            borderRadius: '10px',
-            borderLeft: '3px solid ' + color,
-          }}>
-            <span style={{
-              flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%',
-              background: color, color: 'white',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '12px', fontWeight: 900,
-            }}>{numMatch[1]}</span>
-            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.6', paddingTop: '2px' }}>{numMatch[2]}</span>
+          <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '9px 12px', margin: '4px 0', background: color+'0e', borderLeft: '3px solid '+color, borderRadius: '0 8px 8px 0' }}>
+            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, marginTop: 1 }}>{numMatch[1]}</span>
+            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.65' }}>{renderInline(numMatch[2], 'n'+i)}</span>
           </div>
         )
         return
       }
 
-      // 대시 목록
-      const dashMatch = trimmed.match(/^[-•·]\s+(.+)/)
+      // 대시/점 목록
+      const dashMatch = trimmed.match(/^[-•·▸]\s+(.+)/)
       if (dashMatch) {
-        const color = DASH_COLORS[dashCount % DASH_COLORS.length]
-        dashCount++
         result.push(
-          <div key={i} style={{
-            display: 'flex', gap: '8px', alignItems: 'flex-start', margin: '4px 0',
-            padding: '6px 10px',
-            background: color + '0d',
-            borderRadius: '8px',
-          }}>
-            <span style={{
-              flexShrink: 0, fontSize: '10px', color: color, fontWeight: 900, marginTop: '4px',
-              background: color + '22', borderRadius: '50%', width: '18px', height: '18px',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>▸</span>
-            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.6', color: 'inherit' }}>{dashMatch[1]}</span>
+          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '5px 4px', margin: '2px 0' }}>
+            <span style={{ flexShrink: 0, color: '#60a5fa', fontWeight: 900, fontSize: 12, marginTop: 3 }}>•</span>
+            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.65', color: 'var(--text)' }}>{renderInline(dashMatch[1], 'd'+i)}</span>
           </div>
         )
         return
       }
 
-      // 콜론으로 끝나는 제목줄
-      if (trimmed.endsWith(':') || trimmed.endsWith('：')) {
+      // 소제목 (콜론으로 끝나거나 ### 패턴)
+      if ((trimmed.endsWith(':') || trimmed.endsWith('：')) && trimmed.length < 40) {
+        numIdx = 0
         result.push(
-          <div key={i} style={{
-            fontSize: '13px', fontWeight: 900, color: '#fbbf24',
-            borderBottom: '1px solid rgba(251,191,36,0.2)',
-            paddingBottom: '4px', marginBottom: '4px', marginTop: '10px',
-            letterSpacing: '0.3px',
-          }}>{trimmed}</div>
+          <div key={i} style={{ fontSize: '13px', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.5px', marginTop: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 3, height: 14, background: '#fbbf24', borderRadius: 2, display: 'inline-block', flexShrink: 0 }} />
+            {trimmed.replace(/:$/, '').replace(/：$/, '')}
+          </div>
         )
-        numCount = 0
-        dashCount = 0
         return
       }
 
       // 일반 텍스트
       result.push(
-        <div key={i} style={{ fontSize: '14px', lineHeight: '1.75', margin: '2px 0' }}>{trimmed}</div>
+        <div key={i} style={{ fontSize: '14px', lineHeight: '1.75', color: 'var(--text)', padding: '1px 0' }}>
+          {renderInline(trimmed, 't'+i)}
+        </div>
       )
     })
 
-    return <>{result}</>
+    return <div style={{ display: 'flex', flexDirection: 'column' }}>{result}</div>
   }
 
   const dotDelays = [0, 0.2, 0.4]
@@ -851,9 +884,9 @@ export default function GovernmentPage() {
 
       {/* 채팅 영역 */}
       <div style={{
-        flex: 1, overflowY: 'auto', padding: '16px',
+        flex: 1, overflowY: 'auto', padding: 'clamp(12px,3vw,20px)',
         maxWidth: '800px', width: '100%', margin: '0 auto',
-        display: 'flex', flexDirection: 'column', gap: '14px',
+        display: 'flex', flexDirection: 'column', gap: '16px',
       }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
@@ -863,20 +896,25 @@ export default function GovernmentPage() {
           }}>
             {msg.role === 'assistant' && (
               <div style={{
-                width: 30, height: 30, borderRadius: '50%',
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                 background: 'linear-gradient(135deg, var(--accent), var(--accent2))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '14px', flexShrink: 0,
+                fontSize: '15px', boxShadow: '0 2px 8px rgba(255,107,53,0.3)',
               }}>🏛️</div>
             )}
             <div style={{
-              maxWidth: '82%',
-              background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent), #ff8c5a)' : 'var(--surface)',
+              maxWidth: msg.role === 'user' ? '75%' : '88%',
+              background: msg.role === 'user'
+                ? 'linear-gradient(135deg, var(--accent), #ff8c5a)'
+                : 'var(--surface)',
               color: msg.role === 'user' ? 'white' : 'var(--text)',
-              borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              padding: '12px 14px', fontSize: '14px', lineHeight: '1.75',
+              borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
+              padding: msg.role === 'user' ? '10px 14px' : '14px 16px',
+              fontSize: 'clamp(13px,3.5vw,15px)',
+              lineHeight: '1.7',
               border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.12)', wordBreak: 'break-word',
+              boxShadow: msg.role === 'assistant' ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
+              wordBreak: 'break-word',
             }}>
               {formatMessage(msg.content)}
             </div>
