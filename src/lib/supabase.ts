@@ -17,6 +17,8 @@ export async function supabaseQuery(table: string, method: 'GET' | 'POST' | 'PAT
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) throw new Error('Supabase 오류: ' + res.status)
-  if (method === 'DELETE') return null
-  return res.json()
+  if (method === 'DELETE' || method === 'PATCH') return null
+  const text = await res.text()
+  if (!text) return null
+  return JSON.parse(text)
 }
