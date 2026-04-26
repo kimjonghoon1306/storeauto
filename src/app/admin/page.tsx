@@ -345,6 +345,9 @@ export default function AdminPage() {
             <button onClick={() => router.push('/')} style={{ width:'100%', padding:'13px', marginTop:10, background:'transparent', border:'none', color:MUTED, fontSize:13, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
               ← 메인으로 돌아가기
             </button>
+            <button onClick={() => router.push('/login')} style={{ width:'100%', padding:'10px', background:'transparent', border:'none', color:MUTED, fontSize:12, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif", opacity:0.6 }}>
+              일반 회원 로그인 →
+            </button>
           </div>
         </div>
       </div>
