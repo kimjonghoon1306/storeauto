@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Theme = 'dark' | 'light' | 'pink'
+type Theme = 'dark' | 'light' | 'yellow'
 type StarRating = 1 | 2 | 3 | 4 | 5
 type ReplyTone = 'warm' | 'professional' | 'apologetic' | 'excited'
 
@@ -20,7 +20,7 @@ interface ReviewItem {
 const THEMES = {
   dark:  { bg: '#0a0a0f', surface: '#13131a', surface2: '#1c1c28', border: '#2a2a3a', accent: '#ff6b35', text: '#f0f0f5', muted: '#8888aa', green: '#00e5a0' },
   light: { bg: '#f5f5f7', surface: '#ffffff', surface2: '#ebebef', border: '#d0d0dc', accent: '#ff6b35', text: '#1a1a2e', muted: '#666688', green: '#00b37a' },
-  pink:  { bg: '#1a0a14', surface: '#241018', surface2: '#2e1520', border: '#4a2035', accent: '#ff4d8f', text: '#fff0f5', muted: '#cc88aa', green: '#ff80c0' },
+  yellow: { bg: '#0a0900', surface: '#1a1500', surface2: '#1e1a00', border: '#3a3000', accent: '#ff6b35', text: '#fff8dc', muted: '#aa9900', green: '#00e5a0' },
 }
 
 const STAR_COLORS: Record<StarRating, string> = {
@@ -48,11 +48,21 @@ export default function ReviewsPage() {
   const [tone, setTone] = useState<ReplyTone>('warm')
   const [loading, setLoading] = useState(false)
   const [generatedReply, setGeneratedReply] = useState('')
+  const [replyVersions, setReplyVersions] = useState<string[]>([])
+  const [selectedVersion, setSelectedVersion] = useState(0)
   const [replyError, setReplyError] = useState('')
   const [copied, setCopied] = useState(false)
   const [history, setHistory] = useState<ReviewItem[]>([])
-  const [activeTab, setActiveTab] = useState<'write' | 'history'>('write')
+  const [activeTab, setActiveTab] = useState<'write' | 'batch' | 'history'>('write')
   const [hoverRating, setHoverRating] = useState<StarRating | null>(null)
+  const [charLimit, setCharLimit] = useState<number>(0) // 0 = 제한없음
+  const [versionCount, setVersionCount] = useState<2 | 3>(3)
+  const [isMalicious, setIsMalicious] = useState(false)
+  // 대량처리
+  const [batchInput, setBatchInput] = useState('')
+  const [batchResults, setBatchResults] = useState<{review: string; reply: string; done: boolean}[]>([])
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchProgress, setBatchProgress] = useState(0)
 
   const t = THEMES[theme]
 
@@ -111,11 +121,19 @@ export default function ReviewsPage() {
     }
   }, [provider, keys])
 
+  const detectMalicious = (text: string): boolean => {
+    const kw = ['환불','신고','고소','사기','거짓','허위','최악','쓰레기','엉터리','가짜','짝퉁','소비자원','공정위']
+    return kw.some(k => text.includes(k))
+  }
+
   const handleGenerate = async () => {
     if (!reviewText.trim()) return
     setLoading(true)
     setGeneratedReply('')
+    setReplyVersions([])
     setReplyError('')
+    const malicious = detectMalicious(reviewText)
+    setIsMalicious(malicious)
     try {
       const toneGuide = {
         warm: '따뜻하고 친근하게. 고객을 가족처럼 대하는 느낌. 감사함을 충분히 표현.',
@@ -123,33 +141,21 @@ export default function ReviewsPage() {
         apologetic: '진심으로 사과하고 해결책을 제시. 불편을 드려 죄송한 마음을 충분히 표현.',
         excited: '밝고 에너지 넘치게. 이모지 1~2개 사용. 고객이 기분 좋아지는 톤.',
       }
-      const prompt = `스마트스토어 판매자입니다. 고객 리뷰에 답글을 작성해주세요.
-
-상품명: ${productName || '저희 상품'}
-별점: ${rating}점 (${STAR_LABELS[rating]})
-고객 리뷰 내용: ${reviewText}
-답글 톤: ${toneGuide[tone]}
-
-규칙:
-- 2~4문장으로 작성
-- 자연스러운 한국어
-- 판매자 입장에서 작성
-- 마크다운 기호 사용 금지
-- 답글 텍스트만 출력 (설명 없이)`
-
-      const reply = await callAI(prompt)
-      const cleaned = reply.replace(/[*#_`]/g, '').trim()
-      if (!cleaned) throw new Error('AI 응답이 비어있습니다. 다시 시도해주세요.')
-      setGeneratedReply(cleaned)
-
+      const charGuide = charLimit > 0 ? `\n- 반드시 ${charLimit}자 이내로 작성` : ''
+      const malGuide = malicious ? '\n- 주의: 분쟁/악성 가능성 리뷰. 감정적 대응 금지. 정중하고 사실 기반. 필요시 고객센터 안내.' : ''
+      const basePrompt = `스마트스토어 판매자입니다. 고객 리뷰에 답글을 작성해주세요.\n상품명: ${productName || '저희 상품'}\n별점: ${rating}점 (${STAR_LABELS[rating]})\n고객 리뷰: ${reviewText}\n답글 톤: ${toneGuide[tone]}\n규칙: 2~4문장, 자연스러운 한국어, 판매자 입장, 마크다운 금지${charGuide}${malGuide}\n답글 텍스트만 출력`
+      const promises = Array.from({ length: versionCount }, (_, vi) =>
+        callAI(basePrompt + `\n(버전${vi + 1}: 앞 버전과 다른 표현으로)`)
+      )
+      const results = await Promise.all(promises)
+      const cleaned = results.map(r => r.replace(/[*#_`]/g, '').trim()).filter(Boolean)
+      if (!cleaned.length) throw new Error('AI 응답이 비어있습니다.')
+      setReplyVersions(cleaned)
+      setSelectedVersion(0)
+      setGeneratedReply(cleaned[0])
       const newItem: ReviewItem = {
-        id: Date.now(),
-        rating,
-        content: reviewText,
-        reply: cleaned,
-        date: new Date().toLocaleString('ko-KR'),
-        productName: productName || '미입력',
-        done: false,
+        id: Date.now(), rating, content: reviewText, reply: cleaned[0],
+        date: new Date().toLocaleString('ko-KR'), productName: productName || '미입력', done: false,
       }
       setHistory(prev => {
         const updated = [newItem, ...prev].slice(0, 50)
@@ -161,6 +167,31 @@ export default function ReviewsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBatch = async () => {
+    const reviews = batchInput.split('\n').map(r => r.trim()).filter(Boolean)
+    if (!reviews.length) return
+    setBatchLoading(true)
+    setBatchResults([])
+    setBatchProgress(0)
+    const results: {review: string; reply: string; done: boolean}[] = []
+    for (let i = 0; i < reviews.length; i++) {
+      const review = reviews[i]
+      try {
+        const charGuide = charLimit > 0 ? ` ${charLimit}자 이내.` : ''
+        const malGuide = detectMalicious(review) ? ' (주의:분쟁가능. 정중하게 사실기반으로.)' : ''
+        const prompt = `판매자 리뷰 답글. 상품:${productName||'상품'}. 리뷰:${review}. 톤:따뜻하게.${charGuide}${malGuide} 2~3문장, 답글만 출력.`
+        const reply = await callAI(prompt)
+        results.push({ review, reply: reply.replace(/[*#_`]/g, '').trim(), done: false })
+      } catch {
+        results.push({ review, reply: '⚠️ 생성 실패', done: false })
+      }
+      setBatchProgress(i + 1)
+      setBatchResults([...results])
+      if (i < reviews.length - 1) await new Promise(r => setTimeout(r, 300))
+    }
+    setBatchLoading(false)
   }
 
   const toggleDone = (id: number) => {
@@ -215,14 +246,14 @@ export default function ReviewsPage() {
               fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>← 메인으로</button>
             <div style={{ display: 'flex', gap: '6px' }}>
-              {(['dark','light','pink'] as const).map(th => (
+              {((['dark','light','yellow'] as const)).map(th => (
                 <button key={th} onClick={() => setTheme(th)} style={{
                   padding: '7px 12px', borderRadius: '8px', fontSize: '14px',
                   cursor: 'pointer', fontFamily: 'inherit',
                   border: theme === th ? `2px solid ${t.accent}` : `1px solid ${t.border}`,
                   background: theme === th ? `${t.accent}22` : t.surface2,
                   transition: 'all 0.15s',
-                }}>{th === 'dark' ? '🌙' : th === 'light' ? '☀️' : '🌸'}</button>
+                }}>{th === 'dark' ? '🌙' : th === 'light' ? '☀️' : '⭐'}</button>
               ))}
             </div>
           </div>
@@ -272,15 +303,16 @@ export default function ReviewsPage() {
         </div>
 
         {/* 탭 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           {([
             { key: 'write', label: '✍️ 답글 작성', badge: null },
-            { key: 'history', label: '📋 답글 기록', badge: history.length > 0 ? history.length : null },
+            { key: 'batch', label: '📦 대량처리', badge: null },
+            { key: 'history', label: '📋 기록', badge: history.length > 0 ? history.length : null },
           ] as const).map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-              flex: 1, padding: 'clamp(12px,2.5vw,14px)', borderRadius: '12px',
+              flex: 1, padding: 'clamp(10px,2.5vw,13px)', borderRadius: '12px',
               cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
-              fontSize: 'clamp(13px,2.5vw,14px)',
+              fontSize: 'clamp(12px,2.5vw,13px)',
               border: activeTab === tab.key ? `2px solid ${t.accent}` : `1px solid ${t.border}`,
               background: activeTab === tab.key ? `${t.accent}18` : t.surface,
               color: activeTab === tab.key ? t.accent : t.muted,
@@ -298,6 +330,74 @@ export default function ReviewsPage() {
             </button>
           ))}
         </div>
+
+        {/* 공통 설정 바 */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: '10px', padding: '8px 12px' }}>
+            <span style={{ fontSize: '12px', color: t.muted, whiteSpace: 'nowrap' }}>글자수 제한</span>
+            <select value={charLimit} onChange={e => setCharLimit(Number(e.target.value))} style={{ background: 'transparent', border: 'none', color: t.text, fontSize: '13px', fontWeight: 700, cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}>
+              <option value={0}>제한없음</option>
+              <option value={100}>100자</option>
+              <option value={150}>150자</option>
+              <option value={200}>200자</option>
+              <option value={300}>300자</option>
+            </select>
+          </div>
+          {activeTab === 'write' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: '10px', padding: '8px 12px' }}>
+              <span style={{ fontSize: '12px', color: t.muted, whiteSpace: 'nowrap' }}>버전 수</span>
+              <select value={versionCount} onChange={e => setVersionCount(Number(e.target.value) as 2 | 3)} style={{ background: 'transparent', border: 'none', color: t.text, fontSize: '13px', fontWeight: 700, cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}>
+                <option value={2}>2가지</option>
+                <option value={3}>3가지</option>
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* 대량처리 탭 */}
+        {activeTab === 'batch' && (
+          <div className="fade-up" style={{ display: 'grid', gap: '16px' }}>
+            <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: '14px', padding: '20px' }}>
+              <p style={{ fontWeight: 700, fontSize: '13px', color: t.muted, marginBottom: '8px', letterSpacing: '0.5px' }}>📦 대량 리뷰 처리</p>
+              <p style={{ fontSize: '12px', color: t.muted, marginBottom: '12px', lineHeight: 1.6 }}>리뷰를 한 줄에 하나씩 입력하세요. 한 번에 최대 20개까지 처리할 수 있어요.</p>
+              <textarea
+                value={batchInput}
+                onChange={e => setBatchInput(e.target.value)}
+                placeholder={'배송이 너무 빨라서 좋았어요!\n제품 품질이 기대 이하였어요.\n포장이 꼼꼼해서 마음에 들어요.\n사이즈가 맞지 않아서 아쉬워요.'}
+                rows={8}
+                style={{ width: '100%', background: t.surface2, border: `1px solid ${t.border}`, borderRadius: '10px', padding: '12px', color: t.text, fontSize: '14px', resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.7 }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: t.muted }}>{batchInput.split('\n').filter(r => r.trim()).length}개 리뷰 입력됨</span>
+                <button onClick={handleBatch} disabled={batchLoading || !batchInput.trim()} style={{ padding: '10px 24px', background: batchLoading ? t.border : `linear-gradient(135deg, ${t.accent}, #ff8c5a)`, border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: batchLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                  {batchLoading ? `처리 중... (${batchProgress}/${batchInput.split('\n').filter(r => r.trim()).length})` : '🚀 일괄 생성'}
+                </button>
+              </div>
+            </div>
+
+            {batchResults.length > 0 && (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ fontWeight: 700, fontSize: '14px', color: t.text }}>생성 결과 ({batchResults.length}건)</p>
+                  <button onClick={() => {
+                    const text = batchResults.map((r, i) => `[${i+1}] 리뷰: ${r.review}\n    답글: ${r.reply}`).join('\n\n')
+                    navigator.clipboard.writeText(text)
+                  }} style={{ padding: '6px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: '8px', color: t.muted, fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    📋 전체 복사
+                  </button>
+                </div>
+                {batchResults.map((r, i) => (
+                  <div key={i} style={{ background: t.surface, border: `1px solid ${r.reply.includes('⚠️') ? '#ef4444' : t.border}`, borderRadius: '12px', padding: '14px 16px' }}>
+                    <div style={{ fontSize: '12px', color: t.muted, marginBottom: '6px' }}>리뷰 {i+1}{detectMalicious(r.review) ? ' 🚨 악성 가능성' : ''}</div>
+                    <div style={{ fontSize: '13px', color: t.muted, marginBottom: '8px', padding: '8px', background: t.surface2, borderRadius: '8px', lineHeight: 1.6 }}>{r.review}</div>
+                    <div style={{ fontSize: '14px', color: t.text, lineHeight: 1.7, marginBottom: '8px' }}>{r.reply}</div>
+                    <button onClick={() => navigator.clipboard.writeText(r.reply)} style={{ padding: '5px 12px', background: 'transparent', border: `1px solid ${t.border}`, borderRadius: '8px', color: t.muted, fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>복사</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 답글 작성 탭 */}
         {activeTab === 'write' && (
@@ -444,43 +544,44 @@ export default function ReviewsPage() {
 
             {/* 생성된 답글 */}
             {replyError && (
-              <div style={{
-                padding: '12px 16px', borderRadius: '10px',
-                background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)',
-                fontSize: '13px', color: '#ff6666',
-              }}>⚠️ {replyError}</div>
+              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', fontSize: '13px', color: '#ff6666' }}>⚠️ {replyError}</div>
+            )}
+
+            {isMalicious && generatedReply && (
+              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', fontSize: '13px', color: '#f87171', lineHeight: 1.6 }}>
+                🚨 <strong>악성/분쟁 가능성 리뷰 감지</strong> — 답글이 신중하게 작성됐어요. 감정적 표현 없이 정중하게 대응하세요. 필요시 고객센터 직접 연락을 유도하세요.
+              </div>
             )}
 
             {generatedReply && (
-              <div className="fade-up" style={{
-                background: t.surface, border: `2px solid ${t.accent}`,
-                borderRadius: '14px', padding: '20px',
-              }}>
+              <div className="fade-up" style={{ background: t.surface, border: `2px solid ${t.accent}`, borderRadius: '14px', padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <p style={{ fontWeight: 800, fontSize: '14px', color: t.accent }}>✨ 생성된 답글</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => {
-                      navigator.clipboard.writeText(generatedReply)
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 2000)
-                    }} style={{
-                      background: copied ? t.green : `${t.accent}20`,
-                      color: copied ? '#000' : t.accent,
-                      border: `1px solid ${copied ? t.green : t.accent}`,
-                      borderRadius: '8px', padding: '6px 14px', fontSize: '13px',
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>{copied ? '✓ 복사됨!' : '📋 복사'}</button>
-                    <button onClick={handleGenerate} style={{
-                      background: t.surface2, color: t.muted,
-                      border: `1px solid ${t.border}`,
-                      borderRadius: '8px', padding: '6px 14px', fontSize: '13px',
-                      fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>↺ 재생성</button>
+                    <button onClick={() => { navigator.clipboard.writeText(generatedReply); setCopied(true); setTimeout(() => setCopied(false), 2000) }} style={{ background: copied ? t.green : `${t.accent}20`, color: copied ? '#000' : t.accent, border: `1px solid ${copied ? t.green : t.accent}`, borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? '✓ 복사됨!' : '📋 복사'}</button>
+                    <button onClick={handleGenerate} style={{ background: t.surface2, color: t.muted, border: `1px solid ${t.border}`, borderRadius: '8px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>↺ 재생성</button>
                   </div>
                 </div>
+
+                {/* 버전 선택 탭 */}
+                {replyVersions.length > 1 && (
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                    {replyVersions.map((_, vi) => (
+                      <button key={vi} onClick={() => { setSelectedVersion(vi); setGeneratedReply(replyVersions[vi]) }} style={{ padding: '5px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', border: selectedVersion === vi ? `2px solid ${t.accent}` : `1px solid ${t.border}`, background: selectedVersion === vi ? `${t.accent}20` : t.surface2, color: selectedVersion === vi ? t.accent : t.muted, transition: 'all 0.15s' }}>
+                        버전 {vi + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <p style={{ fontSize: 'clamp(14px,3vw,15px)', color: t.text, lineHeight: 1.85, whiteSpace: 'pre-line' }}>
                   {generatedReply}
                 </p>
+                {charLimit > 0 && (
+                  <p style={{ fontSize: '12px', color: generatedReply.length > charLimit ? '#ef4444' : t.green, marginTop: '8px', fontWeight: 700 }}>
+                    {generatedReply.length}자 / 제한 {charLimit}자 {generatedReply.length > charLimit ? '⚠️ 초과' : '✓'}
+                  </p>
+                )}
               </div>
             )}
           </div>
