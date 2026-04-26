@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
   const [pw, setPw]         = useState('')
   const [shake, setShake]   = useState(false)
+  const [showPw, setShowPw] = useState(false)
   const [tab, setTab]       = useState<Tab>('keys')
   const [theme, setTheme]   = useState<Theme>('dark')
   const [busy, setBusy]     = useState(false)
@@ -78,6 +79,9 @@ export default function AdminPage() {
   const [oldPw, setOldPw] = useState('')
   const [newP1, setNewP1] = useState('')
   const [newP2, setNewP2] = useState('')
+  const [showOld, setShowOld] = useState(false)
+  const [showP1, setShowP1]   = useState(false)
+  const [showP2, setShowP2]   = useState(false)
 
   const isDark = theme === 'dark'
   const isPink = theme === 'pink'
@@ -296,11 +300,12 @@ export default function AdminPage() {
               <div style={{ fontSize:11, color:MUTED, letterSpacing:'2px', marginBottom:10, fontWeight:700 }}>비밀번호</div>
               <div style={{ position:'relative' }}>
                 <input
-                  type="password" value={pw}
+                  type={showPw?'text':'password'} value={pw}
                   onChange={(e) => setPw(e.target.value)}
                   placeholder="비밀번호를 입력하세요"
-                  style={{ ...inputSt, letterSpacing:'4px', fontSize:18, borderColor:shake?'#ef4444':BORDER, animation:shake?'shake 0.5s ease':'none', boxShadow:shake?'0 0 20px rgba(239,68,68,0.3)':'none' }}
+                  style={{ ...inputSt, letterSpacing: showPw?'1px':'4px', fontSize:18, paddingRight:50, borderColor:shake?'#ef4444':BORDER, animation:shake?'shake 0.5s ease':'none', boxShadow:shake?'0 0 20px rgba(239,68,68,0.3)':'none' }}
                 />
+                <button onClick={() => setShowPw(!showPw)} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:20, color:MUTED, padding:4, transition:'all 0.2s' }}>{showPw?'🙈':'👁️'}</button>
               </div>
               {shake && <div style={{ fontSize:13, color:'#ef4444', marginTop:8, fontWeight:700, animation:'fadeUp 0.3s ease' }}>⚠️ 비밀번호가 틀렸어요</div>}
             </div>
@@ -546,16 +551,19 @@ export default function AdminPage() {
             <div style={{ display:'flex', gap:40, alignItems:'flex-start' }}>
               <div style={{ maxWidth:420, flex:1 }}>
               {[
-                { label:'현재 비밀번호', value:oldPw, set:setOldPw },
-                { label:'새 비밀번호 (4자 이상)', value:newP1, set:setNewP1 },
-                { label:'새 비밀번호 확인', value:newP2, set:setNewP2 },
+                { label:'현재 비밀번호', value:oldPw, set:setOldPw, show:showOld, toggle:()=>setShowOld(!showOld) },
+                { label:'새 비밀번호 (4자 이상)', value:newP1, set:setNewP1, show:showP1, toggle:()=>setShowP1(!showP1) },
+                { label:'새 비밀번호 확인', value:newP2, set:setNewP2, show:showP2, toggle:()=>setShowP2(!showP2) },
               ].map((f, i) => (
                 <div key={i} style={{ marginBottom:16 }}>
                   <div style={{ fontSize:12, color:MUTED, fontWeight:800, letterSpacing:'0.5px', marginBottom:8 }}>{f.label}</div>
-                  <input type="password" value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.label} style={{ ...inputSt, borderRadius:16 }}
-                    onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color; (e.target as HTMLInputElement).style.boxShadow='0 0 20px '+activeTabInfo.color+'22' }}
-                    onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER; (e.target as HTMLInputElement).style.boxShadow='none' }}
-                  />
+                  <div style={{ position:'relative' }}>
+                    <input type={f.show?'text':'password'} value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.label} style={{ ...inputSt, borderRadius:16, paddingRight:50 }}
+                      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor=activeTabInfo.color; (e.target as HTMLInputElement).style.boxShadow='0 0 20px '+activeTabInfo.color+'22' }}
+                      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor=BORDER; (e.target as HTMLInputElement).style.boxShadow='none' }}
+                    />
+                    <button onClick={f.toggle} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:18, color:MUTED, padding:4, transition:'all 0.2s' }}>{f.show?'🙈':'👁️'}</button>
+                  </div>
                 </div>
               ))}
               <div style={{ marginTop:8, marginBottom:24 }}>
