@@ -17,6 +17,21 @@ interface AdminData {
   createdAt: string
 }
 
+const CATEGORY_CARDS = [
+  { emoji: '💰', label: '정책자금', color: '#ff6b35', q: '소상공인 정책자금 종류와 신청 방법을 단계별로 알려줘' },
+  { emoji: '📄', label: '사업계획서', color: '#f59e0b', q: '정부지원용 사업계획서 작성 방법과 표준 양식을 알려줘' },
+  { emoji: '🎁', label: '무상지원', color: '#10b981', q: '소상공인 무상지원 보조금 종류와 신청 방법 알려줘' },
+  { emoji: '🗺️', label: '지자체지원', color: '#3b82f6', q: '우리 지역 소상공인 지자체 지원금 확인하는 방법 알려줘' },
+  { emoji: '🤝', label: '협동조합', color: '#8b5cf6', q: '협동조합 설립 방법과 지원 혜택을 단계별로 알려줘' },
+  { emoji: '👩', label: '여성기업', color: '#ec4899', q: '여성기업 확인 방법과 혜택을 상세히 알려줘' },
+  { emoji: '♿', label: '장애인기업', color: '#06b6d4', q: '장애인기업 확인 방법과 혜택을 상세히 알려줘' },
+  { emoji: '🛡️', label: '세금혜택', color: '#84cc16', q: '소상공인 창업 세금 감면 혜택과 신청 방법 알려줘' },
+  { emoji: '📊', label: '노란우산', color: '#f97316', q: '노란우산공제 가입 방법과 소득공제 혜택 상세히 알려줘' },
+  { emoji: '🚪', label: '폐업지원', color: '#ef4444', q: '폐업 시 받을 수 있는 희망리턴패키지 신청 방법 알려줘' },
+  { emoji: '🌱', label: '청년창업', color: '#22c55e', q: '청년 창업 지원금 종류와 신청 조건을 알려줘' },
+  { emoji: '🏦', label: '보증·대출', color: '#a78bfa', q: '신용보증기금과 지역신용보증재단 보증 신청 방법 알려줘' },
+]
+
 const QUICK_QUESTIONS: string[] = [
   '우리 지역 소상공인 지원금 알려줘',
   '소상공인 무상자금 신청 방법은?',
@@ -528,19 +543,23 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 - 자격 조건과 필요 서류 안내
 - 지자체 지원금은 웹 검색으로 최신 정보 확인 후 안내
 - 복잡한 절차는 단계별(1→2→3)로 설명
-- 답변 마지막에 실질적으로 도움되는 추가 질문 1개 제안`
+- 답변은 핵심부터 간결하게, 모바일에서 읽기 편하게
+- 반드시 답변 맨 마지막에 아래 형식으로 추천 질문 3개 추가 (형식 절대 변경 금지):
+[추천: 질문1||질문2||질문3]`
 
 export default function GovernmentPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: '안녕하세요! 자영업자·소상공인을 위한 정부지원 전문 AI 챗봇이에요 😊\n\n━━━━━━━━━━━━━━━\n📋 주요 기능\n━━━━━━━━━━━━━━━\n✅ 소상공인 정책자금·무상지원 안내\n✅ 지자체 지원금 실시간 검색\n✅ 협동조합·여성기업·장애인기업 설립\n✅ 사업계획서 작성법\n✅ 세금혜택·고용지원·노란우산공제\n\n━━━━━━━━━━━━━━━\n💡 이렇게 사용하세요\n━━━━━━━━━━━━━━━\n1. 아래 자주 묻는 질문 버튼을 눌러보세요\n2. 직접 질문을 입력해도 돼요\n3. 지역명을 포함하면 더 정확한 정보를 드려요\n   예) "서울 소상공인 지원금 알려줘"\n4. 우측 하단 💛 버튼으로 언제든 사용법 확인\n\n무엇이든 물어보세요! 👇',
+      content: '안녕하세요! AI 정책자금 컨설턴트입니다 🏛️\n\n수천만원짜리 컨설팅을 무료로 — 자금 신청부터 결론까지 함께합니다.\n\n위 카테고리를 선택하거나 직접 질문해보세요 👇',
     },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [adminData, setAdminData] = useState<AdminData[]>([])
   const [showGuide, setShowGuide] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showReset, setShowReset] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -672,17 +691,36 @@ export default function GovernmentPage() {
     const newMessages: Message[] = [...messages, { role: 'user', content: userText }]
     setMessages(newMessages)
     setInput('')
+    setSuggestions([])
     setLoading(true)
 
     try {
       const reply = await callAI(buildSystemPrompt(), newMessages)
-      setMessages([...newMessages, { role: 'assistant', content: reply }])
+
+      // 추천 질문 파싱
+      const sugMatch = reply.match(/\[추천:\s*(.+?)\]/)
+      if (sugMatch) {
+        const sugs = sugMatch[1].split('||').map((s: string) => s.trim()).filter(Boolean)
+        setSuggestions(sugs)
+      }
+      // 추천 질문 태그 제거 후 저장
+      const cleanReply = reply.replace(/\[추천:.*?\]/g, '').trim()
+      setMessages([...newMessages, { role: 'assistant', content: cleanReply }])
     } catch (_e) {
       const errMsg = _e instanceof Error ? _e.message : '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
       setMessages([...newMessages, { role: 'assistant', content: errMsg }])
     } finally {
       setLoading(false)
     }
+  }
+
+  const resetChat = () => {
+    setMessages([{
+      role: 'assistant',
+      content: '대화가 초기화됐어요 😊\n\n위 카테고리를 선택하거나 직접 질문해보세요 👇',
+    }])
+    setSuggestions([])
+    setShowReset(false)
   }
 
   const formatMessage = (text: string) => {
@@ -774,7 +812,7 @@ export default function GovernmentPage() {
         result.push(
           <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '9px 12px', margin: '4px 0', background: color+'0e', borderLeft: '3px solid '+color, borderRadius: '0 8px 8px 0' }}>
             <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, marginTop: 1 }}>{numMatch[1]}</span>
-            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.65' }}>{renderInline(numMatch[2], 'n'+i)}</span>
+            <span style={{ flex: 1, fontSize: 'clamp(13px,3.5vw,15px)', lineHeight: '1.7' }}>{renderInline(numMatch[2], 'n'+i)}</span>
           </div>
         )
         return
@@ -784,9 +822,9 @@ export default function GovernmentPage() {
       const dashMatch = trimmed.match(/^[-•·▸]\s+(.+)/)
       if (dashMatch) {
         result.push(
-          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '5px 4px', margin: '2px 0' }}>
-            <span style={{ flexShrink: 0, color: '#60a5fa', fontWeight: 900, fontSize: 12, marginTop: 3 }}>•</span>
-            <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.65', color: 'var(--text)' }}>{renderInline(dashMatch[1], 'd'+i)}</span>
+          <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '4px 2px', margin: '1px 0' }}>
+            <span style={{ flexShrink: 0, color: '#60a5fa', fontWeight: 900, fontSize: 14, marginTop: 2, lineHeight: 1.5 }}>•</span>
+            <span style={{ flex: 1, fontSize: 'clamp(13px,3.5vw,15px)', lineHeight: '1.7', color: 'var(--text)' }}>{renderInline(dashMatch[1], 'd'+i)}</span>
           </div>
         )
         return
@@ -852,6 +890,8 @@ export default function GovernmentPage() {
         * { box-sizing: border-box; }
         select option { background: #1c1c28; }
         .guide-tag:hover { transform: scale(1.08); transition: transform 0.2s; }
+        .cat-scroll::-webkit-scrollbar { display: none; }
+        .cat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* 헤더 */}
@@ -862,9 +902,10 @@ export default function GovernmentPage() {
       }}>
         <button onClick={() => router.push('/')} style={{
           background: 'var(--surface2)', border: '1px solid var(--border)',
-          color: 'var(--text)', borderRadius: '8px', padding: '7px 12px',
-          cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0,
-        }}>← 돌아가기</button>
+          color: 'var(--text)', borderRadius: '10px', padding: '10px 14px',
+          cursor: 'pointer', fontSize: '14px', whiteSpace: 'nowrap', flexShrink: 0,
+          minHeight: 44, display: 'flex', alignItems: 'center',
+        }}>←</button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
           <span style={{ fontSize: '20px', flexShrink: 0 }}>🏛️</span>
@@ -880,11 +921,77 @@ export default function GovernmentPage() {
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} />
           AI
         </div>
+
+        <button onClick={() => setShowReset(true)} title="대화 초기화" style={{
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+          color: '#f87171', borderRadius: '10px', padding: '10px 12px',
+          cursor: 'pointer', fontSize: '18px', flexShrink: 0,
+          minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>🔄</button>
       </div>
 
-      {/* 채팅 영역 */}
+      {/* 초기화 확인 팝업 */}
+      {showReset && (
+        <div onClick={() => setShowReset(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 900,
+          background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '20px', padding: '28px 24px', maxWidth: 300, width: '100%', textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔄</div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>대화 초기화</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
+              지금까지의 대화 내용이 모두 지워져요.<br />초기화할까요?
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowReset(false)} style={{
+                flex: 1, padding: '11px', background: 'var(--surface2)',
+                border: '1px solid var(--border)', borderRadius: '12px',
+                color: 'var(--text)', cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                fontFamily: "'Noto Sans KR',sans-serif",
+              }}>취소</button>
+              <button onClick={resetChat} style={{
+                flex: 1, padding: '11px', background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+                border: 'none', borderRadius: '12px', color: 'white',
+                cursor: 'pointer', fontSize: '14px', fontWeight: 700,
+                fontFamily: "'Noto Sans KR',sans-serif",
+                boxShadow: '0 4px 16px rgba(239,68,68,0.35)',
+              }}>초기화</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 카테고리 카드 - 가로 스크롤 */}
+      <div className="cat-scroll" style={{
+        overflowX: 'auto', display: 'flex', gap: '8px',
+        padding: '10px 16px', background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        scrollbarWidth: 'none',
+      }}>
+        {CATEGORY_CARDS.map((c, i) => (
+          <button key={i} onClick={() => sendMessage(c.q)} style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+            padding: '10px 14px', borderRadius: '14px', cursor: 'pointer', flexShrink: 0,
+            border: '1px solid ' + c.color + '33',
+            background: c.color + '10',
+            transition: 'all 0.2s', fontFamily: "'Noto Sans KR',sans-serif",
+          }}
+            onMouseEnter={(e) => { const el = e.currentTarget; el.style.background = c.color + '22'; el.style.transform = 'translateY(-2px)' }}
+            onMouseLeave={(e) => { const el = e.currentTarget; el.style.background = c.color + '10'; el.style.transform = '' }}
+          >
+            <span style={{ fontSize: '20px' }}>{c.emoji}</span>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: c.color, whiteSpace: 'nowrap' }}>{c.label}</span>
+          </button>
+        ))}
+      </div>
       <div style={{
         flex: 1, overflowY: 'auto', padding: 'clamp(12px,3vw,20px)',
+        paddingBottom: 'clamp(16px,4vw,24px)',
         maxWidth: '800px', width: '100%', margin: '0 auto',
         display: 'flex', flexDirection: 'column', gap: '16px',
       }}>
@@ -946,14 +1053,44 @@ export default function GovernmentPage() {
 
         {messages.length === 1 && (
           <div style={{ marginTop: '4px' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>💡 자주 묻는 질문</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 700 }}>💡 자주 묻는 질문</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {QUICK_QUESTIONS.map((q, i) => (
                 <button key={i} onClick={() => sendMessage(q)} style={{
                   background: 'var(--surface)', border: '1px solid var(--border)',
-                  color: 'var(--text)', borderRadius: '20px', padding: '8px 14px',
+                  color: 'var(--text)', borderRadius: '20px', padding: '8px 16px',
                   fontSize: '13px', cursor: 'pointer', textAlign: 'left', lineHeight: '1.4',
-                }}>{q}</button>
+                  transition: 'all 0.2s', fontFamily: "'Noto Sans KR',sans-serif",
+                }}
+                  onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderColor='var(--accent)'; el.style.color='var(--accent)' }}
+                  onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderColor='var(--border)'; el.style.color='var(--text)' }}
+                >{q}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI 추천 질문 */}
+        {suggestions.length > 0 && !loading && (
+          <div style={{ marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              💬 이런 것도 궁금하지 않으세요?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {suggestions.map((s, i) => (
+                <button key={i} onClick={() => sendMessage(s)} style={{
+                  background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)',
+                  color: 'var(--text)', borderRadius: '12px', padding: '10px 16px',
+                  fontSize: '13px', cursor: 'pointer', textAlign: 'left', lineHeight: '1.5',
+                  width: '100%', fontFamily: "'Noto Sans KR',sans-serif", transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                }}
+                  onMouseEnter={(e) => { const el = e.currentTarget; el.style.background='rgba(255,107,53,0.14)'; el.style.transform='translateX(4px)' }}
+                  onMouseLeave={(e) => { const el = e.currentTarget; el.style.background='rgba(255,107,53,0.06)'; el.style.transform='' }}
+                >
+                  <span style={{ color: 'var(--accent)', fontWeight: 900, flexShrink: 0 }}>→</span>
+                  <span>{s}</span>
+                </button>
               ))}
             </div>
           </div>
@@ -965,7 +1102,9 @@ export default function GovernmentPage() {
       {/* 입력창 */}
       <div style={{
         background: 'var(--surface)', borderTop: '1px solid var(--border)',
-        padding: '12px 16px', position: 'sticky', bottom: 0,
+        padding: '10px 14px',
+        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        position: 'sticky', bottom: 0,
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', gap: '8px' }}>
           <input
@@ -976,8 +1115,9 @@ export default function GovernmentPage() {
             disabled={loading}
             style={{
               flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: '12px', padding: '12px 14px', color: 'var(--text)',
-              fontSize: '14px', outline: 'none', minWidth: 0,
+              borderRadius: '24px', padding: '12px 18px', color: 'var(--text)',
+              fontSize: '16px', outline: 'none', minWidth: 0,
+              WebkitAppearance: 'none',
             }}
           />
           <button
@@ -985,15 +1125,15 @@ export default function GovernmentPage() {
             disabled={loading || !input.trim()}
             style={{
               background: 'var(--accent)', color: 'white', border: 'none',
-              borderRadius: '12px', padding: '12px 16px', fontSize: '14px',
-              fontWeight: 700, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-              opacity: loading || !input.trim() ? 0.5 : 1,
-              whiteSpace: 'nowrap', flexShrink: 0,
+              borderRadius: '50%', width: 48, height: 48, fontSize: '20px',
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              opacity: loading || !input.trim() ? 0.4 : 1,
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
-          >전송</button>
+          >↑</button>
         </div>
-        <div style={{ maxWidth: '800px', margin: '6px auto 0', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center' }}>
-          AI+웹검색 기반 | 정확한 정보는 소상공인시장진흥공단(1357) 문의
+        <div style={{ maxWidth: '800px', margin: '6px auto 0', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+          AI+웹검색 · 소상공인시장진흥공단 ☎ 1357
         </div>
       </div>
       {/* 노란 플로팅 버튼 */}
