@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Theme = 'dark' | 'light' | 'pink'
+type Theme = 'dark' | 'light' | 'yellow'
 
 const THEMES = {
   dark:  { bg: '#0a0a0f', surface: '#13131a', surface2: '#1c1c28', border: '#2a2a3a', accent: '#ff6b35', text: '#f0f0f5', muted: '#8888aa', green: '#00e5a0' },
   light: { bg: '#f5f5f7', surface: '#ffffff', surface2: '#ebebef', border: '#d0d0dc', accent: '#ff6b35', text: '#1a1a2e', muted: '#666688', green: '#00b37a' },
-  pink:  { bg: '#1a0a14', surface: '#241018', surface2: '#2e1520', border: '#4a2035', accent: '#ff4d8f', text: '#fff0f5', muted: '#cc88aa', green: '#ff80c0' },
+  yellow: { bg: '#0a0900', surface: '#1a1500', surface2: '#1e1a00', border: '#3a3000', accent: '#ff6b35', text: '#fff8dc', muted: '#aa9900', green: '#00e5a0' },
 }
 
 export default function Page() {
@@ -132,7 +132,7 @@ export default function Page() {
               {([
                 { key: 'dark', label: '🌙', name: '다크' },
                 { key: 'light', label: '☀️', name: '라이트' },
-                { key: 'pink', label: '🌸', name: '핑크' },
+                { key: 'yellow', label: '⭐', name: '옐로우' },
               ] as const).map(th => (
                 <button key={th.key} onClick={() => setTheme(th.key)} style={{
                   padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
