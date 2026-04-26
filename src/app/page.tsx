@@ -33,6 +33,7 @@ export default function Home() {
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
+    localStorage.setItem('storeauto_theme', theme)
   }, [theme])
 
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function Home() {
 
   const [persona, setPersona] = useState<'A' | 'B' | 'C' | 'D'>('A')
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>('gemini')
+  const [platform, setPlatform] = useState<'smartstore' | 'coupang' | 'elevenst' | 'own'>('smartstore')
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
@@ -215,7 +217,16 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
         C: '감성 스토리텔러처럼 써주세요. 사용 전 불편함 → 발견 → 사용 후 변화 스토리 구조, 감정 이입, 계절감과 일상 장면 묘사.',
         D: '실속파 소비자처럼 써주세요. 가성비, 실용성, 직접 비교 중심. 이 가격에 이 퀄리티면, 돈 아깝지 않아요 같은 표현.',
       }
-      const prompt = `당신은 대한민국 최고의 스마트스토어 상품 상세페이지 전문 카피라이터입니다.
+      const PLATFORM_GUIDES: Record<string, string> = {
+        smartstore: '네이버 스마트스토어 최적화: description 700자 이상, 네이버 쇼핑 검색 키워드 반영, 리뷰/찜 유도 문구 포함.',
+        coupang: '쿠팡 최적화: 로켓배송/빠른 배송 강조, 핵심 특장점 상단 집중, 가성비와 실용성 중심, 간결하고 직관적인 문체, description 500자 이내.',
+        elevenst: '11번가 최적화: 할인/쿠폰 혜택 강조, 다양한 결제혜택 언급, 검색 키워드 풍부하게, description 600자 내외.',
+        own: '자사몰/브랜드몰 최적화: 브랜드 스토리와 철학 강조, 프리미엄 감성, 충성고객 형성을 위한 감성 카피, 재구매 유도, description 800자 이상.',
+      }
+      const prompt = `당신은 대한민국 최고의 온라인 쇼핑몰 상품 상세페이지 전문 카피라이터입니다.
+
+[플랫폼] ${platform === 'smartstore' ? '네이버 스마트스토어' : platform === 'coupang' ? '쿠팡' : platform === 'elevenst' ? '11번가' : '자사몰/브랜드몰'}
+[플랫폼 최적화 규칙] ${PLATFORM_GUIDES[platform]}
 
 [상품 정보]
 - 상품명: ${input.productName}
@@ -360,24 +371,27 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => router.push('/settings')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid var(--accent)', background: 'rgba(255,107,53,0.1)',
                 color: 'var(--accent)', transition: 'all 0.15s',
-              }}>⚙️ 키 설정</button>
+                whiteSpace: 'nowrap',
+              }}>⚙️ 설정</button>
               <button onClick={() => router.push('/reviews')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
+                borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid #f59e0b', background: 'rgba(245,158,11,0.1)',
                 color: '#f59e0b', transition: 'all 0.15s',
-              }}>💬 리뷰 답글</button>
+                whiteSpace: 'nowrap',
+              }}>💬 리뷰</button>
               <button onClick={() => router.push('/government')} style={{
                 padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
                 borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit',
                 border: '1px solid #34d399', background: 'rgba(52,211,153,0.1)',
-                color: '#34d399', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                color: '#34d399', transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
               }}>🏛️ 지원</button>
               {history.length > 0 && (
                 <button onClick={() => setShowHistory(v => !v)} style={{
@@ -405,11 +419,14 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             </div>
           </div>
           <h1 style={{ fontSize: 'clamp(24px, 6vw, 48px)', fontWeight: 900, lineHeight: 1.15 }}>
-            스마트스토어 상세페이지<br />
-            <span style={{ color: 'var(--accent)' }}>10초</span>면 완성
+            혼자 운영하는 사장님을 위한<br />
+            <span style={{ color: 'var(--accent)' }}>AI 비서</span>
           </h1>
           <p style={{ color: 'var(--text-muted)', marginTop: '10px', fontSize: 'clamp(13px, 3vw, 15px)' }}>
-            상품 정보만 입력하면 키워드 · 설명 · FAQ · HTML까지 한 번에
+            상세페이지 10초 · 리뷰 자동답글 · 정부지원 AI상담 — 전부 무료로
+          </p>
+          <p style={{ marginTop: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', color: 'var(--accent)', fontWeight: 700, cursor: 'pointer' }}>
+            지금 바로 시작해보세요 →
           </p>
         </div>
 
@@ -519,11 +536,31 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               initialQuery={trendQuery}
             />
 
+            {/* 플랫폼 선택 */}
+            <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)' }}>
+              <Label>판매 플랫폼 선택</Label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {([
+                  { key: 'smartstore', emoji: '🟢', label: '스마트스토어', desc: '네이버 쇼핑 최적화' },
+                  { key: 'coupang',    emoji: '🟡', label: '쿠팡',        desc: '로켓배송·가성비 중심' },
+                  { key: 'elevenst',  emoji: '🔴', label: '11번가',      desc: '할인·쿠폰 강조' },
+                  { key: 'own',        emoji: '🏷️', label: '자사몰',      desc: '브랜드 스토리 중심' },
+                ] as const).map(p => (
+                  <button key={p.key} onClick={() => setPlatform(p.key)} style={{
+                    padding: 'clamp(10px,2vw,12px)', borderRadius: '8px', cursor: 'pointer',
+                    border: platform === p.key ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    background: platform === p.key ? 'rgba(255,107,53,0.1)' : 'var(--surface)',
+                    textAlign: 'left' as const, fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: platform === p.key ? 'var(--accent)' : 'var(--text)', marginBottom: '2px' }}>{p.emoji} {p.label}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 페르소나 선택 */}
-            <div style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
-            }}>
+            <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)' }}>
               <Label>글쓰기 스타일 선택</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {([
@@ -555,9 +592,9 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 {([
-                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b', hasKey: !!geminiKey, cap: '글쓰기만 가능', capColor: '#f59e0b' },
-                  { key: 'openai', label: '⬡ OpenAI', badge: '유료',    badgeColor: '#ef4444', hasKey: !!openaiKey, cap: '이미지분석 + 글쓰기', capColor: '#34d399' },
-                  { key: 'groq',   label: '⚡ Groq',   badge: '무료',    badgeColor: '#00e5a0', hasKey: !!groqKey,   cap: '글쓰기만 가능', capColor: '#60a5fa' },
+                  { key: 'gemini', label: '✦ Gemini', badge: '일부무료', badgeColor: '#f59e0b', hasKey: !!geminiKey },
+                  { key: 'openai', label: '⬡ OpenAI', badge: '유료',    badgeColor: '#ef4444', hasKey: !!openaiKey },
+                  { key: 'groq',   label: '⚡ Groq',   badge: '무료',    badgeColor: '#00e5a0', hasKey: !!groqKey },
                 ] as const).map(p => (
                   <button key={p.key} onClick={() => setProvider(p.key)} style={{
                     flex: 1, padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px',
@@ -572,9 +609,6 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                     <span style={{ display: 'block', fontSize: '10px', fontWeight: 600, marginTop: '2px',
                       color: provider === p.key ? 'rgba(255,255,255,0.85)' : p.badgeColor,
                     }}>{p.badge}</span>
-                    <span style={{ display: 'block', fontSize: '10px', fontWeight: 700, marginTop: '3px',
-                      color: provider === p.key ? 'rgba(255,255,255,0.9)' : p.capColor,
-                    }}>{p.cap}</span>
                   </button>
                 ))}
               </div>
@@ -844,14 +878,16 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       </div>
 
       {/* 숨겨진 관리자 버튼 */}
-      <button onClick={() => router.push('/admin')} title="관리자" style={{
-        position: 'fixed', bottom: '16px', left: '16px', zIndex: 50,
+      <button onClick={() => router.push('/admin')} style={{
+        position: 'fixed', bottom: '16px', right: '16px',
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
         color: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '6px 8px',
-        cursor: 'pointer', fontSize: '14px', transition: 'all 0.3s',
+        cursor: 'pointer', fontSize: '14px', zIndex: 50,
+        transition: 'all 0.3s',
       }}
-        onMouseEnter={(e) => { const el = e.currentTarget; el.style.color = 'rgba(255,107,53,0.7)'; el.style.borderColor = 'rgba(255,107,53,0.25)' }}
-        onMouseLeave={(e) => { const el = e.currentTarget; el.style.color = 'rgba(255,255,255,0.15)'; el.style.borderColor = 'rgba(255,255,255,0.06)' }}
+        onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,107,53,0.6)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,107,53,0.2)' }}
+        onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(255,255,255,0.15)'; (e.target as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' }}
+        title="관리자"
       >⚙️</button>
     </>
   )
