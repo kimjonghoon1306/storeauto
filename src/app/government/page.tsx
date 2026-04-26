@@ -560,6 +560,7 @@ export default function GovernmentPage() {
   const [showGuide, setShowGuide] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showReset, setShowReset] = useState(false)
+  const [expandedMsgs, setExpandedMsgs] = useState<Set<number>>(new Set())
   const bottomRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -1023,7 +1024,27 @@ export default function GovernmentPage() {
               boxShadow: msg.role === 'assistant' ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
               wordBreak: 'break-word',
             }}>
-              {formatMessage(msg.content)}
+              {msg.role === 'assistant' && msg.content.length > 400 ? (
+                <>
+                  {expandedMsgs.has(i)
+                    ? formatMessage(msg.content)
+                    : formatMessage(msg.content.slice(0, 350) + '...')
+                  }
+                  <button onClick={() => setExpandedMsgs(prev => {
+                    const next = new Set(prev)
+                    if (next.has(i)) next.delete(i); else next.add(i)
+                    return next
+                  })} style={{
+                    display: 'block', marginTop: '10px',
+                    background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.25)',
+                    borderRadius: '8px', padding: '6px 14px', fontSize: '12px',
+                    fontWeight: 700, color: 'var(--accent)', cursor: 'pointer',
+                    fontFamily: "'Noto Sans KR',sans-serif",
+                  }}>
+                    {expandedMsgs.has(i) ? '▲ 접기' : '▼ 전체 보기'}
+                  </button>
+                </>
+              ) : formatMessage(msg.content)}
             </div>
           </div>
         ))}
