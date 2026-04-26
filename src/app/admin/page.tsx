@@ -155,13 +155,20 @@ export default function AdminPage() {
   const saveKeys = async () => {
     setBusy(true)
     try {
-      await supabaseQuery('admin_config','POST',{key:'gemini_key',value:gemini},'on_conflict=key')
-      await supabaseQuery('admin_config','POST',{key:'datalab_id',value:dlId},'on_conflict=key')
-      await supabaseQuery('admin_config','POST',{key:'datalab_secret',value:dlSec},'on_conflict=key')
+      const existing = await supabaseQuery('admin_config','GET',undefined,'select=key') as Array<{key:string}>
+      const existKeys = Array.isArray(existing) ? existing.map((r) => r.key) : []
+
+      for (const [k, v] of [['gemini_key',gemini],['datalab_id',dlId],['datalab_secret',dlSec]]) {
+        if (existKeys.includes(k)) {
+          await supabaseQuery('admin_config','PATCH',{value:v},'key=eq.'+k)
+        } else {
+          await supabaseQuery('admin_config','POST',{key:k,value:v})
+        }
+      }
       const prev = JSON.parse(localStorage.getItem('storeauto_keys')||'{}') as Record<string,string>
       localStorage.setItem('storeauto_keys', JSON.stringify({...prev, gemini}))
       pop('✅ 키 저장 완료!')
-    } catch (_e) { pop('❌ 저장 실패', false) }
+    } catch (_e) { pop('❌ ' + (_e instanceof Error ? _e.message : '저장 실패'), false) }
     setBusy(false)
   }
 
@@ -215,16 +222,25 @@ export default function AdminPage() {
   const changePw = async () => {
     setBusy(true)
     try {
+      // 현재 비번 확인
       const res = await supabaseQuery('admin_config','GET',undefined,'select=value&key=eq.admin_password') as Array<{value:string}>
       const stored = (Array.isArray(res) && res[0]?.value) ? res[0].value : DEFAULT_PW
       if (oldPw!==stored) { pop('❌ 현재 비밀번호 틀림', false); setBusy(false); return }
       if (newP1.length<4) { pop('❌ 4자 이상 입력', false); setBusy(false); return }
       if (newP1!==newP2)  { pop('❌ 비밀번호 불일치', false); setBusy(false); return }
-      await supabaseQuery('admin_config','POST',{key:'admin_password',value:newP1},'on_conflict=key')
-      localStorage.setItem(ADMIN_PW_KEY, newP1) // 로컬도 같이 저장
+
+      // 기존 레코드 있으면 PATCH, 없으면 POST
+      const exists = Array.isArray(res) && res.length > 0
+      if (exists) {
+        await supabaseQuery('admin_config','PATCH',{value:newP1},'key=eq.admin_password')
+      } else {
+        await supabaseQuery('admin_config','POST',{key:'admin_password',value:newP1})
+      }
+
+      localStorage.setItem(ADMIN_PW_KEY, newP1)
       setOldPw(''); setNewP1(''); setNewP2('')
       pop('✅ 비밀번호 변경 완료! 모든 기기에 적용됩니다.')
-    } catch (_e) { pop('❌ 저장 실패', false) }
+    } catch (_e) { pop('❌ ' + (_e instanceof Error ? _e.message : '저장 실패'), false) }
     setBusy(false)
   }
 
