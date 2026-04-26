@@ -115,10 +115,19 @@ export default function AdminPage() {
     setBusy(false)
   }, [])
 
-  const login = useCallback(() => {
-    const stored = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
-    if (pw === stored) { setAuthed(true); loadAll() }
-    else { setShake(true); setTimeout(() => setShake(false), 500) }
+  const login = useCallback(async () => {
+    setBusy(true)
+    try {
+      const res = await supabaseQuery('admin_config','GET',undefined,'select=value&key=eq.admin_password') as Array<{value:string}>
+      const stored = (Array.isArray(res) && res[0]?.value) ? res[0].value : DEFAULT_PW
+      if (pw === stored) { setAuthed(true); loadAll() }
+      else { setBusy(false); setShake(true); setTimeout(() => setShake(false), 500) }
+    } catch (_e) {
+      // Supabase 실패 시 기본 비번으로 폴백
+      const local = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
+      if (pw === local) { setAuthed(true); loadAll() }
+      else { setBusy(false); setShake(true); setTimeout(() => setShake(false), 500) }
+    }
   }, [pw, loadAll])
 
   useEffect(() => {
@@ -199,14 +208,20 @@ export default function AdminPage() {
     } catch (_e) { pop('❌ 오류', false) }
   }
 
-  const changePw = () => {
-    const stored = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
-    if (oldPw!==stored) { pop('❌ 현재 비밀번호 틀림', false); return }
-    if (newP1.length<4) { pop('❌ 4자 이상 입력', false); return }
-    if (newP1!==newP2)  { pop('❌ 비밀번호 불일치', false); return }
-    localStorage.setItem(ADMIN_PW_KEY, newP1)
-    setOldPw(''); setNewP1(''); setNewP2('')
-    pop('✅ 비밀번호 변경 완료!')
+  const changePw = async () => {
+    setBusy(true)
+    try {
+      const res = await supabaseQuery('admin_config','GET',undefined,'select=value&key=eq.admin_password') as Array<{value:string}>
+      const stored = (Array.isArray(res) && res[0]?.value) ? res[0].value : DEFAULT_PW
+      if (oldPw!==stored) { pop('❌ 현재 비밀번호 틀림', false); setBusy(false); return }
+      if (newP1.length<4) { pop('❌ 4자 이상 입력', false); setBusy(false); return }
+      if (newP1!==newP2)  { pop('❌ 비밀번호 불일치', false); setBusy(false); return }
+      await supabaseQuery('admin_config','POST',{key:'admin_password',value:newP1},'on_conflict=key')
+      localStorage.setItem(ADMIN_PW_KEY, newP1) // 로컬도 같이 저장
+      setOldPw(''); setNewP1(''); setNewP2('')
+      pop('✅ 비밀번호 변경 완료! 모든 기기에 적용됩니다.')
+    } catch (_e) { pop('❌ 저장 실패', false) }
+    setBusy(false)
   }
 
   const inputSt: React.CSSProperties = {
@@ -353,8 +368,8 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => router.push('/')} style={{ ...glowBtn('rgba(255,255,255,0.06)'), padding:'7px 14px', fontSize:12, color:MUTED, boxShadow:'none', border:'1px solid '+BORDER }}>메인</button>
-          <button onClick={() => setAuthed(false)} style={{ ...glowBtn('linear-gradient(135deg,#ef4444,#dc2626)'), padding:'7px 14px', fontSize:12, boxShadow:'0 4px 16px rgba(239,68,68,0.3)' }}>로그아웃</button>
+          <button onClick={() => router.push('/')} title="메인으로" style={{ ...glowBtn('rgba(255,255,255,0.06)'), padding:'8px 10px', fontSize:18, color:MUTED, boxShadow:'none', border:'1px solid '+BORDER, minWidth:40 }}>🏠</button>
+          <button onClick={() => setAuthed(false)} title="로그아웃" style={{ ...glowBtn('linear-gradient(135deg,#ef4444,#dc2626)'), padding:'8px 10px', fontSize:18, boxShadow:'0 4px 16px rgba(239,68,68,0.3)', minWidth:40 }}>🚪</button>
         </div>
       </div>
 
@@ -406,7 +421,8 @@ export default function AdminPage() {
 
           {/* ── API 키 ── */}
           {tab==='keys' && (
-            <div style={{ maxWidth:560 }}>
+            <div style={{ display:'flex', gap:40, alignItems:'flex-start' }}>
+              <div style={{ maxWidth:560, flex:1 }}>
               {[
                 { label:'Gemini API 키', badge:'무료', badgeColor:'#10b981', value:gemini, set:setGemini, show:showG, toggleShow:()=>setShowG(!showG), ph:'AIza...' },
                 { label:'네이버 데이터랩 Client ID', value:dlId, set:setDlId, show:showI, toggleShow:()=>setShowI(!showI), ph:'Client ID' },
@@ -429,8 +445,10 @@ export default function AdminPage() {
               ))}
               <GlowButton onClick={saveKeys} busy={busy} label="💾 저장하기" color="linear-gradient(135deg,#ff6b35,#ffd700)" glow="rgba(255,107,53,0.4)" />
               <div style={{ marginTop:20, padding:'16px 18px', background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:16, fontSize:13, color:'#34d399', lineHeight:1.8 }}>
-                💡 Gemini 키는 이 기기 localStorage에도 자동 저장돼요.<br />다른 기기에서는 /admin 로그인 후 저장 버튼 누르세요.
+                💡 모든 키는 Supabase에 저장되어 PC·모바일 어디서든 동기화돼요.
               </div>
+            </div>
+            <AdminCharacter color={activeTabInfo.color} emoji="🔑" label={"API 키를 저장하면\n모든 기기에서 사용 가능해요!"} />
             </div>
           )}
 
@@ -525,7 +543,8 @@ export default function AdminPage() {
 
           {/* ── 비밀번호 ── */}
           {tab==='password' && (
-            <div style={{ maxWidth:420 }}>
+            <div style={{ display:'flex', gap:40, alignItems:'flex-start' }}>
+              <div style={{ maxWidth:420, flex:1 }}>
               {[
                 { label:'현재 비밀번호', value:oldPw, set:setOldPw },
                 { label:'새 비밀번호 (4자 이상)', value:newP1, set:setNewP1 },
@@ -540,11 +559,14 @@ export default function AdminPage() {
                 </div>
               ))}
               <div style={{ marginTop:8, marginBottom:24 }}>
-                <GlowButton onClick={changePw} busy={false} label="🔒 비밀번호 변경" color="linear-gradient(135deg,#60a5fa,#3b82f6)" glow="rgba(96,165,250,0.4)" />
+                <GlowButton onClick={changePw} busy={busy} label="🔒 비밀번호 변경" color="linear-gradient(135deg,#60a5fa,#3b82f6)" glow="rgba(96,165,250,0.4)" />
               </div>
               <div style={{ padding:'16px 18px', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:16, fontSize:13, color:'#93c5fd', lineHeight:1.8 }}>
-                ⚠️ 비밀번호는 이 기기 localStorage에 저장됩니다.<br />초기 비밀번호: <strong>admin1234</strong>
+                ✅ 비밀번호는 Supabase에 저장되어 <strong>모든 기기에서 동기화</strong>됩니다.<br />
+                초기 비밀번호: <strong>admin1234</strong>
               </div>
+            </div>
+            <AdminCharacter color={activeTabInfo.color} emoji="🔒" label={"비밀번호 변경 시\n모든 기기에 즉시 적용돼요!"} />
             </div>
           )}
 
@@ -622,6 +644,108 @@ function EmptyState({ text }: { text:string }) {
     <div style={{ textAlign:'center', padding:'60px 20px', color:'#333' }}>
       <div style={{ fontSize:48, marginBottom:14, opacity:0.2 }}>📭</div>
       <div style={{ fontSize:15 }}>{text}</div>
+    </div>
+  )
+}
+
+function AdminCharacter({ color, emoji, label }: { color:string; emoji:string; label:string }) {
+  return (
+    <div style={{ flex:1, alignSelf:'stretch', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden', minHeight:400 }} className="admin-char">
+      <style>{`
+        @media(max-width:900px){.admin-char{display:none!important}}
+        @keyframes charFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-20px) rotate(2deg)}}
+        @keyframes ringRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes ringRotateR{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+        @keyframes glowBreath{0%,100%{opacity:0.2;transform:scale(0.95)}50%{opacity:0.6;transform:scale(1.05)}}
+        @keyframes starPop{0%,100%{transform:scale(1) rotate(0deg);opacity:0.6}50%{transform:scale(1.3) rotate(180deg);opacity:1}}
+        @keyframes particleDrift{0%{transform:translateY(0) translateX(0);opacity:0.8}100%{transform:translateY(-60px) translateX(20px);opacity:0}}
+      `}</style>
+
+      {/* SVG 배경 광원 */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id={'rg'+emoji} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={'rg2'+emoji} cx="30%" cy="70%" r="40%">
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          </radialGradient>
+          <filter id={'blur'+emoji}>
+            <feGaussianBlur stdDeviation="8" />
+          </filter>
+        </defs>
+        <ellipse cx="50%" cy="50%" rx="45%" ry="45%" fill={'url(#rg'+emoji+')'} style={{ animation:'glowBreath 3s ease-in-out infinite' }} />
+        <ellipse cx="30%" cy="70%" rx="30%" ry="30%" fill={'url(#rg2'+emoji+')'} style={{ animation:'glowBreath 4s ease-in-out infinite', animationDelay:'1s' }} />
+        {/* 격자 패턴 */}
+        {Array.from({length:6}).map((_,i) => (
+          <line key={'h'+i} x1="0" y1={`${(i+1)*14}%`} x2="100%" y2={`${(i+1)*14}%`} stroke={color} strokeOpacity="0.04" strokeWidth="1" />
+        ))}
+        {Array.from({length:6}).map((_,i) => (
+          <line key={'v'+i} x1={`${(i+1)*14}%`} y1="0" x2={`${(i+1)*14}%`} y2="100%" stroke={color} strokeOpacity="0.04" strokeWidth="1" />
+        ))}
+      </svg>
+
+      {/* 회전 링들 */}
+      <div style={{ position:'absolute', width:320, height:320, borderRadius:'50%', border:'1px dashed '+color+'30', animation:'ringRotate 12s linear infinite' }}>
+        <div style={{ position:'absolute', top:-5, left:'50%', marginLeft:-5, width:10, height:10, borderRadius:'50%', background:color, boxShadow:'0 0 12px '+color+', 0 0 24px '+color+'66' }} />
+      </div>
+      <div style={{ position:'absolute', width:240, height:240, borderRadius:'50%', border:'1px dashed '+color+'20', animation:'ringRotateR 8s linear infinite' }}>
+        <div style={{ position:'absolute', bottom:-4, left:'50%', marginLeft:-4, width:8, height:8, borderRadius:'50%', background:'#8b5cf6', boxShadow:'0 0 10px #8b5cf6' }} />
+      </div>
+      <div style={{ position:'absolute', width:180, height:180, borderRadius:'50%', border:'2px solid '+color+'15', animation:'ringRotate 20s linear infinite' }} />
+
+      {/* 별 파티클들 */}
+      {[
+        {top:'12%',left:'18%',delay:'0s',size:22},
+        {top:'18%',right:'15%',delay:'0.8s',size:16},
+        {bottom:'22%',left:'12%',delay:'1.6s',size:18},
+        {bottom:'14%',right:'18%',delay:'0.4s',size:20},
+        {top:'45%',left:'8%',delay:'1.2s',size:14},
+        {top:'40%',right:'8%',delay:'2s',size:16},
+      ].map((s, i) => (
+        <div key={i} style={{ position:'absolute', top:s.top, left:s.left, right:s.right, bottom:s.bottom, fontSize:s.size, animation:'starPop '+(2.5+i*0.3)+'s ease-in-out infinite', animationDelay:s.delay, filter:'drop-shadow(0 0 6px '+color+')' }}>✦</div>
+      ))}
+
+      {/* 캐릭터 본체 */}
+      <div style={{ animation:'charFloat 4s ease-in-out infinite', position:'relative', zIndex:2 }}>
+        {/* 외부 글로우 링 */}
+        <div style={{ position:'absolute', inset:-20, borderRadius:'50%', background:'radial-gradient(circle, '+color+'22 0%, transparent 70%)', animation:'glowBreath 2.5s ease-in-out infinite' }} />
+        {/* 메인 서클 */}
+        <div style={{
+          width:170, height:170, borderRadius:'50%',
+          background:'linear-gradient(135deg, '+color+'25, '+color+'08)',
+          border:'2px solid '+color+'50',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontSize:84, position:'relative',
+          boxShadow:'0 0 40px '+color+'44, 0 0 80px '+color+'22, inset 0 0 30px '+color+'11',
+        }}>
+          {emoji}
+          {/* 내부 하이라이트 */}
+          <div style={{ position:'absolute', top:12, left:20, width:40, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.12)', transform:'rotate(-30deg)' }} />
+        </div>
+      </div>
+
+      {/* 말풍선 */}
+      <div style={{ marginTop:28, position:'relative', zIndex:2 }}>
+        <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)', width:0, height:0, borderLeft:'12px solid transparent', borderRight:'12px solid transparent', borderBottom:'12px solid '+color+'40' }} />
+        <div style={{
+          background:'linear-gradient(135deg, '+color+'18, '+color+'08)',
+          border:'1.5px solid '+color+'40',
+          borderRadius:20, padding:'16px 24px',
+          textAlign:'center',
+          boxShadow:'0 8px 32px '+color+'20',
+          backdropFilter:'blur(10px)',
+        }}>
+          <div style={{ fontSize:14, fontWeight:900, color, lineHeight:1.8, whiteSpace:'pre-line', textShadow:'0 0 20px '+color+'66' }}>{label}</div>
+        </div>
+      </div>
+
+      {/* 하단 파티클 */}
+      {[{left:'30%',delay:'0s'},{left:'50%',delay:'1s'},{left:'70%',delay:'2s'}].map((p, i) => (
+        <div key={i} style={{ position:'absolute', bottom:'15%', left:p.left, width:4, height:4, borderRadius:'50%', background:color, animation:'particleDrift 3s ease-in-out infinite', animationDelay:p.delay, boxShadow:'0 0 8px '+color }} />
+      ))}
     </div>
   )
 }
