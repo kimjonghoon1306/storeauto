@@ -59,9 +59,13 @@ export default function AdminPage() {
   const [gemini, setGemini] = useState('')
   const [dlId, setDlId]     = useState('')
   const [dlSec, setDlSec]   = useState('')
+  const [openai, setOpenai] = useState('')
+  const [groq, setGroq]     = useState('')
   const [showG, setShowG]   = useState(false)
   const [showI, setShowI]   = useState(false)
   const [showS, setShowS]   = useState(false)
+  const [showO, setShowO]   = useState(false)
+  const [showGr, setShowGr] = useState(false)
 
   const [popups, setPopups]   = useState<PopupItem[]>([])
   const [pTitle, setPTitle]   = useState('')
@@ -111,6 +115,8 @@ export default function AdminPage() {
           if (c.key==='gemini_key')     setGemini(c.value||'')
           if (c.key==='datalab_id')     setDlId(c.value||'')
           if (c.key==='datalab_secret') setDlSec(c.value||'')
+          if (c.key==='openai_key')     setOpenai(c.value||'')
+          if (c.key==='groq_key')       setGroq(c.value||'')
         })
       }
       if (Array.isArray(pops)) setPopups(pops as PopupItem[])
@@ -158,16 +164,21 @@ export default function AdminPage() {
       const existing = await supabaseQuery('admin_config','GET',undefined,'select=key') as Array<{key:string}>
       const existKeys = Array.isArray(existing) ? existing.map((r) => r.key) : []
 
-      for (const [k, v] of [['gemini_key',gemini],['datalab_id',dlId],['datalab_secret',dlSec]]) {
+      for (const [k, v] of [
+        ['gemini_key', gemini],
+        ['datalab_id', dlId],
+        ['datalab_secret', dlSec],
+        ['openai_key', openai],
+        ['groq_key', groq],
+      ]) {
         if (existKeys.includes(k)) {
           await supabaseQuery('admin_config','PATCH',{value:v},'key=eq.'+k)
         } else {
           await supabaseQuery('admin_config','POST',{key:k,value:v})
         }
       }
-      const prev = JSON.parse(localStorage.getItem('storeauto_keys')||'{}') as Record<string,string>
-      localStorage.setItem('storeauto_keys', JSON.stringify({...prev, gemini}))
-      pop('✅ 키 저장 완료!')
+      // ⚠️ localStorage 절대 건드리지 않음 - 회원 키와 완전 분리
+      pop('✅ 키 저장 완료! (Supabase 전용)')
     } catch (_e) { pop('❌ ' + (_e instanceof Error ? _e.message : '저장 실패'), false) }
     setBusy(false)
   }
@@ -445,7 +456,9 @@ export default function AdminPage() {
             <div style={{ display:'flex', gap:40, alignItems:'flex-start' }}>
               <div style={{ maxWidth:560, flex:1 }}>
               {[
-                { label:'Gemini API 키', badge:'무료', badgeColor:'#10b981', value:gemini, set:setGemini, show:showG, toggleShow:()=>setShowG(!showG), ph:'AIza...' },
+                { label:'Gemini API 키', badge:'일부무료', badgeColor:'#f59e0b', value:gemini, set:setGemini, show:showG, toggleShow:()=>setShowG(!showG), ph:'AIza...' },
+                { label:'OpenAI API 키', badge:'유료', badgeColor:'#ef4444', value:openai, set:setOpenai, show:showO, toggleShow:()=>setShowO(!showO), ph:'sk-...' },
+                { label:'Groq API 키', badge:'무료', badgeColor:'#00e5a0', value:groq, set:setGroq, show:showGr, toggleShow:()=>setShowGr(!showGr), ph:'gsk_...' },
                 { label:'네이버 데이터랩 Client ID', value:dlId, set:setDlId, show:showI, toggleShow:()=>setShowI(!showI), ph:'Client ID' },
                 { label:'네이버 데이터랩 Client Secret', value:dlSec, set:setDlSec, show:showS, toggleShow:()=>setShowS(!showS), ph:'Client Secret' },
               ].map((f, i) => (
@@ -466,7 +479,8 @@ export default function AdminPage() {
               ))}
               <GlowButton onClick={saveKeys} busy={busy} label="💾 저장하기" color="linear-gradient(135deg,#ff6b35,#ffd700)" glow="rgba(255,107,53,0.4)" />
               <div style={{ marginTop:20, padding:'16px 18px', background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:16, fontSize:13, color:'#34d399', lineHeight:1.8 }}>
-                💡 모든 키는 Supabase에 저장되어 PC·모바일 어디서든 동기화돼요.
+                🔒 관리자 키는 <strong>Supabase에만 저장</strong>되며 일반 회원 키와 완전 분리됩니다.<br />
+                일반 회원은 각자 설정 페이지에서 본인 키를 입력해 사용해요.
               </div>
             </div>
             <AdminCharacter color={activeTabInfo.color} emoji="🔑" label={"API 키를 저장하면\n모든 기기에서 사용 가능해요!"} />
@@ -598,18 +612,19 @@ export default function AdminPage() {
       </div>
 
       {/* 하단 탭 — 모바일 */}
-      <div style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:SURFACE, borderTop:'1px solid '+BORDER, padding:'8px 0', backdropFilter:'blur(30px)' }} id="mobile-nav">
-        <div style={{ display:'flex', justifyContent:'space-around' }}>
+      <div style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:SURFACE, borderTop:'1px solid '+BORDER, paddingBottom:'env(safe-area-inset-bottom)', backdropFilter:'blur(30px)' }} id="mobile-nav">
+        <div style={{ display:'flex', justifyContent:'space-around', padding:'6px 0' }}>
           {TABS.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
-              display:'flex', flexDirection:'column', alignItems:'center', gap:4, padding:'6px 16px',
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+              gap:3, padding:'6px 0', flex:1,
               background:'transparent', border:'none', cursor:'pointer',
               color:tab===t.key?t.color:MUTED, fontFamily:"'Noto Sans KR',sans-serif",
-              fontSize:10, fontWeight:800, transition:'all 0.2s',
+              fontSize:9, fontWeight:800, transition:'all 0.2s', letterSpacing:'-0.3px',
               animation:tab===t.key?'bounce 1.5s ease-in-out infinite':'none',
             }}>
-              <span style={{ fontSize:22 }}>{t.icon}</span>
-              {t.label}
+              <span style={{ fontSize:20, lineHeight:1 }}>{t.icon}</span>
+              <span style={{ whiteSpace:'nowrap' }}>{t.label}</span>
             </button>
           ))}
         </div>
