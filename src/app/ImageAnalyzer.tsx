@@ -79,32 +79,8 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
     try {
       let text = ''
 
-      if (hasGeminiKey) {
-        // Gemini Vision
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inline_data: { mime_type: imageMime, data: imageBase64 } }
-                ]
-              }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-            }),
-          }
-        )
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err?.error?.message || 'Gemini 오류')
-        }
-        const data = await res.json()
-        text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      } else {
-        // OpenAI Vision
+      if (hasOpenAIKey) {
+        // OpenAI Vision 우선 (이미지 분석 안정적)
         const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -129,6 +105,30 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
         }
         const data = await res.json()
         text = data.choices?.[0]?.message?.content || ''
+      } else if (hasGeminiKey) {
+        // Gemini Vision 폴백
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: imageMime, data: imageBase64 } }
+                ]
+              }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+            }),
+          }
+        )
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err?.error?.message || 'Gemini 오류')
+        }
+        const data = await res.json()
+        text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
       }
 
       const cleaned = text.replace(/```json|```/g, '').trim()
