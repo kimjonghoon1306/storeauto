@@ -202,7 +202,12 @@ export default function LoginPage() {
               <>
                 {/* 이메일 */}
                 <div style={{ marginBottom:16 }}>
-                  <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:8 }}>이메일</div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                    <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px' }}>이메일</div>
+                    <button onClick={() => { setMode('find_email'); setError(''); setFoundEmail('') }} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
+                      이메일 찾기
+                    </button>
+                  </div>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="example@email.com" style={inputStyle}
                     onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT; (e.target as HTMLInputElement).style.boxShadow = `0 0 20px ${ACCENT}22` }}
                     onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border; (e.target as HTMLInputElement).style.boxShadow = 'none' }}
@@ -242,10 +247,6 @@ export default function LoginPage() {
                     계정이 없으신가요?{' '}
                     <button onClick={() => router.push('/signup')} style={{ background:'none', border:'none', color:ACCENT, fontWeight:700, cursor:'pointer', fontFamily:'inherit', fontSize:13 }}>회원가입</button>
                   </div>
-                  <button onClick={() => { setMode('find_email'); setError(''); setFoundEmail('') }} style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:10, padding:'10px', color:T.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = ACCENT; (e.currentTarget as HTMLElement).style.color = ACCENT }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.muted }}
-                  >🔍 이메일 찾기</button>
                   <button onClick={() => router.push('/?browse=1')} style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:10, padding:'10px', color:T.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = ACCENT; (e.currentTarget as HTMLElement).style.color = ACCENT }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.muted }}
