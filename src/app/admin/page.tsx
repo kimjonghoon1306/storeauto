@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseQuery } from '@/lib/supabase'
 
-type Tab = 'keys' | 'popup' | 'gov' | 'password'
+type Tab = 'keys' | 'popup' | 'gov' | 'password' | 'members'
 type Theme = 'dark' | 'light' | 'yellow'
 
 interface PopupItem {
@@ -40,6 +40,7 @@ const POPUP_TYPES = [
 
 const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
   { key:'keys',     icon:'🔑', label:'API 키',   color:'#ffd700' },
+  { key:'members',  icon:'👥', label:'회원관리', color:'#34d399' },
   { key:'popup',    icon:'📢', label:'팝업',     color:'#f472b6' },
   { key:'gov',      icon:'🏛️', label:'정부지원', color:'#34d399' },
   { key:'password', icon:'🔒', label:'비밀번호', color:'#60a5fa' },
@@ -80,6 +81,17 @@ export default function AdminPage() {
   const [gTitle, setGTitle]   = useState('')
   const [gCont, setGCont]     = useState('')
 
+  // 회원관리
+  interface Member { id: string; email: string; name: string; business_name: string; business_type: string; region: string; grade: string; expires_at: string; created_at: string; memo: string }
+  const [members, setMembers]         = useState<Member[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [memberLogs, setMemberLogs]   = useState<{ type: string; created_at: string; meta: string }[]>([])
+  const [memberLoading, setMemberLoading] = useState(false)
+  const [editGrade, setEditGrade]     = useState('')
+  const [editExpires, setEditExpires] = useState('')
+  const [editMemo, setEditMemo]       = useState('')
+
   const [oldPw, setOldPw] = useState('')
   const [newP1, setNewP1] = useState('')
   const [newP2, setNewP2] = useState('')
@@ -105,10 +117,11 @@ export default function AdminPage() {
   const loadAll = useCallback(async () => {
     setBusy(true)
     try {
-      const [configs, pops, govs] = await Promise.all([
+      const [configs, pops, govs, mems] = await Promise.all([
         supabaseQuery('admin_config','GET',undefined,'select=key,value'),
         supabaseQuery('popups','GET',undefined,'order=created_at.desc'),
         supabaseQuery('gov_support','GET',undefined,'order=created_at.desc'),
+        supabaseQuery('profiles','GET',undefined,'order=created_at.desc'),
       ])
       if (Array.isArray(configs)) {
         configs.forEach((c: { key: string; value: string }) => {
@@ -121,9 +134,41 @@ export default function AdminPage() {
       }
       if (Array.isArray(pops)) setPopups(pops as PopupItem[])
       if (Array.isArray(govs)) setGovList(govs as GovItem[])
+      if (Array.isArray(mems)) setMembers(mems as Member[])
     } catch (_e) { /* ignore */ }
     setBusy(false)
   }, [])
+
+  const loadMemberDetail = async (m: Member) => {
+    setSelectedMember(m)
+    setEditGrade(m.grade || 'free')
+    setEditExpires(m.expires_at ? m.expires_at.slice(0,10) : '')
+    setEditMemo(m.memo || '')
+    setMemberLoading(true)
+    try {
+      const logs = await supabaseQuery('usage_stats','GET',undefined,`user_id=eq.${m.id}&order=created_at.desc&limit=30`)
+      if (Array.isArray(logs)) setMemberLogs(logs as { type: string; created_at: string; meta: string }[])
+    } catch (_e) { /* ignore */ }
+    setMemberLoading(false)
+  }
+
+  const saveMemberGrade = async () => {
+    if (!selectedMember) return
+    setBusy(true)
+    try {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${selectedMember.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ grade:editGrade, expires_at:editExpires||null, memo:editMemo }),
+      })
+      setMembers(prev => prev.map(m => m.id===selectedMember.id ? {...m, grade:editGrade, expires_at:editExpires, memo:editMemo} : m))
+      setSelectedMember(prev => prev ? {...prev, grade:editGrade, expires_at:editExpires, memo:editMemo} : prev)
+      pop('✅ 회원 정보 저장!')
+    } catch (_e) { pop('❌ 저장 실패', false) }
+    setBusy(false)
+  }
 
   const login = useCallback(async () => {
     setBusy(true)
@@ -447,12 +492,139 @@ export default function AdminPage() {
               <div style={{ fontSize:'clamp(18px,3vw,22px)', fontWeight:900, color:TEXT, letterSpacing:'-0.3px' }}>{activeTabInfo.label}</div>
               <div style={{ fontSize:12, color:MUTED, marginTop:2 }}>
                 {tab==='keys'&&'Supabase 저장 → 모든 기기 자동 동기화'}
+                {tab==='members'&&'회원 등급·만료일·작업일지를 관리합니다'}
                 {tab==='popup'&&'방문자에게 표시될 팝업을 관리합니다'}
                 {tab==='gov'&&'챗봇이 우선 참고하는 지원정보'}
                 {tab==='password'&&'관리자 로그인 비밀번호 변경'}
               </div>
             </div>
           </div>
+
+          {/* ── 회원관리 ── */}
+          {tab==='members' && (
+            <div style={{ display:'flex', gap:24, height:'calc(100vh - 200px)', overflow:'hidden' }}>
+              {/* 회원 목록 */}
+              <div style={{ width:300, flexShrink:0, display:'flex', flexDirection:'column', gap:10 }}>
+                <input value={memberSearch} onChange={e=>setMemberSearch(e.target.value)} placeholder="이름, 이메일, 상호명 검색..." style={{ ...inputSt, borderRadius:12, fontSize:13 }} />
+                <div style={{ overflowY:'auto', display:'flex', flexDirection:'column', gap:6, flex:1 }}>
+                  {members.filter(m => !memberSearch || [m.email,m.name,m.business_name].some(v => v?.includes(memberSearch))).map(m => {
+                    const gradeColor = m.grade==='pro'?'#ffd700':m.grade==='vip'?'#f472b6':'#555'
+                    const expired = m.expires_at && new Date(m.expires_at) < new Date()
+                    return (
+                      <button key={m.id} onClick={()=>loadMemberDetail(m)} style={{ display:'flex', flexDirection:'column', gap:3, padding:'12px 14px', borderRadius:12, cursor:'pointer', border:'1px solid '+(selectedMember?.id===m.id?'#ff6b35':'rgba(255,255,255,0.06)'), background:selectedMember?.id===m.id?'rgba(255,107,53,0.1)':'rgba(255,255,255,0.02)', textAlign:'left', fontFamily:'inherit', transition:'all 0.15s' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <span style={{ fontSize:13, fontWeight:800, color:TEXT }}>{m.name||'이름없음'}</span>
+                          <div style={{ display:'flex', gap:4 }}>
+                            <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:gradeColor+'22', color:gradeColor, fontWeight:800 }}>{(m.grade||'free').toUpperCase()}</span>
+                            {expired && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(239,68,68,0.15)', color:'#f87171', fontWeight:800 }}>만료</span>}
+                          </div>
+                        </div>
+                        <span style={{ fontSize:11, color:MUTED }}>{m.email}</span>
+                        {m.business_name && <span style={{ fontSize:11, color:MUTED }}>{m.business_name}</span>}
+                      </button>
+                    )
+                  })}
+                  {members.length===0 && <div style={{ textAlign:'center', padding:'40px 0', color:MUTED, fontSize:13 }}>회원이 없어요</div>}
+                </div>
+                <div style={{ fontSize:11, color:MUTED, textAlign:'center' }}>총 {members.length}명</div>
+              </div>
+
+              {/* 회원 상세 */}
+              <div style={{ flex:1, overflowY:'auto' }}>
+                {!selectedMember ? (
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', color:MUTED }}>
+                    <div style={{ fontSize:48, marginBottom:12, opacity:0.2 }}>👤</div>
+                    <div style={{ fontSize:14 }}>회원을 선택해주세요</div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:16, animation:'fadeIn 0.2s ease' }}>
+                    {/* 기본 정보 */}
+                    <div style={{ background:SURFACE, border:'1px solid '+BORDER, borderRadius:16, padding:'18px 20px' }}>
+                      <div style={{ fontSize:13, fontWeight:900, color:'#34d399', marginBottom:14 }}>👤 기본 정보</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                        {[
+                          {l:'이름', v:selectedMember.name||'-'},
+                          {l:'이메일', v:selectedMember.email},
+                          {l:'상호명', v:selectedMember.business_name||'-'},
+                          {l:'연락처', v:(selectedMember as unknown as Record<string,string>).phone||'-'},
+                          {l:'업종', v:selectedMember.business_type||'-'},
+                          {l:'지역', v:selectedMember.region||'-'},
+                          {l:'가입일', v:selectedMember.created_at?.slice(0,10)||'-'},
+                        ].map(({l,v}) => (
+                          <div key={l}>
+                            <div style={{ fontSize:11, color:MUTED, fontWeight:700, marginBottom:3 }}>{l}</div>
+                            <div style={{ fontSize:13, color:TEXT }}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 등급/만료일 설정 */}
+                    <div style={{ background:SURFACE, border:'1px solid '+BORDER, borderRadius:16, padding:'18px 20px' }}>
+                      <div style={{ fontSize:13, fontWeight:900, color:'#ffd700', marginBottom:14 }}>⭐ 등급 / 만료일 설정</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                        <div>
+                          <div style={{ fontSize:11, color:MUTED, fontWeight:700, marginBottom:7 }}>등급</div>
+                          <select value={editGrade} onChange={e=>setEditGrade(e.target.value)} style={{ ...inputSt, cursor:'pointer', borderRadius:10 }}>
+                            <option value="free">FREE — 무료</option>
+                            <option value="pro">PRO — 유료</option>
+                            <option value="vip">VIP — 최상위</option>
+                            <option value="suspended">SUSPENDED — 정지</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div style={{ fontSize:11, color:MUTED, fontWeight:700, marginBottom:7 }}>사용 만료일</div>
+                          <input type="date" value={editExpires} onChange={e=>setEditExpires(e.target.value)} style={{ ...inputSt, borderRadius:10, colorScheme:'dark' }} />
+                        </div>
+                      </div>
+                      <div style={{ marginBottom:12 }}>
+                        <div style={{ fontSize:11, color:MUTED, fontWeight:700, marginBottom:7 }}>관리자 메모</div>
+                        <textarea value={editMemo} onChange={e=>setEditMemo(e.target.value)} placeholder="내부 메모 (회원에게 보이지 않아요)" rows={2} style={{ ...inputSt, resize:'vertical', borderRadius:10 }} />
+                      </div>
+                      <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                        <GlowButton onClick={saveMemberGrade} busy={busy} label="💾 저장" color="linear-gradient(135deg,#ffd700,#f59e0b)" glow="rgba(255,215,0,0.4)" />
+                        <button onClick={()=>{setEditExpires(new Date(Date.now()+30*86400000).toISOString().slice(0,10))}} style={{ padding:'10px 16px', background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', borderRadius:10, color:'#34d399', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>+30일</button>
+                        <button onClick={()=>{setEditExpires(new Date(Date.now()+90*86400000).toISOString().slice(0,10))}} style={{ padding:'10px 16px', background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', borderRadius:10, color:'#34d399', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>+90일</button>
+                        <button onClick={()=>{setEditExpires(new Date().toISOString().slice(0,10))}} style={{ padding:'10px 16px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:10, color:'#f87171', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>즉시만료</button>
+                      </div>
+                    </div>
+
+                    {/* 작업일지 */}
+                    <div style={{ background:SURFACE, border:'1px solid '+BORDER, borderRadius:16, padding:'18px 20px' }}>
+                      <div style={{ fontSize:13, fontWeight:900, color:'#60a5fa', marginBottom:14 }}>📋 작업일지 ({memberLogs.length}건)</div>
+                      {memberLoading ? (
+                        <div style={{ textAlign:'center', padding:'20px', color:MUTED, fontSize:13 }}>불러오는 중...</div>
+                      ) : memberLogs.length===0 ? (
+                        <div style={{ textAlign:'center', padding:'20px', color:MUTED, fontSize:13 }}>작업 기록이 없어요</div>
+                      ) : (
+                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                          {memberLogs.map((l,i) => {
+                            const typeMap: Record<string,{label:string;emoji:string;color:string}> = {
+                              detail_page:{label:'상세페이지',emoji:'📄',color:'#ff6b35'},
+                              review:{label:'리뷰답글',emoji:'💬',color:'#10b981'},
+                              government:{label:'정부지원',emoji:'🏛️',color:'#3b82f6'},
+                              work_log:{label:'작업일지',emoji:'📝',color:'#f59e0b'},
+                            }
+                            const info = typeMap[l.type] || {label:l.type,emoji:'📌',color:'#888'}
+                            return (
+                              <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', background:'rgba(255,255,255,0.02)', borderRadius:8 }}>
+                                <span style={{ fontSize:16, flexShrink:0 }}>{info.emoji}</span>
+                                <div style={{ flex:1, minWidth:0 }}>
+                                  <div style={{ fontSize:12, fontWeight:700, color:info.color }}>{info.label}</div>
+                                  {l.meta && <div style={{ fontSize:11, color:MUTED, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.meta}</div>}
+                                </div>
+                                <div style={{ fontSize:10, color:MUTED, flexShrink:0 }}>{new Date(l.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── API 키 ── */}
           {tab==='keys' && (
