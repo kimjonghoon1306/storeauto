@@ -7,6 +7,7 @@ import TrendSearch from './TrendSearch'
 import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
+import { loadSession } from '@/lib/auth'
 
 
 const CATEGORIES = [
@@ -29,7 +30,9 @@ export default function Home() {
   const [copied, setCopied] = useState<string | null>(null)
   const [history, setHistory] = useState<{id: number; date: string; productName: string; result: GeneratedResult}[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light' | 'pink'>('dark')
+  const [browseMode, setBrowseMode] = useState(false)
+  const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
+  const [theme, setTheme] = useState<'dark' | 'light' | 'yellow'>('dark')
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
@@ -40,6 +43,12 @@ export default function Home() {
     try {
       const saved = localStorage.getItem('storeauto_history')
       if (saved) setHistory(JSON.parse(saved))
+      // 인증 상태 확인
+      const session = loadSession()
+      if (session) setAuthUser({ email: session.email, id: session.id })
+      // 둘러보기 모드
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('browse') === '1') setBrowseMode(true)
     } catch {}
   }, [])
 
@@ -66,7 +75,7 @@ export default function Home() {
         if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
       }
       const savedTheme = localStorage.getItem('storeauto_theme')
-      if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'pink')
+      if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'yellow')
     } catch {}
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
@@ -197,6 +206,10 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
   }
 
   const handleSubmit = async () => {
+    if (browseMode) {
+      setError('둘러보기 모드에서는 기능을 사용할 수 없어요. 로그인 후 이용해주세요.')
+      return
+    }
     if (!input.productName || !input.category || input.features.length === 0 || !input.targetCustomer || !input.priceRange) {
       setError('필수 항목을 모두 입력해주세요.')
       return
@@ -353,6 +366,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
     <>
       <GuideModal />
 
+      {/* 둘러보기 모드 배너 */}
+      {browseMode && (
+        <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1px solid rgba(255,107,53,0.3)', borderRadius: 14, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(20px)', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 13, color: '#f0f0ff' }}>👀 둘러보기 모드 — 기능 사용 불가</span>
+          <button onClick={() => router.push('/login')} style={{ padding: '7px 16px', background: 'linear-gradient(135deg,#ff6b35,#ffd700)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>🔐 로그인하기</button>
+          <button onClick={() => setBrowseMode(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 18 }}>×</button>
+        </div>
+      )}
+
 
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 20px) 80px' }}>
 
@@ -400,12 +422,29 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   cursor: 'pointer', fontFamily: 'inherit',
                   border: '1px solid var(--border)', background: 'var(--surface2)',
                   color: 'var(--text-muted)', transition: 'all 0.15s',
-                }}>📋 기록 ({history.length})</button>
+                }}>📋 ({history.length})</button>
+              )}
+              {authUser ? (
+                <button onClick={() => router.push('/mypage')} style={{
+                  padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                  borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.1)',
+                  color: '#ffd700', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}>👤 MY</button>
+              ) : (
+                <button onClick={() => router.push('/login')} style={{
+                  padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                  borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid rgba(255,107,53,0.3)', background: 'rgba(255,107,53,0.1)',
+                  color: 'var(--accent)', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}>🔐 로그인</button>
               )}
               {([
                 { key: 'dark', label: '🌙' },
                 { key: 'light', label: '☀️' },
-                { key: 'pink', label: '🌸' },
+                { key: 'yellow', label: '⭐' },
               ] as const).map(t => (
                 <button key={t.key} onClick={() => setTheme(t.key)} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
