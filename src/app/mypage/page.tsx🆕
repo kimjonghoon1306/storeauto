@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { loadSession, signOut, getProfile, upsertProfile, getUsageStats, getBookmarks, deleteBookmark, type Profile, type AuthUser } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
-type Tab = 'profile' | 'stats' | 'history' | 'bookmark' | 'keys'
+type Tab = 'profile' | 'stats' | 'history' | 'worklog' | 'bookmark' | 'keys'
 
 const THEMES = {
   dark:   { bg: '#050510', surface: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', surface2: 'rgba(255,255,255,0.02)', card: 'rgba(255,255,255,0.06)' },
@@ -17,6 +17,7 @@ const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
   { key: 'profile',  icon: '👤', label: '프로필',   color: '#ff6b35' },
   { key: 'stats',    icon: '📊', label: '통계',     color: '#3b82f6' },
   { key: 'history',  icon: '📋', label: '히스토리', color: '#10b981' },
+  { key: 'worklog',  icon: '📝', label: '작업일지', color: '#f59e0b' },
   { key: 'bookmark', icon: '⭐', label: '즐겨찾기', color: '#f59e0b' },
   { key: 'keys',     icon: '🔑', label: 'API 키',   color: '#8b5cf6' },
 ]
@@ -36,6 +37,12 @@ export default function MyPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [keys, setKeys] = useState({ gemini: '', openai: '', groq: '' })
+  // 작업일지
+  const [workLogs, setWorkLogs] = useState<{ id: string; title: string; content: string; category: string; created_at: string }[]>([])
+  const [wTitle, setWTitle] = useState('')
+  const [wContent, setWContent] = useState('')
+  const [wCategory, setWCategory] = useState('일반')
+  const [wSaving, setWSaving] = useState(false)
 
   const T = THEMES[theme]
   const ACCENT = '#ff6b35'
@@ -49,14 +56,19 @@ export default function MyPage() {
 
   const loadData = useCallback(async (sess: AuthUser) => {
     try {
-      const [p, u, b] = await Promise.all([
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${sess.access_token}` }
+      const [p, u, b, w] = await Promise.all([
         getProfile(sess.id, sess.access_token),
         getUsageStats(sess.id, sess.access_token),
         getBookmarks(sess.id, sess.access_token),
+        fetch(`${SUPABASE_URL}/rest/v1/work_logs?user_id=eq.${sess.id}&order=created_at.desc&limit=50`, { headers }).then(r => r.json()),
       ])
       if (p) setProfile(p)
       setUsageStats(u)
       setBookmarks(b)
+      if (Array.isArray(w)) setWorkLogs(w)
     } catch (_e) { /* ignore */ }
     setLoading(false)
   }, [])
@@ -95,6 +107,38 @@ export default function MyPage() {
   const handleLogout = async () => {
     if (session) await signOut(session.access_token)
     router.push('/login')
+  }
+
+  const handleSaveWorkLog = async () => {
+    if (!session || !wTitle.trim()) return
+    setWSaving(true)
+    try {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/work_logs`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}`, Prefer:'return=representation' },
+        body: JSON.stringify({ user_id:session.id, title:wTitle, content:wContent, category:wCategory }),
+      })
+      const data = await res.json()
+      if (Array.isArray(data) && data[0]) setWorkLogs(prev => [data[0], ...prev])
+      setWTitle(''); setWContent('')
+      showToast('✅ 작업일지 저장!')
+    } catch (_e) { showToast('❌ 저장 실패') }
+    setWSaving(false)
+  }
+
+  const handleDeleteWorkLog = async (id: string) => {
+    if (!session) return
+    try {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      await fetch(`${SUPABASE_URL}/rest/v1/work_logs?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}` },
+      })
+      setWorkLogs(prev => prev.filter(w => w.id !== id))
+    } catch (_e) { showToast('❌ 삭제 실패') }
   }
 
   const handleDeleteBookmark = async (id: string) => {
@@ -299,6 +343,54 @@ export default function MyPage() {
           )}
 
           {/* 즐겨찾기 탭 */}
+          {tab === 'worklog' && (
+            <div>
+              <SHead icon="📝" title="작업일지" color="#f59e0b" />
+              {/* 새 일지 작성 */}
+              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '18px 20px', marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', marginBottom: 14 }}>+ 새 작업일지 작성</div>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <select value={wCategory} onChange={e => setWCategory(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
+                    {['일반','상품등록','마케팅','고객응대','정부지원','기타'].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input value={wTitle} onChange={e => setWTitle(e.target.value)} placeholder="작업 제목" style={{ ...inputStyle, flex: 1, minWidth: 140 }}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = '#f59e0b' }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                  />
+                </div>
+                <textarea value={wContent} onChange={e => setWContent(e.target.value)} placeholder="작업 내용, 메모, 참고사항 등..." rows={3} style={{ ...inputStyle, resize: 'vertical', marginBottom: 10 }}
+                  onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#f59e0b' }}
+                  onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = T.border }}
+                />
+                <GlowBtn onClick={handleSaveWorkLog} loading={wSaving} label="📝 저장" color="linear-gradient(135deg,#f59e0b,#d97706)" glow="rgba(245,158,11,0.4)" />
+              </div>
+
+              {/* 일지 목록 */}
+              {workLogs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📝</div>
+                  첫 작업일지를 작성해보세요!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {workLogs.map(w => (
+                    <div key={w.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: '14px 18px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 20, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 800 }}>{w.category}</span>
+                          <span style={{ fontSize: 15, fontWeight: 900, color: T.text }}>{w.title}</span>
+                        </div>
+                        <button onClick={() => handleDeleteWorkLog(w.id)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>🗑</button>
+                      </div>
+                      {w.content && <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{w.content}</div>}
+                      <div style={{ fontSize: 11, color: T.muted, marginTop: 8 }}>{new Date(w.created_at).toLocaleString('ko-KR')}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === 'bookmark' && (
             <div>
               <SHead icon="⭐" title="즐겨찾기 정부지원" color="#f59e0b" />
@@ -405,4 +497,3 @@ function GlowBtn({ onClick, loading, label, color, glow }: { onClick: () => void
     <button onClick={onClick} disabled={loading} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', cursor: loading?'not-allowed':'pointer', fontFamily: "'Noto Sans KR',sans-serif", fontSize: 14, fontWeight: 800, color: 'white', background: loading?'rgba(255,255,255,0.1)':color, boxShadow: loading?'none':`0 6px 20px ${glow}`, opacity: loading?0.6:1, transition: 'all 0.2s' }}>{loading?'저장 중...':label}</button>
   )
 }
-
