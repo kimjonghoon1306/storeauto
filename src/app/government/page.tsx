@@ -20,6 +20,7 @@ interface AdminData {
 const CATEGORY_CARDS = [
   { emoji: '💰', label: '정책자금', color: '#ff6b35', q: '소상공인 정책자금 종류와 신청 방법을 단계별로 알려줘' },
   { emoji: '📄', label: '사업계획서', color: '#f59e0b', q: '정부지원용 사업계획서 작성 방법과 표준 양식을 알려줘' },
+  { emoji: '📥', label: '양식다운로드', color: '#ffd700', q: '사업계획서 공식 양식 다운로드 링크와 각 기관별 신청서 양식을 알려줘' },
   { emoji: '🎁', label: '무상지원', color: '#10b981', q: '소상공인 무상지원 보조금 종류와 신청 방법 알려줘' },
   { emoji: '🗺️', label: '지자체지원', color: '#3b82f6', q: '우리 지역 소상공인 지자체 지원금 확인하는 방법 알려줘' },
   { emoji: '🤝', label: '협동조합', color: '#8b5cf6', q: '협동조합 설립 방법과 지원 혜택을 단계별로 알려줘' },
@@ -30,6 +31,7 @@ const CATEGORY_CARDS = [
   { emoji: '🚪', label: '폐업지원', color: '#ef4444', q: '폐업 시 받을 수 있는 희망리턴패키지 신청 방법 알려줘' },
   { emoji: '🌱', label: '청년창업', color: '#22c55e', q: '청년 창업 지원금 종류와 신청 조건을 알려줘' },
   { emoji: '🏦', label: '보증·대출', color: '#a78bfa', q: '신용보증기금과 지역신용보증재단 보증 신청 방법 알려줘' },
+  { emoji: '🕊️', label: '새터민지원', color: '#67e8f9', q: '새터민(북한이탈주민) 창업·취업·정착 지원금과 신청 방법을 자세히 알려줘' },
 ]
 
 const QUICK_QUESTIONS: string[] = [
@@ -544,8 +546,41 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 - 지자체 지원금은 웹 검색으로 최신 정보 확인 후 안내
 - 복잡한 절차는 단계별(1→2→3)로 설명
 - 답변은 핵심부터 간결하게, 모바일에서 읽기 편하게
-- 반드시 답변 맨 마지막에 아래 형식으로 추천 질문 3개 추가 (형식 절대 변경 금지):
-[추천: 질문1||질문2||질문3]`
+- 반드시 모든 텍스트는 순수 한국어로만 작성 (한자, 중국어, 일본어 문자 절대 사용 금지)
+- 반드시 답변 맨 마지막에 아래 형식으로 추천 질문 3개 추가 (형식 절대 변경 금지, 한자 금지):
+[추천: 질문1||질문2||질문3]
+
+## 16. 새터민(북한이탈주민) 지원
+
+### 정착 지원
+- 하나원(통일원): 사회적응교육 3개월 과정, 거주지 배정, 기초생활 지원
+- 정착금: 기본금 800만원 + 가산금(장려금, 가족 수에 따라 추가)
+- 주거지원: 임대아파트 우선 공급
+- 의료보호: 5년간 의료급여 1종 적용
+
+### 취업·창업 지원
+- 취업지원관: 직업훈련, 취업알선 (하나센터 통해 신청)
+- 창업지원: 소진공 정책자금 일반 소상공인과 동일 적용 가능
+- 자격취득 지원: 국가기술자격 시험 응시료 지원
+- 취업성공패키지: 고용노동부, 구직활동 지원금 월 최대 50만원
+
+### 교육 지원
+- 대학특례입학: 북한이탈주민 특별전형
+- 교육비 지원: 중·고·대학교 전액 지원
+- 국가장학금 우선 지원
+
+### 주요 기관 및 링크
+- 통일부 북한이탈주민포털: www.unikorea.go.kr
+- 남북하나재단: www.koreahana.or.kr ☎ 1577-6635
+- 하나센터 (지역별 지원): www.hanacenter.or.kr
+- 취업·창업 상담: 남북하나재단 취업지원팀 02-3215-5714
+
+### 사업계획서 공식 양식 다운로드
+- 소진공 창업사업계획서 양식: www.sbiz.or.kr → 자료실 → 서식자료
+- 창진원 예비창업패키지 양식: www.kised.or.kr → 공지사항
+- K-Startup 표준양식: www.k-startup.go.kr → 자료실
+- 중기부 공식 양식: www.mss.go.kr → 자료실 → 서식
+- 소상공인 정책자금 신청서: 소상공인24(www.sbiz.or.kr) → 신청서류 다운로드`
 
 export default function GovernmentPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -701,7 +736,9 @@ export default function GovernmentPage() {
       // 추천 질문 파싱
       const sugMatch = reply.match(/\[추천:\s*(.+?)\]/)
       if (sugMatch) {
-        const sugs = sugMatch[1].split('||').map((s: string) => s.trim()).filter(Boolean)
+        const sugs = sugMatch[1].split('||')
+          .map((s: string) => s.trim().replace(/[\u4E00-\u9FFF\u3400-\u4DBF\u3000-\u303F\uFF00-\uFFEF]/g, '').trim())
+          .filter(Boolean)
         setSuggestions(sugs)
       }
       // 추천 질문 태그 제거 후 저장
