@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { signIn, resetPassword, loadSession } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
-type Mode = 'login' | 'forgot'
+type Mode = 'login' | 'forgot' | 'find_email'
 
 const THEMES = {
   dark:   { bg: '#050510', card: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', input: 'rgba(255,255,255,0.06)' },
@@ -24,6 +24,9 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [shake, setShake] = useState(false)
+  const [findName, setFindName] = useState('')
+  const [findPhone, setFindPhone] = useState('')
+  const [foundEmail, setFoundEmail] = useState('')
 
   const T = THEMES[theme]
   const ACCENT = '#ff6b35'
@@ -59,6 +62,31 @@ export default function LoginPage() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '전송 실패')
     } finally { setLoading(false) }
+  }
+
+  const handleFindEmail = async () => {
+    if (!findName || !findPhone) { setError('이름과 연락처를 모두 입력해주세요'); return }
+    setLoading(true); setError(''); setFoundEmail('')
+    try {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const phone = findPhone.replace(/-/g, '')
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?name=eq.${encodeURIComponent(findName)}&phone=eq.${encodeURIComponent(phone)}&select=email&limit=1`,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      )
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0 && data[0].email) {
+        const found = data[0].email as string
+        // 이메일 마스킹: abc***@gmail.com
+        const [local, domain] = found.split('@')
+        const masked = local.slice(0, 3) + '***@' + domain
+        setFoundEmail(masked)
+      } else {
+        setError('일치하는 계정을 찾을 수 없어요. 이름과 연락처를 확인해주세요.')
+      }
+    } catch (_e) { setError('조회 실패. 다시 시도해주세요.') }
+    setLoading(false)
   }
 
   const saveTheme = (t: Theme) => {
@@ -167,7 +195,7 @@ export default function LoginPage() {
             <div style={{ textAlign:'center', marginBottom:32 }}>
               <div style={{ width:64, height:64, borderRadius:20, background:`linear-gradient(135deg,${ACCENT},#ffd700)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 12px', boxShadow:`0 0 30px ${ACCENT}44` }}>⚡</div>
               <div style={{ fontSize:22, fontWeight:900, color:T.text }}>STORE AUTO</div>
-              <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>{mode === 'login' ? '로그인' : '비밀번호 재설정'}</div>
+              <div style={{ fontSize:13, color:T.muted, marginTop:4 }}>{mode === 'login' ? '로그인' : mode === 'forgot' ? '비밀번호 재설정' : '이메일 찾기'}</div>
             </div>
 
             {mode === 'login' ? (
@@ -197,6 +225,10 @@ export default function LoginPage() {
                 <div style={{ textAlign:'right', marginBottom:20 }}>
                   <button onClick={() => { setMode('forgot'); setError(''); setSuccess('') }} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
                     비밀번호를 잊으셨나요?
+                  </button>
+                  {' · '}
+                  <button onClick={() => { setMode('find_email'); setError(''); setFoundEmail('') }} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
+                    이메일 찾기
                   </button>
                 </div>
 
@@ -245,6 +277,52 @@ export default function LoginPage() {
                 </button>
               </>
             )}
+
+            {mode === 'find_email' && (
+              <>
+                <div style={{ textAlign:'center', marginBottom:20 }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
+                  <div style={{ fontSize:16, fontWeight:900, color:T.text, marginBottom:6 }}>이메일 찾기</div>
+                  <div style={{ fontSize:13, color:T.muted, lineHeight:1.7 }}>
+                    가입 시 입력한 이름과 연락처로<br />이메일을 찾을 수 있어요.
+                  </div>
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:8 }}>이름</div>
+                  <input type="text" value={findName} onChange={e => setFindName(e.target.value)} placeholder="홍길동" style={inputStyle}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                  />
+                </div>
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:8 }}>연락처</div>
+                  <input type="tel" value={findPhone} onChange={e => setFindPhone(e.target.value)} onKeyDown={e => e.key==='Enter' && handleFindEmail()} placeholder="010-0000-0000" style={inputStyle}
+                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
+                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                  />
+                </div>
+
+                {error && <div style={{ padding:'10px 14px', borderRadius:10, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', fontSize:13, color:'#f87171', marginBottom:14 }}>⚠️ {error}</div>}
+
+                {foundEmail && (
+                  <div style={{ padding:'16px 18px', borderRadius:14, background:'rgba(52,211,153,0.08)', border:'1px solid rgba(52,211,153,0.25)', marginBottom:16, textAlign:'center' }}>
+                    <div style={{ fontSize:12, color:'#34d399', fontWeight:700, marginBottom:6 }}>✅ 이메일을 찾았어요!</div>
+                    <div style={{ fontSize:18, fontWeight:900, color:'#34d399', letterSpacing:'1px' }}>{foundEmail}</div>
+                    <button onClick={() => { setMode('login'); setEmail(''); setError('') }} style={{ marginTop:10, padding:'8px 20px', background:'rgba(52,211,153,0.15)', border:'1px solid rgba(52,211,153,0.3)', borderRadius:10, color:'#34d399', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                      로그인하러 가기 →
+                    </button>
+                  </div>
+                )}
+
+                <button onClick={handleFindEmail} disabled={loading} style={{ width:'100%', padding:15, background:`linear-gradient(135deg,${ACCENT},#ff8c5a)`, border:'none', borderRadius:14, color:'white', fontSize:15, fontWeight:900, cursor:loading?'not-allowed':'pointer', fontFamily:'inherit', opacity:loading?0.7:1, boxShadow:`0 8px 28px ${ACCENT}44` }}>
+                  {loading ? '찾는 중...' : '🔍 이메일 찾기'}
+                </button>
+                <button onClick={() => { setMode('login'); setError(''); setFoundEmail(''); setFindName(''); setFindPhone('') }} style={{ width:'100%', padding:'12px', marginTop:10, background:'none', border:'none', color:T.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
+                  ← 로그인으로 돌아가기
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -255,4 +333,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
