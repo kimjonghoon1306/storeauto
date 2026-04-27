@@ -226,10 +226,6 @@ export default function LoginPage() {
                   <button onClick={() => { setMode('forgot'); setError(''); setSuccess('') }} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
                     비밀번호를 잊으셨나요?
                   </button>
-                  {' · '}
-                  <button onClick={() => { setMode('find_email'); setError(''); setFoundEmail('') }} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
-                    이메일 찾기
-                  </button>
                 </div>
 
                 {error && <div style={{ padding:'10px 14px', borderRadius:10, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', fontSize:13, color:'#f87171', marginBottom:16 }}>⚠️ {error}</div>}
@@ -246,6 +242,10 @@ export default function LoginPage() {
                     계정이 없으신가요?{' '}
                     <button onClick={() => router.push('/signup')} style={{ background:'none', border:'none', color:ACCENT, fontWeight:700, cursor:'pointer', fontFamily:'inherit', fontSize:13 }}>회원가입</button>
                   </div>
+                  <button onClick={() => { setMode('find_email'); setError(''); setFoundEmail('') }} style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:10, padding:'10px', color:T.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = ACCENT; (e.currentTarget as HTMLElement).style.color = ACCENT }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.muted }}
+                  >🔍 이메일 찾기</button>
                   <button onClick={() => router.push('/?browse=1')} style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:10, padding:'10px', color:T.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s' }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = ACCENT; (e.currentTarget as HTMLElement).style.color = ACCENT }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.muted }}
