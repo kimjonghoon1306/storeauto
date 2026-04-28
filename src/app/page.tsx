@@ -24,6 +24,7 @@ export default function Home() {
     targetCustomer: '', priceRange: '', promotions: [], extraInfo: '',
   })
   const [featureInput, setFeatureInput] = useState('')
+  const [isOffline, setIsOffline] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
@@ -43,12 +44,16 @@ export default function Home() {
     try {
       const saved = localStorage.getItem('storeauto_history')
       if (saved) setHistory(JSON.parse(saved))
-      // 인증 상태 확인
       const session = loadSession()
       if (session) setAuthUser({ email: session.email, id: session.id })
-      // 둘러보기 모드
       const params = new URLSearchParams(window.location.search)
       if (params.get('browse') === '1') setBrowseMode(true)
+      setIsOffline(!navigator.onLine)
+      const onOnline  = () => setIsOffline(false)
+      const onOffline = () => setIsOffline(true)
+      window.addEventListener('online',  onOnline)
+      window.addEventListener('offline', onOffline)
+      return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) }
     } catch {}
   }, [])
 
@@ -102,6 +107,19 @@ export default function Home() {
     }))
   }
 
+  // 에러 메시지 한국어 변환
+  const toKoreanError = (msg: string): string => {
+    if (!msg) return '알 수 없는 오류가 발생했어요. 다시 시도해주세요.'
+    if (msg.includes('quota') || msg.includes('rate') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도를 초과했어요. 잠시 후 다시 시도해주세요.'
+    if ((msg.includes('invalid') && msg.includes('key')) || msg.includes('API key') || msg.includes('api_key')) return '🔑 API 키가 올바르지 않아요. 키 설정을 확인해주세요.'
+    if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')) return '🔑 인증에 실패했어요. API 키를 다시 확인해주세요.'
+    if (msg.includes('429')) return '⏳ 요청이 너무 많아요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('500') || msg.includes('502') || msg.includes('503')) return '🔧 AI 서버에 일시적인 문제가 발생했어요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('billing') || msg.includes('insufficient_quota')) return '💳 API 크레딧이 부족해요. 결제 정보를 확인해주세요.'
+    if (msg.includes('content') || msg.includes('safety') || msg.includes('SAFETY')) return '⚠️ 안전 필터에 걸렸어요. 입력 내용을 변경해보세요.'
+    return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
+  }
+
   // 공통 AI 호출 함수
   const callAI = useCallback(async (prompt: string): Promise<string> => {
     let text = ''
@@ -132,14 +150,14 @@ export default function Home() {
           lastErr = msg; continue
         }
       }
-      if (!text) throw new Error(`생성 실패: ${lastErr}`)
+      if (!text) throw new Error(toKoreanError(lastErr))
     } else if (provider === 'openai') {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey.trim()}` },
         body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
       })
-      if (!res.ok) { const e = await res.json(); throw new Error(`OpenAI 오류: ${e?.error?.message || ''}`) }
+      if (!res.ok) { const e = await res.json(); throw new Error(toKoreanError(e?.error?.message || e?.error?.code || '')) }
       const data = await res.json()
       text = data.choices?.[0]?.message?.content || ''
     } else {
@@ -148,7 +166,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey.trim()}` },
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
       })
-      if (!res.ok) { const e = await res.json(); throw new Error(`Groq 오류: ${e?.error?.message || ''}`) }
+      if (!res.ok) { const e = await res.json(); throw new Error(toKoreanError(e?.error?.message || e?.error?.code || '')) }
       const data = await res.json()
       text = data.choices?.[0]?.message?.content || ''
     }
@@ -209,6 +227,16 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
     if (browseMode) {
       setError('둘러보기 모드에서는 기능을 사용할 수 없어요. 로그인 후 이용해주세요.')
       return
+    }
+    if (!authUser) {
+      try {
+        const used = parseInt(localStorage.getItem('sa_guest_count') || '0')
+        if (used >= 3) {
+          setError('⚠️ 비로그인 체험은 3회까지만 가능해요. 로그인하면 무제한으로 사용할 수 있어요!')
+          return
+        }
+        localStorage.setItem('sa_guest_count', String(used + 1))
+      } catch (_e) { /* ignore */ }
     }
     if (!input.productName || !input.category || input.features.length === 0 || !input.targetCustomer || !input.priceRange) {
       setError('필수 항목을 모두 입력해주세요.')
@@ -317,6 +345,20 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
         return updated
       })
+      if (authUser) {
+        try {
+          const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+          const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+          const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
+          if (sess.access_token) {
+            fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
+              method: 'POST',
+              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
+              body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
+            }).catch(() => {})
+          }
+        } catch (_e) { /* ignore */ }
+      }
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다.')
@@ -802,6 +844,36 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         {/* 결과 */}
         {result && (
           <div ref={resultRef} className="fade-up" style={{ display: 'grid', gap: '16px' }}>
+
+            {/* 다음 단계 가이드 */}
+            <div style={{ background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '14px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 800, color: '#34d399', marginBottom: '10px' }}>
+                {platform === 'smartstore' ? '✅ 스마트스토어에 이렇게 등록하세요' : platform === 'coupang' ? '✅ 쿠팡에 이렇게 등록하세요' : platform === 'elevenst' ? '✅ 11번가에 이렇게 등록하세요' : '✅ 자사몰에 이렇게 등록하세요'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {platform === 'smartstore' && [
+                  '① 아래 복사 버튼 클릭',
+                  '② 스마트스토어 판매자센터 → 상품관리 → 상품등록',
+                  '③ 상품정보 탭 → 상세설명 → HTML 붙여넣기',
+                ].map((s, i) => <div key={i} style={{ fontSize: '12px', color: '#34d399', fontWeight: 600 }}>{s}</div>)}
+                {platform === 'coupang' && [
+                  '① 아래 복사 버튼 클릭',
+                  '② 쿠팡 Wing → 아이템위너 → 상품등록',
+                  '③ 상세설명란에 붙여넣기',
+                ].map((s, i) => <div key={i} style={{ fontSize: '12px', color: '#34d399', fontWeight: 600 }}>{s}</div>)}
+                {platform === 'elevenst' && [
+                  '① 아래 복사 버튼 클릭',
+                  '② 11번가 셀러오피스 → 상품관리 → 상품등록',
+                  '③ 상세설명 HTML 편집기에 붙여넣기',
+                ].map((s, i) => <div key={i} style={{ fontSize: '12px', color: '#34d399', fontWeight: 600 }}>{s}</div>)}
+                {platform === 'own' && [
+                  '① 아래 복사 버튼 클릭',
+                  '② 자사몰 관리자 → 상품 → 상세페이지',
+                  '③ HTML 에디터에 붙여넣기',
+                ].map((s, i) => <div key={i} style={{ fontSize: '12px', color: '#34d399', fontWeight: 600 }}>{s}</div>)}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
