@@ -63,6 +63,7 @@ export default function ReviewsPage() {
   const [batchResults, setBatchResults] = useState<{review: string; reply: string; done: boolean}[]>([])
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchProgress, setBatchProgress] = useState(0)
+  const [batchCancelled, setBatchCancelled] = useState(false)
 
   const t = THEMES[theme]
 
@@ -175,8 +176,10 @@ export default function ReviewsPage() {
     setBatchLoading(true)
     setBatchResults([])
     setBatchProgress(0)
+    setBatchCancelled(false)
     const results: {review: string; reply: string; done: boolean}[] = []
     for (let i = 0; i < reviews.length; i++) {
+      if (batchCancelled) break
       const review = reviews[i]
       try {
         const charGuide = charLimit > 0 ? ` ${charLimit}자 이내.` : ''
@@ -372,6 +375,11 @@ export default function ReviewsPage() {
                 <button onClick={handleBatch} disabled={batchLoading || !batchInput.trim()} style={{ padding: '10px 24px', background: batchLoading ? t.border : `linear-gradient(135deg, ${t.accent}, #ff8c5a)`, border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: batchLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
                   {batchLoading ? `처리 중... (${batchProgress}/${batchInput.split('\n').filter(r => r.trim()).length})` : '🚀 일괄 생성'}
                 </button>
+                {batchLoading && (
+                  <button onClick={() => setBatchCancelled(true)} style={{ padding: '10px 18px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#f87171', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    ⛔ 취소
+                  </button>
+                )}
               </div>
             </div>
 
