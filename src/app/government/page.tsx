@@ -644,10 +644,22 @@ export default function GovernmentPage() {
     return prompt
   }
 
+  const toKorErr = (msg: string) => {
+    if (!msg) return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
+    if (msg.includes('quota') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도 초과예요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('401') || msg.includes('403') || msg.includes('api_key') || msg.includes('API key')) return '🔑 API 키가 올바르지 않아요. 설정을 확인해주세요.'
+    if (msg.includes('429')) return '⏳ 요청이 너무 많아요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('billing') || msg.includes('insufficient_quota')) return '💳 API 크레딧이 부족해요.'
+    return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
+  }
+
   const callAI = async (systemPrompt: string, msgs: Message[]): Promise<string> => {
     let keys = { gemini: '', openai: '', groq: '' }
     try {
-      const saved = localStorage.getItem('storeauto_keys')
+      const { loadSession } = await import('@/lib/auth')
+      const sess = loadSession()
+      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+      const saved = localStorage.getItem(keysKey)
       if (saved) keys = { ...keys, ...JSON.parse(saved) }
     } catch (_e) { /* ignore */ }
 
@@ -764,7 +776,8 @@ export default function GovernmentPage() {
         } catch (_e) { /* ignore */ }
       }
     } catch (_e) {
-      const errMsg = _e instanceof Error ? _e.message : '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
+      const raw = _e instanceof Error ? _e.message : ''
+      const errMsg = toKorErr(raw) 
       setMessages([...newMessages, { role: 'assistant', content: errMsg }])
     } finally {
       setLoading(false)
