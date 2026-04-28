@@ -448,6 +448,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 }}>📋 ({history.length})</button>
               )}
               {authUser ? (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <button onClick={() => router.push('/mypage')} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
                   borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
@@ -455,6 +456,20 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   border: '1px solid rgba(255,215,0,0.3)', background: 'rgba(255,215,0,0.1)',
                   color: '#ffd700', transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}>👤 MY</button>
+                <button onClick={async () => {
+                  const { signOut, loadSession } = await import('@/lib/auth')
+                  const sess = loadSession()
+                  if (sess) await signOut(sess.access_token)
+                  setAuthUser(null)
+                  router.push('/login')
+                }} style={{
+                  padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
+                  borderRadius: '8px', fontSize: 'clamp(11px, 2.5vw, 13px)', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)',
+                  color: '#ef4444', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}>🚪</button>
+                </div>
               ) : (
                 <button onClick={() => router.push('/login')} style={{
                   padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
