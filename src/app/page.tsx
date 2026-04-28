@@ -25,6 +25,7 @@ export default function Home() {
   })
   const [featureInput, setFeatureInput] = useState('')
   const [isOffline, setIsOffline] = useState(false)
+  const [mobileStep, setMobileStep] = useState<1|2|3>(1)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
@@ -107,70 +108,23 @@ export default function Home() {
     }))
   }
 
-  // 에러 메시지 한국어 변환
-  const toKoreanError = (msg: string): string => {
-    if (!msg) return '알 수 없는 오류가 발생했어요. 다시 시도해주세요.'
-    if (msg.includes('quota') || msg.includes('rate') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도를 초과했어요. 잠시 후 다시 시도해주세요.'
-    if ((msg.includes('invalid') && msg.includes('key')) || msg.includes('API key') || msg.includes('api_key')) return '🔑 API 키가 올바르지 않아요. 키 설정을 확인해주세요.'
-    if (msg.includes('401') || msg.includes('403') || msg.includes('Unauthorized')) return '🔑 인증에 실패했어요. API 키를 다시 확인해주세요.'
-    if (msg.includes('429')) return '⏳ 요청이 너무 많아요. 잠시 후 다시 시도해주세요.'
-    if (msg.includes('500') || msg.includes('502') || msg.includes('503')) return '🔧 AI 서버에 일시적인 문제가 발생했어요. 잠시 후 다시 시도해주세요.'
-    if (msg.includes('billing') || msg.includes('insufficient_quota')) return '💳 API 크레딧이 부족해요. 결제 정보를 확인해주세요.'
-    if (msg.includes('content') || msg.includes('safety') || msg.includes('SAFETY')) return '⚠️ 안전 필터에 걸렸어요. 입력 내용을 변경해보세요.'
-    return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
-  }
-
-  // 공통 AI 호출 함수
+  // 공통 AI 호출 함수 (서버 API 경유 - 보안)
   const callAI = useCallback(async (prompt: string): Promise<string> => {
-    let text = ''
-    if (provider === 'gemini') {
-      const GEMINI_MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-2.5-flash','gemini-1.5-flash-latest']
-      let lastErr = ''
-      for (const model of GEMINI_MODELS) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } }) }
-          )
-          if (!res.ok) {
-            const errData = await res.json()
-            const msg = (errData?.error?.message || '').toLowerCase()
-            const status = res.status
-            if (status === 401 || status === 403 || msg.includes('api key') || msg.includes('api_key')) throw new Error('Gemini API 키가 잘못되었습니다.')
-            lastErr = `${model} 오류(${status})`; continue
-          }
-          const data = await res.json()
-          text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          if (!text) { lastErr = `${model} 빈 응답`; continue }
-          break
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : ''
-          if (msg.includes('API 키')) throw e
-          lastErr = msg; continue
-        }
-      }
-      if (!text) throw new Error(toKoreanError(lastErr))
-    } else if (provider === 'openai') {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey.trim()}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
-      })
-      if (!res.ok) { const e = await res.json(); throw new Error(toKoreanError(e?.error?.message || e?.error?.code || '')) }
-      const data = await res.json()
-      text = data.choices?.[0]?.message?.content || ''
-    } else {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey.trim()}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
-      })
-      if (!res.ok) { const e = await res.json(); throw new Error(toKoreanError(e?.error?.message || e?.error?.code || '')) }
-      const data = await res.json()
-      text = data.choices?.[0]?.message?.content || ''
-    }
-    return text
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        provider,
+        // 사용자 키 전달 (없으면 서버에서 관리자 키 사용)
+        userGemini: geminiKey || undefined,
+        userOpenai: openaiKey || undefined,
+        userGroq:   groqKey   || undefined,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
+    return data.text || ''
   }, [provider, geminiKey, openaiKey, groqKey])
 
   // 섹션별 재생성
@@ -585,9 +539,38 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '16px', padding: 'clamp(20px, 4vw, 32px)', marginBottom: '32px',
         }}>
+          {/* 모바일 스텝 네비게이터 */}
+          <style>{`
+            @media(max-width:768px){
+              .step-1{display:none}.step-2{display:none}.step-3{display:none}
+              .step-show{display:block!important}
+              .mobile-steps{display:flex!important}
+              .desktop-only{display:none!important}
+            }
+            @media(min-width:769px){
+              .mobile-steps{display:none!important}
+              .step-1,.step-2,.step-3{display:block}
+            }
+          `}</style>
+          <div className="mobile-steps" style={{ display:'none', gap:'0', marginBottom:'16px', borderRadius:'12px', overflow:'hidden', border:'1px solid var(--border)' }}>
+            {([{n:1,l:'기본설정'},{n:2,l:'상품정보'},{n:3,l:'스타일·생성'}] as const).map(s => (
+              <button key={s.n} onClick={() => setMobileStep(s.n)} style={{
+                flex:1, padding:'10px 4px', background: mobileStep===s.n ? 'var(--accent)' : 'var(--surface)',
+                border:'none', color: mobileStep===s.n ? '#fff' : 'var(--text-muted)',
+                fontSize:'12px', fontWeight:800, cursor:'pointer', fontFamily:'inherit',
+                borderRight: s.n < 3 ? '1px solid var(--border)' : 'none',
+                transition:'all 0.2s',
+              }}>
+                <div style={{ fontSize:'16px', marginBottom:'2px' }}>{s.n===1?'⚙️':s.n===2?'📝':'✨'}</div>
+                {s.l}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'grid', gap: 'clamp(16px, 3vw, 24px)' }}>
 
             {/* AI 이미지 분석 */}
+            <div className={`step-1 ${mobileStep===1?'step-show':''}`}>
             <ImageAnalyzer
               geminiKey={geminiKey}
               openaiKey={openaiKey}
@@ -616,8 +599,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               onGoSettings={() => router.push('/settings')}
               initialQuery={trendQuery}
             />
+            </div> {/* step-1 ImageAnalyzer 닫힘 */}
 
             {/* 플랫폼 선택 */}
+            <div className={`step-1 ${mobileStep===1?'step-show':''}`}>
             <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)' }}>
               <Label>판매 플랫폼 선택</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -640,7 +625,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </div>
             </div>
 
+            </div> {/* step-2 닫힘 */}
+
             {/* 페르소나 선택 */}
+            <div className={`step-3 ${mobileStep===3?'step-show':''}`}>
             <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)' }}>
               <Label>글쓰기 스타일 선택</Label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -666,7 +654,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </div>
             </div>
 
+            </div> {/* step-1 플랫폼 닫힘 */}
+
             {/* AI 선택 + 키 상태 표시 */}
+            <div className={`step-1 ${mobileStep===1?'step-show':''}`}>
             <div style={{
               background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
               borderRadius: '10px', padding: 'clamp(14px, 3vw, 16px)',
@@ -734,7 +725,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               )}
             </div>
 
+            </div> {/* step-1 AI선택 닫힘 */}
+
             {/* 상품명 */}
+            <div className={`step-2 ${mobileStep===2?'step-show':''}`}>
             <div>
               <Label>상품명 <Required /></Label>
               <input type="text" value={input.productName}
@@ -823,7 +817,16 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </div>
             )}
 
+            </div> {/* step-3 닫힘 */}
+
+            {/* 모바일 스텝 버튼 */}
+            <div className="mobile-steps" style={{ display:'none', gap:'8px' }}>
+              {mobileStep > 1 && <button onClick={() => setMobileStep(s => (s-1) as 1|2|3)} style={{ flex:1, padding:'12px', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text-muted)', fontSize:'14px', fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>← 이전</button>}
+              {mobileStep < 3 ? <button onClick={() => setMobileStep(s => (s+1) as 1|2|3)} style={{ flex:1, padding:'12px', background:'var(--accent)', border:'none', borderRadius:'10px', color:'white', fontSize:'14px', fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>다음 →</button> : null}
+            </div>
+
             {/* 생성 버튼 */}
+            <div className={`step-3 ${mobileStep===3?'step-show':''}`} style={{ display:'block' }}>
             <button onClick={handleSubmit} disabled={loading} style={{
               background: loading ? 'var(--surface2)' : 'var(--accent)',
               color: loading ? 'var(--text-muted)' : '#fff', border: 'none',
@@ -839,6 +842,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 </span>
               ) : '✦ 상품 설명 자동 생성'}
             </button>
+            </div> {/* step-3 생성버튼 닫힘 */}
           </div>
         </div>
         {/* 결과 */}
