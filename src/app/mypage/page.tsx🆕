@@ -77,18 +77,14 @@ export default function MyPage() {
     try {
       const t = localStorage.getItem('storeauto_theme') as Theme
       if (t && THEMES[t]) setTheme(t)
-      const k = JSON.parse(localStorage.getItem('storeauto_keys') || '{}')
-      setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
     } catch (_e) { /* ignore */ }
 
     const sess = loadSession()
     if (!sess) { router.push('/login'); return }
-    // 세션 유효성 검사
     checkSession().then(validSess => {
       if (!validSess) { router.push('/login'); return }
     }).catch(() => {})
     setSession(sess)
-    // 사용자 ID 기반으로 키 격리 - 다른 계정 키 절대 노출 안됨
     const userKeysKey = `storeauto_keys_${sess.id}`
     const k = JSON.parse(localStorage.getItem(userKeysKey) || '{}')
     setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
@@ -509,4 +505,3 @@ function GlowBtn({ onClick, loading, label, color, glow }: { onClick: () => void
     <button onClick={onClick} disabled={loading} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', cursor: loading?'not-allowed':'pointer', fontFamily: "'Noto Sans KR',sans-serif", fontSize: 14, fontWeight: 800, color: 'white', background: loading?'rgba(255,255,255,0.1)':color, boxShadow: loading?'none':`0 6px 20px ${glow}`, opacity: loading?0.6:1, transition: 'all 0.2s' }}>{loading?'저장 중...':label}</button>
   )
 }
-
