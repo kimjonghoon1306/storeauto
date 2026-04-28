@@ -85,9 +85,19 @@ export default function ReviewsPage() {
     } catch {}
   }, [])
 
+  const toKorErr = (msg: string) => {
+    if (!msg) return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
+    if (msg.includes('quota') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도 초과예요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('401') || msg.includes('403') || msg.includes('api_key') || msg.includes('API key')) return '🔑 API 키가 올바르지 않아요. 설정을 확인해주세요.'
+    if (msg.includes('429')) return '⏳ 요청이 너무 많아요. 잠시 후 다시 시도해주세요.'
+    if (msg.includes('billing') || msg.includes('insufficient_quota')) return '💳 API 크레딧이 부족해요.'
+    if (msg.includes('network') || msg.includes('fetch')) return '🌐 인터넷 연결을 확인해주세요.'
+    return '⚠️ 오류가 발생했어요. 다시 시도해주세요.'
+  }
+
   const callAI = useCallback(async (prompt: string): Promise<string> => {
     const key = provider === 'gemini' ? keys.gemini : provider === 'openai' ? keys.openai : keys.groq
-    if (!key) throw new Error('AI 키가 없습니다. 설정 페이지에서 키를 등록해주세요.')
+    if (!key) throw new Error('🔑 API 키가 없어요. 설정 페이지에서 키를 등록해주세요.')
 
     if (provider === 'gemini') {
       const res = await fetch(
@@ -101,14 +111,18 @@ export default function ReviewsPage() {
           }),
         }
       )
+      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
       const data = await res.json()
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      if (!txt) throw new Error('😅 AI가 응답하지 않았어요. 다시 시도해주세요.')
+      return txt
     } else if (provider === 'openai') {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key.trim()}` },
         body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
       })
+      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
       const data = await res.json()
       return data.choices?.[0]?.message?.content || ''
     } else {
@@ -117,9 +131,11 @@ export default function ReviewsPage() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key.trim()}` },
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
       })
+      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
       const data = await res.json()
       return data.choices?.[0]?.message?.content || ''
     }
+    throw new Error('지원하지 않는 AI예요.')
   }, [provider, keys])
 
   const detectMalicious = (text: string): boolean => {
