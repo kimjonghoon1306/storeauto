@@ -83,7 +83,7 @@ export default function SignupPage() {
           })
         }
       } catch (_e) { /* ignore profile save error */ }
-      router.push('/')
+      router.push('/dashboard')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '회원가입 실패')
     } finally { setLoading(false) }
@@ -281,4 +281,3 @@ export default function SignupPage() {
     </div>
   )
 }
-
