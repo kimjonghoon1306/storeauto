@@ -46,7 +46,7 @@ export default function LoginPage() {
     setLoading(true); setError('')
     try {
       await signIn(email, password)
-      router.push('/')
+      router.push('/dashboard')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '로그인 실패')
       setShake(true); setTimeout(() => setShake(false), 500)
