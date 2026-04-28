@@ -509,3 +509,4 @@ function GlowBtn({ onClick, loading, label, color, glow }: { onClick: () => void
     <button onClick={onClick} disabled={loading} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', cursor: loading?'not-allowed':'pointer', fontFamily: "'Noto Sans KR',sans-serif", fontSize: 14, fontWeight: 800, color: 'white', background: loading?'rgba(255,255,255,0.1)':color, boxShadow: loading?'none':`0 6px 20px ${glow}`, opacity: loading?0.6:1, transition: 'all 0.2s' }}>{loading?'저장 중...':label}</button>
   )
 }
+
