@@ -75,3 +75,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e instanceof Error ? toKoreanError(e.message) : '서버 오류가 발생했어요.' }, { status: 500 })
   }
 }
+export const dynamic = 'force-dynamic'
