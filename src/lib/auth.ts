@@ -172,3 +172,49 @@ export const deleteBookmark = async (id: string, token: string) => {
     headers: { ...authHeaders, Authorization: `Bearer ${token}` },
   })
 }
+
+// 세션 유효성 체크 - 만료 시 자동 로그아웃
+export const checkSession = async (): Promise<AuthUser | null> => {
+  const session = loadSession()
+  if (!session) return null
+
+  try {
+    // Supabase 토큰 유효성 확인
+    const res = await fetch(`${AUTH_URL}/user`, {
+      headers: {
+        ...authHeaders,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    })
+
+    if (res.status === 401 || res.status === 403) {
+      // 토큰 만료 - 리프레시 토큰으로 갱신 시도
+      if (session.refresh_token) {
+        const refreshRes = await fetch(`${AUTH_URL}/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({ refresh_token: session.refresh_token }),
+        })
+        if (refreshRes.ok) {
+          const data = await refreshRes.json()
+          const renewed: AuthUser = {
+            id: data.user?.id,
+            email: data.user?.email,
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+          }
+          saveSession(renewed)
+          return renewed
+        }
+      }
+      // 갱신 실패 - 세션 삭제
+      clearSession()
+      return null
+    }
+
+    return session
+  } catch (_e) {
+    // 네트워크 오류 시 기존 세션 유지 (오프라인 대응)
+    return session
+  }
+}
