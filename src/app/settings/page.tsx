@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { loadSession } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
 
@@ -32,7 +33,9 @@ export default function Page() {
     try {
       const savedTheme = localStorage.getItem('storeauto_theme') as Theme
       if (savedTheme) setTheme(savedTheme)
-      const savedKeys = localStorage.getItem('storeauto_keys')
+      const sess = loadSession()
+      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+      const savedKeys = localStorage.getItem(keysKey)
       if (savedKeys) setKeys(JSON.parse(savedKeys))
     } catch {}
   }, [])
@@ -44,7 +47,11 @@ export default function Page() {
 
   const handleSave = () => {
     try {
-      localStorage.setItem('storeauto_keys', JSON.stringify(keys))
+      const sess = loadSession()
+      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+      localStorage.setItem(keysKey, JSON.stringify(keys))
+      // 구버전 공용 키 삭제
+      localStorage.removeItem('storeauto_keys')
       localStorage.setItem('storeauto_theme', theme)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
