@@ -84,6 +84,10 @@ export default function MyPage() {
     const sess = loadSession()
     if (!sess) { router.push('/login'); return }
     setSession(sess)
+    // 사용자 ID 기반으로 키 격리 - 다른 계정 키 절대 노출 안됨
+    const userKeysKey = `storeauto_keys_${sess.id}`
+    const k = JSON.parse(localStorage.getItem(userKeysKey) || '{}')
+    setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
     loadData(sess)
   }, [router, loadData])
 
@@ -98,8 +102,12 @@ export default function MyPage() {
   }
 
   const handleSaveKeys = () => {
+    if (!session) return
     try {
-      localStorage.setItem('storeauto_keys', JSON.stringify(keys))
+      const userKeysKey = `storeauto_keys_${session.id}`
+      localStorage.setItem(userKeysKey, JSON.stringify(keys))
+      // 구버전 공용 키는 삭제
+      localStorage.removeItem('storeauto_keys')
       showToast('✅ API 키 저장 완료!')
     } catch (_e) { showToast('❌ 저장 실패') }
   }
