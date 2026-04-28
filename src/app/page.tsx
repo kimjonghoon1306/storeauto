@@ -7,7 +7,7 @@ import TrendSearch from './TrendSearch'
 import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
-import { loadSession } from '@/lib/auth'
+import { loadSession, checkSession } from '@/lib/auth'
 
 
 const CATEGORIES = [
@@ -25,6 +25,8 @@ export default function Home() {
   })
   const [featureInput, setFeatureInput] = useState('')
   const [isOffline, setIsOffline] = useState(false)
+  const [shareId, setShareId] = useState('')
+  const [sharing, setSharing] = useState(false)
   const [mobileStep, setMobileStep] = useState<1|2|3>(1)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<GeneratedResult | null>(null)
@@ -45,8 +47,13 @@ export default function Home() {
     try {
       const saved = localStorage.getItem('storeauto_history')
       if (saved) setHistory(JSON.parse(saved))
-      const session = loadSession()
-      if (session) setAuthUser({ email: session.email, id: session.id })
+      // 세션 유효성 검사 (만료 시 자동 갱신)
+      checkSession().then(session => {
+        if (session) setAuthUser({ email: session.email, id: session.id })
+      }).catch(() => {
+        const session = loadSession()
+        if (session) setAuthUser({ email: session.email, id: session.id })
+      })
       const params = new URLSearchParams(window.location.search)
       if (params.get('browse') === '1') setBrowseMode(true)
       setIsOffline(!navigator.onLine)
@@ -71,7 +78,9 @@ export default function Home() {
   // 설정 페이지에서 저장한 키 불러오기
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('storeauto_keys')
+      const sess = loadSession()
+      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+      const saved = localStorage.getItem(keysKey)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed.gemini) setGeminiKey(parsed.gemini)
@@ -175,6 +184,24 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
     } finally {
       setRegenLoading(null)
     }
+  }
+
+  const handleShare = async () => {
+    if (!result) return
+    setSharing(true)
+    try {
+      const res = await fetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ result, productName: input.productName }),
+      })
+      const data = await res.json()
+      if (data.id) {
+        setShareId(data.id)
+        navigator.clipboard.writeText(`${window.location.origin}/share/${data.id}`)
+      }
+    } catch (_e) { /* ignore */ }
+    setSharing(false)
   }
 
   const handleSubmit = async () => {
@@ -883,7 +910,14 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
                 <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
               </div>
-              <button onClick={() => {
+              <button onClick={handleShare} disabled={sharing} style={{
+                    background: shareId ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)', border: `1px solid ${shareId ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
+                    borderRadius: '8px', padding: '6px 14px', fontSize: '12px',
+                    color: shareId ? '#34d399' : '#a78bfa', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                    {sharing ? '생성 중...' : shareId ? '✓ 링크 복사됨!' : '🔗 공유 링크'}
+                  </button>
+                  <button onClick={() => {
                 if (confirm('생성된 콘텐츠를 삭제할까요?')) setResult(null)
               }} style={{
                 background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.25)',
