@@ -74,20 +74,20 @@ export default function MyPage() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     try {
       const t = localStorage.getItem('storeauto_theme') as Theme
       if (t && THEMES[t]) setTheme(t)
     } catch (_e) { /* ignore */ }
 
     const sess = loadSession()
-    if (!sess) { router.push('/login'); return }
-    checkSession().then(validSess => {
-      if (!validSess) { router.push('/login'); return }
-    }).catch(() => {})
+    if (!sess) { router.replace('/login'); return }
     setSession(sess)
-    const userKeysKey = `storeauto_keys_${sess.id}`
-    const k = JSON.parse(localStorage.getItem(userKeysKey) || '{}')
-    setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
+    try {
+      const userKeysKey = `storeauto_keys_${sess.id}`
+      const k = JSON.parse(localStorage.getItem(userKeysKey) || '{}')
+      setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
+    } catch (_e) { /* ignore */ }
     loadData(sess)
   }, [router, loadData])
 
