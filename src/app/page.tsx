@@ -652,6 +652,14 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 ))}
               </div>
 
+              {/* 이미지 분석 안내 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.25)', marginBottom: '12px' }}>
+                <span style={{ fontSize: '15px', flexShrink: 0 }}>📷</span>
+                <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 700, lineHeight: 1.5 }}>
+                  AI 이미지 분석은 <span style={{ color: '#7dd3fc', textDecoration: 'underline' }}>OpenAI 키만</span> 사용됩니다. Gemini·Groq는 이미지 분석 불가
+                </span>
+              </div>
+
               {/* 키 상태 표시 */}
               {(provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey) ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
