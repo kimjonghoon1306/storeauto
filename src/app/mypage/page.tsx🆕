@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { loadSession, signOut, getProfile, upsertProfile, getUsageStats, getBookmarks, deleteBookmark, type Profile, type AuthUser } from '@/lib/auth'
+import { loadSession, signOut, checkSession, getProfile, upsertProfile, getUsageStats, getBookmarks, deleteBookmark, type Profile, type AuthUser } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
 type Tab = 'profile' | 'stats' | 'history' | 'worklog' | 'bookmark' | 'keys'
@@ -83,6 +83,10 @@ export default function MyPage() {
 
     const sess = loadSession()
     if (!sess) { router.push('/login'); return }
+    // 세션 유효성 검사
+    checkSession().then(validSess => {
+      if (!validSess) { router.push('/login'); return }
+    }).catch(() => {})
     setSession(sess)
     // 사용자 ID 기반으로 키 격리 - 다른 계정 키 절대 노출 안됨
     const userKeysKey = `storeauto_keys_${sess.id}`
