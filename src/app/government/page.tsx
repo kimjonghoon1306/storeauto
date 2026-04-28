@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { loadSession } from '@/lib/auth'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -593,6 +594,7 @@ export default function GovernmentPage() {
   const [loading, setLoading] = useState(false)
   const [adminData, setAdminData] = useState<AdminData[]>([])
   const [showGuide, setShowGuide] = useState(false)
+  const [authUser, setAuthUser] = useState<{id:string;email:string} | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showReset, setShowReset] = useState(false)
   const [expandedMsgs, setExpandedMsgs] = useState<Set<number>>(new Set())
@@ -601,6 +603,8 @@ export default function GovernmentPage() {
 
   useEffect(() => {
     try {
+      const sess = loadSession()
+      if (sess) setAuthUser({ id: sess.id, email: sess.email })
       const savedTheme = localStorage.getItem('storeauto_theme')
       if (savedTheme && savedTheme !== 'dark') {
         document.body.className = 'theme-' + savedTheme
@@ -744,6 +748,21 @@ export default function GovernmentPage() {
       // 추천 질문 태그 제거 후 저장
       const cleanReply = reply.replace(/\[추천:.*?\]/g, '').trim()
       setMessages([...newMessages, { role: 'assistant', content: cleanReply }])
+      // 로그인 사용자 usage 기록
+      if (authUser) {
+        try {
+          const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+          const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+          const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
+          if (sess.access_token) {
+            fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
+              method: 'POST',
+              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer '+sess.access_token, Prefer:'' },
+              body: JSON.stringify({ user_id: authUser.id, type: 'government', meta: userText.slice(0, 50) }),
+            }).catch(() => {})
+          }
+        } catch (_e) { /* ignore */ }
+      }
     } catch (_e) {
       const errMsg = _e instanceof Error ? _e.message : '오류가 발생했어요. 잠시 후 다시 시도해주세요.'
       setMessages([...newMessages, { role: 'assistant', content: errMsg }])
