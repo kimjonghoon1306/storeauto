@@ -85,7 +85,19 @@ export default function SignupPage() {
       } catch (_e) { /* ignore profile save error */ }
       router.push('/dashboard')
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : '회원가입 실패')
+      const msg = e instanceof Error ? e.message : ''
+      if (msg.includes('seconds') || msg.includes('rate') || msg.includes('after')) {
+        const sec = msg.match(/(\d+) seconds?/)
+        setError(`⏳ 잠시 후 다시 시도해주세요. (${sec ? sec[1]+'초 후 가능' : '약 30초 후 가능'})`)
+      } else if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+        setError('이미 가입된 이메일이에요. 로그인해주세요.')
+      } else if (msg.includes('password') || msg.includes('weak')) {
+        setError('비밀번호가 너무 단순해요. 6자 이상으로 입력해주세요.')
+      } else if (msg.includes('email') || msg.includes('invalid')) {
+        setError('올바른 이메일 형식이 아니에요.')
+      } else {
+        setError('회원가입에 실패했어요. 다시 시도해주세요.')
+      }
     } finally { setLoading(false) }
   }
 
@@ -204,10 +216,13 @@ export default function SignupPage() {
                 </div>
                 <div>
                   <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:7 }}>비밀번호 확인</div>
-                  <input type="password" value={password2} onChange={e => setPassword2(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStep1()} placeholder="비밀번호 재입력" style={{ ...inputStyle, borderColor:password2 && password !== password2 ? '#ef4444' : T.border }}
-                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
-                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = password2 && password !== password2 ? '#ef4444' : T.border }}
-                  />
+                  <div style={{ position:'relative' }}>
+                    <input type={showPw?'text':'password'} value={password2} onChange={e => setPassword2(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleStep1()} placeholder="비밀번호 재입력" style={{ ...inputStyle, paddingRight:50, borderColor:password2 && password !== password2 ? '#ef4444' : T.border }}
+                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
+                      onBlur={e => { (e.target as HTMLInputElement).style.borderColor = password2 && password !== password2 ? '#ef4444' : T.border }}
+                    />
+                    <button onClick={() => setShowPw(!showPw)} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:16, color:T.muted }}>{showPw?'🙈':'👁️'}</button>
+                  </div>
                   {password2 && password !== password2 && <div style={{ fontSize:12, color:'#f87171', marginTop:4 }}>비밀번호가 일치하지 않아요</div>}
                 </div>
                 {error && <div style={{ padding:'10px 14px', borderRadius:10, background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', fontSize:13, color:'#f87171' }}>⚠️ {error}</div>}
