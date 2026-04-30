@@ -1160,16 +1160,21 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 onClick={() => {
                   const shareText = `[${input.productName}] 상세페이지\n\n✦ ${result.oneLiner}\n\n${result.description.slice(0, 200)}...\n\n🔍 키워드: ${result.keywords.slice(0,5).join(', ')}`
                   const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void; Share?: { sendDefault?: (o: unknown) => void } } }
+                  // 초기화 안 됐으면 먼저 초기화
+                  if (win.Kakao && !win.Kakao.isInitialized?.()) {
+                    win.Kakao.init?.('a54ee93898bb809b1c261f778178415c')
+                  }
                   if (win.Kakao?.Share?.sendDefault) {
-                    if (!win.Kakao.isInitialized?.()) win.Kakao.init?.('a54ee93898bb809b1c261f778178415c')
                     win.Kakao.Share.sendDefault({
                       objectType: 'text',
                       text: shareText,
                       link: { mobileWebUrl: window.location.origin, webUrl: window.location.origin },
                     })
                   } else {
-                    navigator.clipboard.writeText(shareText)
-                    alert('텍스트가 복사됐어요. 카카오톡에 붙여넣기 하세요!')
+                    // SDK 미로드 시 클립보드 복사
+                    navigator.clipboard.writeText(shareText).then(() => {
+                      alert('텍스트가 복사됐어요. 카카오톡을 열고 붙여넣기 하세요!')
+                    })
                   }
                 }}
                 style={{
