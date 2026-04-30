@@ -32,7 +32,7 @@ export default function GuideModal() {
       img: [
         '🤖 AI 키: Gemini(일부무료) / OpenAI(유료) / Groq(무료) 중 선택',
         '📊 네이버 데이터랩: 검색 트렌드 분석용 (선택)',
-        '💾 마이페이지 → API 키 탭에서 저장하면 이 기기에 유지됩니다',
+        '💾 마이페이지 → API 키 탭에서 저장하면 저장소에 보관돼 어디서든 사용 가능해요',
       ],
     },
     {
@@ -132,7 +132,7 @@ export default function GuideModal() {
         '🌙☀️🌸 테마 변경 — 헤더 우측 이모지 버튼',
         '📋 기록 버튼 — 이전 생성 결과 불러오기 (최대 20개)',
         '↺ 재생성 — 결과 카드별로 부분 재생성 가능',
-        '⚠️ 저장 안내 — 생성 결과는 이 브라우저에만, API 키는 마이페이지에서 유지',
+        '☁️ 생성 결과·API 키 모두 저장소에 저장 — 폰·PC 어디서든 동일하게 사용',
         '💾 중요한 내용은 반드시 복사하거나 PNG로 저장하세요',
       ],
     },
@@ -202,7 +202,7 @@ export default function GuideModal() {
               padding: '12px 16px', margin: '16px 0 20px', textAlign: 'center',
             }}>
               <p style={{ fontSize: '14px', color: '#ffb3d1', fontWeight: 700 }}>
-                💡 생성된 상세페이지는 PNG 다운로드 또는 HTML 복사로 보관하세요!
+                💡 로그인 후 사용하면 모든 내용이 저장소에 저장돼 폰·PC 어디서든 볼 수 있어요!
               </p>
             </div>
 
