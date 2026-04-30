@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+function removeNonKorean(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/[一-鿿㐀-䶿]/g, '')       // 한자 제거
+    .replace(/[぀-ヿ]/g, '')    // 일본어 제거
+    .replace(/\*{2,}/g, '')             // ** 강조 제거
+    .replace(/^#{3,}\s+/gm, '')         // ### 이상 헤더 제거
+    .replace(/_{2,}/g, '')              // __ 제거
+    .replace(/ {2,}/g, ' ')             // 연속 공백 정리
+    .replace(/
+{3,}/g, '
+
+')         // 연속 줄바꿈 정리
+    .trim()
+}
+
+
 /**
  * ✅ 키 정책 (수정됨)
  * - 관리자 키(admin_config): 관리자 전용. 일반 회원 API 호출에 절대 폴백하지 않음
@@ -51,7 +68,7 @@ export async function POST(req: NextRequest) {
       const geminiKey = userGemini || (isAdmin ? await getAdminKey('gemini_key') : '')
       if (!geminiKey) return NextResponse.json({ error: NO_KEY_ERROR('Gemini') }, { status: 400 })
 
-      const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest']
+      const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-exp', 'gemini-exp-1206', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
       let lastErr = ''
       for (const model of MODELS) {
         const res = await fetch(
@@ -63,15 +80,17 @@ export async function POST(req: NextRequest) {
           const e = await res.json()
           const msg = (e?.error?.message || '').toLowerCase()
           if (res.status === 401 || res.status === 403 || msg.includes('api_key') || msg.includes('api key'))
-            return NextResponse.json({ error: '🔑 Gemini API 키가 올바르지 않아요. 마이페이지에서 키를 확인해주세요.' }, { status: 401 })
+            return NextResponse.json({ error: '🔑 Gemini API 키가 올바르지 않아요. 관리자 페이지에서 키를 확인해주세요.' }, { status: 401 })
+          if (res.status === 429 || res.status === 503 || res.status === 404 || msg.includes('quota') || msg.includes('resource_exhausted') || msg.includes('not found') || msg.includes('overloaded'))
+            { lastErr = `${model} 한도초과/미지원`; continue } // 다음 모델로 시도
           lastErr = e?.error?.message || `${model} 오류(${res.status})`; continue
         }
         const data = await res.json()
-        text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        text = removeNonKorean(data.candidates?.[0]?.content?.parts?.[0]?.text || '')
         if (!text) { lastErr = '빈 응답'; continue }
         break
       }
-      if (!text) return NextResponse.json({ error: toKoreanError(lastErr) }, { status: 500 })
+      if (!text) return NextResponse.json({ error: lastErr === 'quota' ? '⏳ Gemini 무료 한도를 초과했어요. 잠시 후 다시 시도하거나 다른 AI(Groq 무료)를 선택해주세요.' : toKoreanError(lastErr) }, { status: 500 })
 
     } else if (resolvedProvider === 'openai') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
@@ -85,7 +104,7 @@ export async function POST(req: NextRequest) {
       })
       if (!res.ok) { const e = await res.json(); return NextResponse.json({ error: toKoreanError(e?.error?.message || '') }, { status: res.status }) }
       const data = await res.json()
-      text = data.choices?.[0]?.message?.content || ''
+      text = removeNonKorean(data.choices?.[0]?.message?.content || '')
 
     } else if (resolvedProvider === 'groq') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
@@ -99,7 +118,7 @@ export async function POST(req: NextRequest) {
       })
       if (!res.ok) { const e = await res.json(); return NextResponse.json({ error: toKoreanError(e?.error?.message || '') }, { status: res.status }) }
       const data = await res.json()
-      text = data.choices?.[0]?.message?.content || ''
+      text = removeNonKorean(data.choices?.[0]?.message?.content || '')
 
     } else {
       return NextResponse.json({ error: `지원하지 않는 AI예요: ${resolvedProvider}` }, { status: 400 })
