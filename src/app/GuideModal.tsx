@@ -32,7 +32,7 @@ export default function GuideModal() {
       img: [
         '🤖 AI 키: Gemini(일부무료) / OpenAI(유료) / Groq(무료) 중 선택',
         '📊 네이버 데이터랩: 검색 트렌드 분석용 (선택)',
-        '💾 저장하기 누르면 다음부터 자동으로 불러와집니다',
+        '💾 마이페이지 → API 키 탭에서 저장하면 이 기기에 유지됩니다',
       ],
     },
     {
@@ -132,7 +132,7 @@ export default function GuideModal() {
         '🌙☀️🌸 테마 변경 — 헤더 우측 이모지 버튼',
         '📋 기록 버튼 — 이전 생성 결과 불러오기 (최대 20개)',
         '↺ 재생성 — 결과 카드별로 부분 재생성 가능',
-        '⚠️ 저장 안내 — 이 기기 브라우저에만 저장됨',
+        '⚠️ 저장 안내 — 생성 결과는 이 브라우저에만, API 키는 마이페이지에서 유지',
         '💾 중요한 내용은 반드시 복사하거나 PNG로 저장하세요',
       ],
     },
@@ -171,17 +171,17 @@ export default function GuideModal() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>×</button>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🔐</div>
+              <div style={{ fontSize: '40px', marginBottom: '10px' }}>💾</div>
               <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#fff0f5', marginBottom: '6px' }}>
-                저장 데이터 주의사항
+                저장 안내
               </h3>
-              <p style={{ fontSize: '13px', color: '#cc88aa' }}>사용 전에 꼭 읽어주세요</p>
+              <p style={{ fontSize: '13px', color: '#cc88aa' }}>API 키는 안전하게 저장돼요 ✅</p>
             </div>
 
             {[
-              { icon: '📱', title: '이 기기 브라우저 전용 저장', desc: '지금 사용 중인 기기의 이 브라우저에만 저장돼요. 스마트폰으로 만든 내용은 PC에서 볼 수 없고, PC에서 만든 내용은 스마트폰에서 볼 수 없어요.' },
-              { icon: '🌐', title: '브라우저가 달라도 안 보여요', desc: '크롬에서 만든 내용은 사파리·엣지에서 보이지 않아요. 같은 기기라도 브라우저가 다르면 데이터가 공유되지 않습니다.' },
-              { icon: '🗑️', title: '캐시 삭제 = 데이터 완전 삭제', desc: '브라우저 캐시, 쿠키, 사이트 데이터를 지우면 저장된 기록이 모두 사라집니다. 삭제 전에 반드시 복사해두세요!' },
+              { icon: '🔑', title: 'API 키 — 마이페이지에 안전 저장', desc: '마이페이지 → API 키 탭에서 저장한 키는 이 기기 브라우저에 유지됩니다. 화면을 꺼도 사라지지 않아요!' },
+              { icon: '📋', title: '생성 결과 — 이 기기 브라우저 전용', desc: '상세페이지 생성 결과·기록은 이 브라우저에만 저장돼요. 다른 기기나 브라우저에서는 보이지 않으니 중요한 내용은 복사·저장하세요.' },
+              { icon: '🗑️', title: '캐시 삭제 시 기록 사라짐', desc: '브라우저 캐시·쿠키·사이트 데이터를 지우면 생성 기록과 API 키가 모두 삭제됩니다. 키는 마이페이지에서 다시 입력하면 돼요.' },
               { icon: '🕵️', title: '시크릿 모드에서는 저장 안 됨', desc: '시크릿/프라이빗 모드에서는 브라우저를 닫는 순간 모든 데이터가 사라져요. 일반 모드에서 사용하세요.' },
             ].map((item, i) => (
               <div key={i} style={{
@@ -202,7 +202,7 @@ export default function GuideModal() {
               padding: '12px 16px', margin: '16px 0 20px', textAlign: 'center',
             }}>
               <p style={{ fontSize: '14px', color: '#ffb3d1', fontWeight: 700 }}>
-                💡 중요한 내용은 생성 후 바로 복사하거나 PNG로 다운받아두세요!
+                💡 생성된 상세페이지는 PNG 다운로드 또는 HTML 복사로 보관하세요!
               </p>
             </div>
 
