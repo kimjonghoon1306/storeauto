@@ -178,13 +178,13 @@ export default function AdminPage() {
       const res = await supabaseQuery('admin_config','GET',undefined,'select=value&key=eq.admin_password') as Array<{value:string}>
       const stored = (Array.isArray(res) && res[0]?.value) ? res[0].value : DEFAULT_PW
       if (pw === stored) {
-        setAuthed(true); loadAll()
+        localStorage.setItem('storeauto_admin_authed', '1'); setAuthed(true); loadAll()
       }
       else { setBusy(false); setShake(true); setTimeout(() => setShake(false), 500) }
     } catch (_e) {
       // Supabase 실패 시 기본 비번으로 폴백
       const local = localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW
-      if (pw === local) { setAuthed(true); loadAll() }
+      if (pw === local) { localStorage.setItem('storeauto_admin_authed', '1'); setAuthed(true); loadAll() }
       else { setBusy(false); setShake(true); setTimeout(() => setShake(false), 500) }
     }
   }, [pw, loadAll])
