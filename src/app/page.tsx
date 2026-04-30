@@ -158,7 +158,7 @@ export default function Home() {
       if (!resolvedKey) {
         try {
           // 1. localStorage 시도
-          const sess = JSON.parse(localStorage.getItem('sa_session') || 'null')
+          const sess = loadSession()
           const keysKey = sess?.id ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
           const saved = JSON.parse(localStorage.getItem(keysKey) || localStorage.getItem('storeauto_keys') || '{}')
           resolvedKey = saved.gemini || ''
@@ -435,8 +435,8 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         try {
           const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
           const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-          const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
-          if (sess.access_token) {
+          const sess = loadSession()
+          if (sess?.access_token) {
             // usage_stats 기록 (fire-and-forget)
             fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
               method: 'POST',
