@@ -139,12 +139,31 @@ export default function Home() {
   const callAI = useCallback(async (prompt: string): Promise<string> => {
     // ✅ Gemini: tarry 방식 - apiKey를 서버에 전달해서 서버에서 호출
     if (provider === 'gemini') {
-      // 관리자는 무조건 /api/ai 경유 → admin_config 키 사용
+      // 관리자: localStorage의 admin 키 읽어서 서버에 전달 (가장 확실)
       if (isAdmin) {
-        const res = await fetch('/api/ai', {
+        let adminKey = ''
+        try {
+          const adminKeys = JSON.parse(localStorage.getItem('storeauto_admin_keys') || '{}')
+          adminKey = adminKeys[provider] || adminKeys.gemini || ''
+        } catch { /* ignore */ }
+
+        // localStorage에 없으면 서버에서 admin_config 조회
+        if (!adminKey) {
+          const res = await fetch('/api/ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, provider, isAdmin: true }),
+          })
+          const data = await res.json()
+          if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
+          return data.text || ''
+        }
+
+        // admin 키로 /api/generate 직접 호출
+        const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, provider, isAdmin: true }),
+          body: JSON.stringify({ provider, apiKey: adminKey, prompt }),
         })
         const data = await res.json()
         if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
