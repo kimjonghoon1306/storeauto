@@ -684,10 +684,10 @@ function MyPageInner() {
 
       {/* 모바일 탭바 */}
       <div id="mobile-tab" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: T.surface, borderTop: `1px solid ${T.border}`, paddingBottom: 'env(safe-area-inset-bottom)', backdropFilter: 'blur(30px)', boxShadow: '0 -4px 24px rgba(0,0,0,0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '10px 0 8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '14px 4px 10px' }}>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '0 8px', flex: 1, background: 'transparent', border: 'none', cursor: 'pointer', color: tab===t.key ? t.color : T.muted, fontFamily: 'inherit', fontSize: 10, fontWeight: 800 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: tab===t.key ? `${t.color}18` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{t.icon}</div>
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0 10px', flex: 1, background: 'transparent', border: 'none', cursor: 'pointer', color: tab===t.key ? t.color : T.muted, fontFamily: 'inherit', fontSize: 10, fontWeight: 800 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: tab===t.key ? `${t.color}18` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>{t.icon}</div>
               <span style={{ whiteSpace: 'nowrap' }}>{t.label}</span>
             </button>
           ))}
