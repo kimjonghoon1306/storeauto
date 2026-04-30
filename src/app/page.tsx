@@ -1162,7 +1162,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void; Share?: { sendDefault?: (o: unknown) => void } } }
                   // 초기화 안 됐으면 먼저 초기화
                   if (win.Kakao && !win.Kakao.isInitialized?.()) {
-                    win.Kakao.init?.('a54ee93898bb809b1c261f778178415c')
+                    win.Kakao.init?.('23d3b649f46af9c7c321eb539c21720c')
                   }
                   if (win.Kakao?.Share?.sendDefault) {
                     win.Kakao.Share.sendDefault({
