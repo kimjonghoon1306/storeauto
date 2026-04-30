@@ -139,18 +139,8 @@ export default function Home() {
   const callAI = useCallback(async (prompt: string): Promise<string> => {
     // ✅ Gemini: tarry 방식 - apiKey를 서버에 전달해서 서버에서 호출
     if (provider === 'gemini') {
-      // 키 로드 (state → Supabase/localStorage 순서)
-      let resolvedKey = geminiKey
-      if (!resolvedKey && !isAdmin) {
-        try {
-          const { loadUserKeys } = await import('@/lib/keys')
-          const k = await loadUserKeys()
-          resolvedKey = k.gemini || ''
-        } catch { /* ignore */ }
-      }
-
-      // 관리자는 /api/ai로 admin_config 키 사용
-      if (isAdmin && !resolvedKey) {
+      // 관리자는 무조건 /api/ai 경유 → admin_config 키 사용
+      if (isAdmin) {
         const res = await fetch('/api/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -159,6 +149,34 @@ export default function Home() {
         const data = await res.json()
         if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
         return data.text || ''
+      }
+
+      // 키 로드: state → localStorage → Supabase 직접 순서
+      let resolvedKey = geminiKey
+      if (!resolvedKey) {
+        try {
+          // 1. localStorage 시도
+          const sess = JSON.parse(localStorage.getItem('sa_session') || 'null')
+          const keysKey = sess?.id ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+          const saved = JSON.parse(localStorage.getItem(keysKey) || localStorage.getItem('storeauto_keys') || '{}')
+          resolvedKey = saved.gemini || ''
+
+          // 2. Supabase 직접 조회 (localStorage에 없을 때)
+          if (!resolvedKey && sess?.id && sess?.access_token) {
+            const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+            const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+            const kRes = await fetch(
+              `${SURL}/rest/v1/user_keys?user_id=eq.${sess.id}&select=gemini_key&limit=1`,
+              { headers: { apikey: SKEY, Authorization: `Bearer ${sess.access_token}` } }
+            )
+            const kData = await kRes.json()
+            if (Array.isArray(kData) && kData[0]?.gemini_key) {
+              resolvedKey = kData[0].gemini_key
+              // state도 업데이트
+              setGeminiKey(resolvedKey)
+            }
+          }
+        } catch { /* ignore */ }
       }
 
       if (!resolvedKey) throw new Error('🔑 Gemini API 키가 없어요. 마이페이지에서 키를 등록해주세요.')
