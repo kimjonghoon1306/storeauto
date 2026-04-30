@@ -280,7 +280,7 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       return
     }
     const currentKey = provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey
-    if (!currentKey.trim()) {
+    if (!isAdmin && !currentKey.trim()) {
       setError(`${provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Groq'} API 키를 입력해주세요.`)
       return
     }
@@ -806,7 +806,12 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </div>
 
               {/* 키 상태 표시 */}
-              {(provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey) ? (
+              {isAdmin ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)' }} />
+                  <span style={{ fontSize: '13px', color: 'var(--green)', fontWeight: 600 }}>관리자 키 사용 중 (무제한)</span>
+                </div>
+              ) : (provider === 'gemini' ? geminiKey : provider === 'openai' ? openaiKey : groqKey) ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)' }} />
@@ -828,11 +833,11 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   <span style={{ fontSize: '13px', color: '#ff6666' }}>
                     ⚠️ {provider === 'gemini' ? 'Gemini' : provider === 'openai' ? 'OpenAI' : 'Groq'} 키가 없습니다
                   </span>
-                  <button onClick={() => router.push('/settings')} style={{
+                  <button onClick={() => router.push('/mypage?tab=keys')} style={{
                     background: 'var(--accent)', border: 'none', borderRadius: '6px',
                     padding: '6px 14px', fontSize: '12px', color: '#fff', fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'inherit',
-                  }}>⚙️ 키 설정하기</button>
+                  }}>🔑 키 설정하기</button>
                 </div>
               )}
             </div>
