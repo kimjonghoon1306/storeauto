@@ -743,20 +743,28 @@ export default function GovernmentPage() {
   }
 
   const formatMessage = (text: string) => {
-    // 텍스트 정제
-    const clean = text
+    const SAFE_DOMAINS = ['sbiz.or.kr','k-startup.go.kr','mss.go.kr','bizinfo.go.kr','kised.or.kr','kodit.co.kr','kibo.or.kr','8899.or.kr','gov.kr','bokjiro.go.kr','hometax.go.kr','sbc.or.kr','comwel.or.kr','nts.go.kr','unikorea.go.kr','koreahana.or.kr','moel.go.kr','kbiz.or.kr','ccrs.or.kr','socialenterprise.or.kr','coop.go.kr','wbiz.or.kr','debc.or.kr','iros.go.kr','mogef.go.kr']
+
+    const makeHref = (url: string): { href: string; isSafe: boolean } => {
+      const href = /^https?:\/\//.test(url) ? url : 'https://' + url
+      const rawDomain = href.replace(/https?:\/\//, '').split('/')[0]
+      const domain = rawDomain.replace(/^www\./, '')
+      const isSafe = SAFE_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))
+      return { href: isSafe ? href : 'https://www.google.com/search?q=' + encodeURIComponent(rawDomain), isSafe }
+    }
+
+    // 마크다운 링크 [텍스트](URL) → URL만 추출
+    const preClean = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+|www\.[^)]+)\)/g, '$2')
+
+    const clean = preClean
       .replace(/[\u4E00-\u9FFF\u3400-\u4DBF]/g, '')
-      .replace(/[ăắặảãầấậẩẫđêếềệểễôốồộổỗơớờợởỡưứừựửữỹỷịỉ]/gi, (c) => {
-        const m: Record<string, string> = {'ă':'a','ắ':'a','ặ':'a','ả':'a','ã':'a','ầ':'a','ấ':'a','ậ':'a','ẩ':'a','ẫ':'a','đ':'d','ê':'e','ế':'e','ề':'e','ệ':'e','ể':'e','ễ':'e','ô':'o','ố':'o','ồ':'o','ộ':'o','ổ':'o','ỗ':'o','ơ':'o','ớ':'o','ờ':'o','ợ':'o','ở':'o','ỡ':'o','ư':'u','ứ':'u','ừ':'u','ự':'u','ử':'u','ữ':'u','ỹ':'y','ỷ':'y','ị':'i','ỉ':'i'}
-        return m[c.toLowerCase()] || ''
-      })
-      .replace(/\*\*(.+?)\*\*/g, '〔$1〕')
+      .replace(/\*\*(.+?)\*\*/g, '\u3010$1\u3011')
       .replace(/\*(.+?)\*/g, '$1')
       .replace(/^#{1,3}\s*/gm, '')
       .replace(/^---+$/gm, '')
       .replace(/\n{3,}/g, '\n\n')
 
-    const URL_REGEX = /(https?:\/\/[^\s)]+|www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s)]*)/g
+    const URL_REGEX = /(https?:\/\/[^\s)\]]+|www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s)\]]*)/g
     const lines = clean.split('\n')
     const result: React.ReactNode[] = []
     let numIdx = 0
@@ -767,7 +775,7 @@ export default function GovernmentPage() {
       return (
         <span key={key}>
           {parts.map((p, i) => {
-            if (p.startsWith('〔') && p.endsWith('〕')) {
+            if (p.startsWith('\u3010') && p.endsWith('\u3011')) {
               return <strong key={i} style={{ color: 'var(--text)', fontWeight: 800 }}>{p.slice(1, -1)}</strong>
             }
             return <span key={i}>{p}</span>
@@ -793,15 +801,9 @@ export default function GovernmentPage() {
         parts.forEach((part, j) => {
           if (/^https?:\/\//.test(part) || /^www\./.test(part)) {
             // www. 링크는 Google 검색으로 안전하게 처리 (없는 도메인 방지)
-            const isHttp = /^https?:\/\//.test(part)
-            const domain = isHttp ? part.replace(/https?:\/\//, '').split('/')[0] : part.split('/')[0]
-            // 검증된 공식 도메인은 직접 연결, 나머지는 Google 검색
-            const SAFE_DOMAINS = ['sbiz.or.kr','k-startup.go.kr','mss.go.kr','bizinfo.go.kr','kised.or.kr','kodit.co.kr','kibo.or.kr','8899.or.kr','gov.kr','bokjiro.go.kr','hometax.go.kr','sbc.or.kr','comwel.or.kr','nts.go.kr','unikorea.go.kr','koreahana.or.kr','moel.go.kr','kbiz.or.kr','ccrs.or.kr','socialenterprise.or.kr','coop.go.kr','wbiz.or.kr','debc.or.kr','iros.go.kr','mogef.go.kr']
-            const isSafe = SAFE_DOMAINS.some(d => domain.endsWith(d))
-            const href = isSafe
-              ? (isHttp ? part : 'https://' + part)
-              : `https://www.google.com/search?q=${encodeURIComponent(domain)}`
-            const label = isSafe ? domain : `${domain} 검색`
+            const { href, isSafe } = makeHref(part)
+            const rawDomain = (/^https?:\/\//.test(part) ? part : 'https://' + part).replace(/https?:\/\//, '').split('/')[0]
+            const label = isSafe ? rawDomain : rawDomain + ' 검색'
             nodes.push(
               <a key={j} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '5px',
