@@ -137,13 +137,20 @@ export default function Home() {
 
   // 공통 AI 호출 함수 (서버 API 경유 - 보안)
   const callAI = useCallback(async (prompt: string): Promise<string> => {
-    // ✅ Gemini: 브라우저에서 직접 호출 (Vercel 서버 IP 차단 우회)
+    // ✅ Gemini: tarry 방식 - apiKey를 서버에 전달해서 서버에서 호출
     if (provider === 'gemini') {
-      const key = geminiKey || (isAdmin ? '' : '')
-      if (!key && !isAdmin) throw new Error('🔑 Gemini API 키가 없어요. 마이페이지에서 키를 등록해주세요.')
+      // 키 로드 (state → Supabase/localStorage 순서)
+      let resolvedKey = geminiKey
+      if (!resolvedKey && !isAdmin) {
+        try {
+          const { loadUserKeys } = await import('@/lib/keys')
+          const k = await loadUserKeys()
+          resolvedKey = k.gemini || ''
+        } catch { /* ignore */ }
+      }
 
-      // 관리자는 서버 경유 (admin_config 키 사용)
-      if (isAdmin && !key) {
+      // 관리자는 /api/ai로 admin_config 키 사용
+      if (isAdmin && !resolvedKey) {
         const res = await fetch('/api/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -154,54 +161,17 @@ export default function Home() {
         return data.text || ''
       }
 
-      // geminiKey state가 비었으면 직접 다시 읽기
-      let resolvedKey = key
-      if (!resolvedKey) {
-        try {
-          const { loadUserKeys } = await import('@/lib/keys')
-          const k = await loadUserKeys()
-          resolvedKey = k.gemini || ''
-        } catch { /* ignore */ }
-      }
       if (!resolvedKey) throw new Error('🔑 Gemini API 키가 없어요. 마이페이지에서 키를 등록해주세요.')
 
-      // 회원: 브라우저에서 직접 호출
-      const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
-      let lastErr = ''
-      for (const model of MODELS) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-              }),
-            }
-          )
-          if (!res.ok) {
-            const e = await res.json()
-            const msg = (e?.error?.message || '').toLowerCase()
-            if (res.status === 401 || res.status === 403 || msg.includes('api key') || msg.includes('api_key'))
-              throw new Error('🔑 Gemini API 키가 올바르지 않아요. 마이페이지에서 키를 확인해주세요.')
-            if (res.status === 429 || msg.includes('quota') || msg.includes('resource_exhausted'))
-              { lastErr = 'quota'; continue }
-            lastErr = e?.error?.message || `${model} 오류(${res.status})`; continue
-          }
-          const data = await res.json()
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          if (!text) { lastErr = '빈 응답'; continue }
-          return text
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : ''
-          if (msg.includes('키')) throw e
-          lastErr = msg; continue
-        }
-      }
-      if (lastErr === 'quota') throw new Error('⏳ Gemini 무료 한도를 초과했어요. 잠시 후 다시 시도하거나 Groq(무료)를 선택해주세요.')
-      throw new Error(lastErr || 'Gemini 호출 실패')
+      // apiKey를 서버에 전달 → 서버에서 Gemini 호출 (tarry 방식)
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'gemini', apiKey: resolvedKey, prompt }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
+      return data.text || ''
     }
 
     // OpenAI / Groq: 서버 경유
