@@ -137,14 +137,69 @@ export default function Home() {
 
   // 공통 AI 호출 함수 (서버 API 경유 - 보안)
   const callAI = useCallback(async (prompt: string): Promise<string> => {
+    // ✅ Gemini: 브라우저에서 직접 호출 (Vercel 서버 IP 차단 우회)
+    if (provider === 'gemini') {
+      const key = geminiKey || (isAdmin ? '' : '')
+      if (!key && !isAdmin) throw new Error('🔑 Gemini API 키가 없어요. 마이페이지에서 키를 등록해주세요.')
+
+      // 관리자는 서버 경유 (admin_config 키 사용)
+      if (isAdmin && !key) {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, provider, isAdmin: true }),
+        })
+        const data = await res.json()
+        if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
+        return data.text || ''
+      }
+
+      // 회원: 브라우저에서 직접 호출
+      const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+      let lastErr = ''
+      for (const model of MODELS) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+              }),
+            }
+          )
+          if (!res.ok) {
+            const e = await res.json()
+            const msg = (e?.error?.message || '').toLowerCase()
+            if (res.status === 401 || res.status === 403 || msg.includes('api key') || msg.includes('api_key'))
+              throw new Error('🔑 Gemini API 키가 올바르지 않아요. 마이페이지에서 키를 확인해주세요.')
+            if (res.status === 429 || msg.includes('quota') || msg.includes('resource_exhausted'))
+              { lastErr = 'quota'; continue }
+            lastErr = e?.error?.message || `${model} 오류(${res.status})`; continue
+          }
+          const data = await res.json()
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+          if (!text) { lastErr = '빈 응답'; continue }
+          return text
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : ''
+          if (msg.includes('키')) throw e
+          lastErr = msg; continue
+        }
+      }
+      if (lastErr === 'quota') throw new Error('⏳ Gemini 무료 한도를 초과했어요. 잠시 후 다시 시도하거나 Groq(무료)를 선택해주세요.')
+      throw new Error(lastErr || 'Gemini 호출 실패')
+    }
+
+    // OpenAI / Groq: 서버 경유
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
         provider,
-        // 사용자 키 전달 (없으면 서버에서 관리자 키 사용)
-        userGemini: geminiKey || undefined,
         userOpenai: openaiKey || undefined,
         userGroq:   groqKey   || undefined,
         isAdmin: isAdmin || undefined,
@@ -153,7 +208,7 @@ export default function Home() {
     const data = await res.json()
     if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
     return data.text || ''
-  }, [provider, geminiKey, openaiKey, groqKey])
+  }, [provider, geminiKey, openaiKey, groqKey, isAdmin])
 
   // 섹션별 재생성
   type RegenSection = 'keywords' | 'oneLiner' | 'description' | 'recommendation' | 'cta' | 'faq'
