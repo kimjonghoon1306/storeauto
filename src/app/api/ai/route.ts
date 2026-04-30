@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+// 서버에서만 실행 - 관리자 키 클라이언트에 절대 노출 안됨
+async function getAdminKey(keyName: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/admin_config?key=eq.${keyName}&select=value&limit=1`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    )
+    const data = await res.json()
+    return Array.isArray(data) && data[0]?.value ? data[0].value : ''
+  } catch { return '' }
+}
+
 function toKoreanError(msg: string): string {
   if (!msg) return '알 수 없는 오류가 발생했어요.'
   if (msg.includes('quota') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도를 초과했어요. 잠시 후 다시 시도해주세요.'
@@ -21,12 +36,13 @@ export async function POST(req: NextRequest) {
     let text = ''
 
     if (provider === 'gemini' || !provider) {
-      if (!userGemini) return NextResponse.json({ error: '🔑 Gemini API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
+      const geminiKey = userGemini || await getAdminKey('gemini_key')
+      if (!geminiKey) return NextResponse.json({ error: '🔑 Gemini API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash-latest']
       let lastErr = ''
       for (const model of MODELS) {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userGemini}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } }) }
         )
@@ -45,10 +61,11 @@ export async function POST(req: NextRequest) {
       if (!text) return NextResponse.json({ error: toKoreanError(lastErr) }, { status: 500 })
 
     } else if (provider === 'openai') {
-      if (!userOpenai) return NextResponse.json({ error: '🔑 OpenAI API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
+      const openaiKey = userOpenai || await getAdminKey('openai_key')
+      if (!openaiKey) return NextResponse.json({ error: '🔑 OpenAI API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userOpenai}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
         body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
       })
       if (!res.ok) { const e = await res.json(); return NextResponse.json({ error: toKoreanError(e?.error?.message || '') }, { status: res.status }) }
@@ -56,10 +73,11 @@ export async function POST(req: NextRequest) {
       text = data.choices?.[0]?.message?.content || ''
 
     } else if (provider === 'groq') {
-      if (!userGroq) return NextResponse.json({ error: '🔑 Groq API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
+      const groqKey = userGroq || await getAdminKey('groq_key')
+      if (!groqKey) return NextResponse.json({ error: '🔑 Groq API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userGroq}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
         body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 8192, temperature: 0.7 }),
       })
       if (!res.ok) { const e = await res.json(); return NextResponse.json({ error: toKoreanError(e?.error?.message || '') }, { status: res.status }) }
