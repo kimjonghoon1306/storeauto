@@ -91,6 +91,15 @@ export default function Home() {
         if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
       }
     } catch {}
+    // 템플릿 로드
+    if (loadSession()) {
+      const sess = loadSession()!
+      const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      fetch(`${SURL}/rest/v1/product_templates?user_id=eq.${sess.id}&order=created_at.desc`, {
+        headers: { apikey: SKEY, Authorization: `Bearer ${sess.access_token}` }
+      }).then(r => r.json()).then(d => { if (Array.isArray(d)) setTemplates(d) }).catch(() => {})
+    }
     // AI 키는 Supabase에서 불러오기 (모든 기기 동일)
     loadUserKeys().then(k => {
       if (k.gemini) setGeminiKey(k.gemini)
@@ -99,6 +108,10 @@ export default function Home() {
     }).catch(() => {})
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<{id:string; name:string; input:Record<string,unknown>}[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
   const [seoKeyword, setSeoKeyword] = useState('')
   const [trendQuery, setTrendQuery] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
@@ -189,6 +202,42 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
     } finally {
       setRegenLoading(null)
     }
+  }
+
+  const saveTemplate = async (name: string) => {
+    if (!name.trim() || !authUser) return
+    setSavingTemplate(true)
+    try {
+      const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const sess = loadSession()
+      if (!sess) return
+      const res = await fetch(`${SURL}/rest/v1/product_templates`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', apikey:SKEY, Authorization:`Bearer ${sess.access_token}`, Prefer:'return=representation' },
+        body: JSON.stringify({ user_id: authUser.id, name: name.trim(), input }),
+      })
+      const data = await res.json()
+      if (Array.isArray(data) && data[0]) setTemplates(prev => [data[0], ...prev])
+      setShowTemplates(false)
+      alert('✅ 템플릿 저장 완료!')
+    } catch { alert('❌ 저장 실패') }
+    setSavingTemplate(false)
+  }
+
+  const deleteTemplate = async (id: string) => {
+    if (!confirm('템플릿을 삭제할까요?')) return
+    try {
+      const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      const sess = loadSession()
+      if (!sess) return
+      await fetch(`${SURL}/rest/v1/product_templates?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { apikey:SKEY, Authorization:`Bearer ${sess.access_token}` },
+      })
+      setTemplates(prev => prev.filter(t => t.id !== id))
+    } catch { /* ignore */ }
   }
 
   const handleShare = async () => {
@@ -352,7 +401,8 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 product_name: input.productName,
                 category: input.category,
                 provider,
-                result: parsed,
+                // htmlCode는 용량이 크므로 제외하고 저장
+                result: { ...parsed, htmlCode: '' },
               }),
             }).catch(() => {})
           }
@@ -787,8 +837,50 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
 
             </div> {/* step-1 AI선택 닫힘 */}
 
-            {/* 상품명 */}
+            {/* 템플릿 */}
             <div className={`step-2 ${mobileStep===2?'step-show':''}`}>
+            {authUser && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: showTemplates ? 12 : 0 }}>
+                  <button onClick={() => setShowTemplates(v => !v)} style={{
+                    flex: 1, padding: '9px 14px', background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.25)',
+                    borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>📂 템플릿 불러오기 {templates.length > 0 && `(${templates.length})`}</button>
+                  <button onClick={() => {
+                    const name = prompt('템플릿 이름을 입력하세요 (예: 굴비 세트)')
+                    if (!name) return
+                    saveTemplate(name)
+                  }} style={{
+                    padding: '9px 14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)',
+                    borderRadius: 8, color: '#3b82f6', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  }}>💾 현재 입력 저장</button>
+                </div>
+                {showTemplates && (
+                  <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
+                    {templates.length === 0 ? (
+                      <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>저장된 템플릿이 없어요</p>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
+                        {templates.map(t => (
+                          <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</p>
+                              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(t.input as {productName?:string}).productName || ''}</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => { setInput(t.input as ProductInput); setShowTemplates(false) }} style={{ padding: '5px 10px', background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>불러오기</button>
+                              <button onClick={() => deleteTemplate(t.id)} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>🗑</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 상품명 */}
             <div>
               <Label>상품명 <Required /></Label>
               <input type="text" value={input.productName}
