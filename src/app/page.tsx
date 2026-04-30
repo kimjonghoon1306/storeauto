@@ -1040,22 +1040,44 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </div>
             </div>
 
-            <button
-              onClick={() => copyText(
-                `[키워드]\n${result.keywords.join(', ')}\n\n[카피]\n${result.oneLiner}\n\n[상세설명]\n${result.description}\n\n[추천고객]\n${result.recommendation}\n\n[구매유도]\n${result.cta}\n\n[FAQ]\n${result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')}`,
-                'all'
-              )}
-              style={{
-                background: copied === 'all' ? 'var(--green)' : 'var(--surface2)',
-                color: copied === 'all' ? '#000' : 'var(--text)',
-                border: '1px solid var(--border)', borderRadius: '10px',
-                padding: 'clamp(14px, 3vw, 16px)', fontSize: 'clamp(14px, 3vw, 15px)',
-                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                transition: 'all 0.2s', width: '100%',
-              }}
-            >
-              {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 텍스트 복사'}
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => copyText(
+                  `[키워드]\n${result.keywords.join(', ')}\n\n[카피]\n${result.oneLiner}\n\n[상세설명]\n${result.description}\n\n[추천고객]\n${result.recommendation}\n\n[구매유도]\n${result.cta}\n\n[FAQ]\n${result.faq.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')}`,
+                  'all'
+                )}
+                style={{
+                  flex: 1,
+                  background: copied === 'all' ? 'var(--green)' : 'var(--surface2)',
+                  color: copied === 'all' ? '#000' : 'var(--text)',
+                  border: '1px solid var(--border)', borderRadius: '10px',
+                  padding: 'clamp(14px, 3vw, 16px)', fontSize: 'clamp(14px, 3vw, 15px)',
+                  fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 텍스트 복사'}
+              </button>
+              <button
+                onClick={() => {
+                  const shareText = `[${input.productName}] 상세페이지\n\n✦ ${result.oneLiner}\n\n${result.description.slice(0, 200)}...\n\n🔍 키워드: ${result.keywords.slice(0,5).join(', ')}`
+                  if (typeof navigator !== 'undefined' && navigator.share) {
+                    navigator.share({ title: `${input.productName} 상세페이지`, text: shareText }).catch(() => {})
+                  } else {
+                    navigator.clipboard.writeText(shareText)
+                    alert('텍스트가 복사됐어요. 카카오톡에 붙여넣기 하세요!')
+                  }
+                }}
+                style={{
+                  background: '#FEE500', border: 'none', borderRadius: '10px',
+                  padding: '14px 18px', fontSize: '14px', fontWeight: 800,
+                  cursor: 'pointer', fontFamily: 'inherit', color: '#000',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                💬 카카오 공유
+              </button>
+            </div>
 
             <DetailPageBuilder
               result={result}
