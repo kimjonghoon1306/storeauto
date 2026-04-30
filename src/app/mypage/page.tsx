@@ -561,9 +561,9 @@ function MyPageInner() {
 
               <div className="key-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
                 {([
-                  { l: 'Gemini API', k: 'gemini' as const, ph: 'AIza...', bc: '#10b981', badge: '무료', icon: '🟢', desc: 'Google의 무료 AI 모델. 상세페이지·리뷰 생성에 활용됩니다.' },
-                  { l: 'OpenAI API', k: 'openai' as const, ph: 'sk-...',  bc: '#ef4444', badge: '유료', icon: '⚫', desc: 'ChatGPT 모델. 고품질 콘텐츠 생성에 활용됩니다.' },
-                  { l: 'Groq API',   k: 'groq'   as const, ph: 'gsk_...', bc: '#00e5a0', badge: '무료', icon: '🔵', desc: '초고속 무료 AI. 빠른 응답이 필요한 작업에 사용됩니다.' },
+                  { l: 'Gemini API', k: 'gemini' as const, ph: 'AIza...', bc: '#10b981', badge: '무료', icon: '🟢', desc: 'Google의 무료 AI 모델. 상세페이지·리뷰 생성에 활용됩니다.', url: 'https://aistudio.google.com/apikey' },
+                  { l: 'OpenAI API', k: 'openai' as const, ph: 'sk-...',  bc: '#ef4444', badge: '유료', icon: '⚫', desc: 'ChatGPT 모델. 고품질 콘텐츠 생성에 활용됩니다.', url: 'https://platform.openai.com/api-keys' },
+                  { l: 'Groq API',   k: 'groq'   as const, ph: 'gsk_...', bc: '#00e5a0', badge: '무료', icon: '🔵', desc: '초고속 무료 AI. 빠른 응답이 필요한 작업에 사용됩니다.', url: 'https://console.groq.com/keys' },
                 ]).map(f => (
                   <div key={f.k} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: 22 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
