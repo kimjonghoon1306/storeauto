@@ -267,7 +267,7 @@ export default function DashboardPage() {
 
       {/* ──────────── 모바일 하단 탭바 ──────────── */}
       <div id="mob-bar" style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:T.surface, borderTop:`1px solid ${T.border}`, backdropFilter:'blur(24px)', paddingBottom:'env(safe-area-inset-bottom)' }}>
-        <div style={{ display:'flex', justifyContent:'space-around', padding:'12px 0 8px' }}>
+        <div style={{ display:'flex', justifyContent:'space-around', padding:'14px 0 10px' }}>
           {[
             { icon:'👤', label:'프로필',   path:'/mypage?tab=profile', color:'#ff6b35', active:true  },
             { icon:'📊', label:'통계',     path:'/mypage?tab=stats',   color:'#3b82f6', active:false },
@@ -275,8 +275,8 @@ export default function DashboardPage() {
             { icon:'📝', label:'작업일지', path:'/mypage?tab=worklog', color:'#f59e0b', active:false },
             { icon:'🔑', label:'API 키',   path:'/mypage?tab=keys',    color:'#8b5cf6', active:false },
           ].map(t => (
-            <button key={t.path} onClick={() => router.push(t.path)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, flex:1, background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:800, color:t.active?t.color:T.muted }}>
-              <span style={{ fontSize:26 }}>{t.icon}</span>
+            <button key={t.path} onClick={() => router.push(t.path)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, flex:1, background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:11, fontWeight:800, color:t.active?t.color:T.muted }}>
+              <span style={{ fontSize:28 }}>{t.icon}</span>
               <span style={{ whiteSpace:'nowrap' }}>{t.label}</span>
             </button>
           ))}
