@@ -437,26 +437,28 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
           const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
           if (sess.access_token) {
-            // usage_stats 기록
+            // usage_stats 기록 (fire-and-forget)
             fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
               method: 'POST',
               headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
               body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
             }).catch(() => {})
-            // ✅ generated_results에 결과물 저장 + id 받아서 공유 URL 생성
-            fetch(SUPABASE_URL + '/rest/v1/generated_results', {
-              method: 'POST',
-              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
-              body: JSON.stringify({
-                user_id: authUser.id,
-                product_name: input.productName,
-                category: input.category,
-                provider,
-                result: { ...parsed, htmlCode: '' },
-              }),
-            }).then(r => r.json()).then(d => {
-              if (Array.isArray(d) && d[0]?.id) setShareId(d[0].id)
-            }).catch(() => {})
+            // generated_results 저장 → await로 shareId 확보 후 카카오 버튼 활성화
+            try {
+              const saveRes = await fetch(SUPABASE_URL + '/rest/v1/generated_results', {
+                method: 'POST',
+                headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
+                body: JSON.stringify({
+                  user_id: authUser.id,
+                  product_name: input.productName,
+                  category: input.category,
+                  provider,
+                  result: { ...parsed, htmlCode: '' },
+                }),
+              })
+              const saveData = await saveRes.json()
+              if (Array.isArray(saveData) && saveData[0]?.id) setShareId(saveData[0].id)
+            } catch (_e) { /* 저장 실패해도 생성 결과는 정상 표시 */ }
           }
         } catch (_e) { /* ignore */ }
       }
