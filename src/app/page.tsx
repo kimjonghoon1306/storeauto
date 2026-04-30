@@ -265,11 +265,11 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       setError('둘러보기 모드에서는 기능을 사용할 수 없어요. 로그인 후 이용해주세요.')
       return
     }
-    if (!authUser) {
+    if (!isAdmin && !authUser) {
       try {
         const used = parseInt(localStorage.getItem('sa_guest_count') || '0')
         if (used >= 3) {
-          setError('⚠️ 비로그인 체험은 3회까지만 가능해요. 로그인하면 무제한으로 사용할 수 있어요!')
+          setError('⚠️ 비로그인 체험은 3회까지만 가능해요. 로그인 후 이용해주세요.')
           return
         }
         localStorage.setItem('sa_guest_count', String(used + 1))
