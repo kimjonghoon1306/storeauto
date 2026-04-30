@@ -1214,22 +1214,13 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               </button>
               <button
                 onClick={() => {
-                  const shareText = `[${input.productName}] 상세페이지\n\n✦ ${result.oneLiner}\n\n${result.description.slice(0, 200)}...\n\n🔍 키워드: ${result.keywords.slice(0,5).join(', ')}`
-                  const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void; Share?: { sendDefault?: (o: unknown) => void } } }
-                  // 초기화 안 됐으면 먼저 초기화
-                  if (win.Kakao && !win.Kakao.isInitialized?.()) {
-                    win.Kakao.init?.('23d3b649f46af9c7c321eb539c21720c')
-                  }
-                  if (win.Kakao?.Share?.sendDefault) {
-                    win.Kakao.Share.sendDefault({
-                      objectType: 'text',
-                      text: shareText,
-                      link: { mobileWebUrl: window.location.origin, webUrl: window.location.origin },
-                    })
+                  const clean = (t: string) => t.replace(/[\u4E00-\u9FFF\u3040-\u30FF]/g, '').replace(/[\u2726\U0001F50D\u2605\u2606]/g, '').trim()
+                  const shareText = `[${input.productName}] 상세페이지\n\n${clean(result.oneLiner)}\n\n${clean(result.description.slice(0, 300))}...\n\n키워드: ${result.keywords.slice(0,5).join(', ')}`
+                  if (navigator.share) {
+                    navigator.share({ text: shareText }).catch(() => {})
                   } else {
-                    // SDK 미로드 시 클립보드 복사
                     navigator.clipboard.writeText(shareText).then(() => {
-                      alert('텍스트가 복사됐어요. 카카오톡을 열고 붙여넣기 하세요!')
+                      alert('복사됐어요! 카카오톡에 붙여넣기 하세요.')
                     })
                   }
                 }}
