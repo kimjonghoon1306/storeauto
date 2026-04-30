@@ -267,13 +267,13 @@ export default function DashboardPage() {
 
       {/* ──────────── 모바일 하단 탭바 ──────────── */}
       <div id="mob-bar" style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:T.surface, borderTop:`1px solid ${T.border}`, backdropFilter:'blur(24px)', paddingBottom:'env(safe-area-inset-bottom)' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 16px 8px' }}>
+        <div style={{ display:'flex', justifyContent:'space-around', padding:'12px 0 8px' }}>
           {[
-            { icon:'🏠', label:'대시보드',  path:'/dashboard',  color:ACCENT,    active:true  },
-            { icon:'📄', label:'상세페이지', path:'/',           color:'#ff6b35', active:false },
-            { icon:'💬', label:'리뷰',      path:'/reviews',    color:'#10b981', active:false },
-            { icon:'🏛️', label:'정부지원',  path:'/government', color:'#3b82f6', active:false },
-            { icon:'👤', label:'마이페이지', path:'/mypage',    color:'#8b5cf6', active:false },
+            { icon:'👤', label:'프로필',   path:'/mypage?tab=profile', color:'#ff6b35', active:true  },
+            { icon:'📊', label:'통계',     path:'/mypage?tab=stats',   color:'#3b82f6', active:false },
+            { icon:'📋', label:'히스토리', path:'/mypage?tab=history', color:'#10b981', active:false },
+            { icon:'📝', label:'작업일지', path:'/mypage?tab=worklog', color:'#f59e0b', active:false },
+            { icon:'🔑', label:'API 키',   path:'/mypage?tab=keys',    color:'#8b5cf6', active:false },
           ].map(t => (
             <button key={t.path} onClick={() => router.push(t.path)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, flex:1, background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:800, color:t.active?t.color:T.muted }}>
               <span style={{ fontSize:26 }}>{t.icon}</span>
