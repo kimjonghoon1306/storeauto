@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 type Theme = 'dark' | 'light' | 'yellow'
@@ -24,11 +24,10 @@ const BIZ_TYPES = ['음식점/카페','소매업/편의점','온라인 쇼핑몰
 const REGIONS   = ['서울','부산','인천','대구','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주']
 const ACCENT    = '#ff6b35'
 
-export default function MyPage() {
+function MyPageInner({ initialTab }: { initialTab: Tab }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [theme, setTheme]       = useState<Theme>('dark')
-  const [tab, setTab]           = useState<Tab>((searchParams.get('tab') as Tab) || 'profile')
+  const [tab, setTab]           = useState<Tab>(initialTab)
   const [uid, setUid]           = useState('')
   const [tok, setTok]           = useState('')
   const [userEmail, setUserEmail] = useState('')
@@ -453,5 +452,27 @@ export default function MyPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// useSearchParams는 반드시 Suspense 안쪽 컴포넌트에서 호출해야 함
+function MyPageContent() {
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab) || 'profile'
+  return <MyPageInner initialTab={initialTab} />
+}
+
+export default function MyPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#050510', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR', sans-serif", color: '#44446a' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>⚡</div>
+          <div style={{ fontSize: 14 }}>불러오는 중...</div>
+        </div>
+      </div>
+    }>
+      <MyPageContent />
+    </Suspense>
   )
 }
