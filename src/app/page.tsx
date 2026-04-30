@@ -139,27 +139,10 @@ export default function Home() {
   const callAI = useCallback(async (prompt: string): Promise<string> => {
     // ✅ Gemini: tarry 방식 - apiKey를 서버에 전달해서 서버에서 호출
     if (provider === 'gemini') {
-      // 관리자: localStorage의 admin 키 읽어서 서버에 전달 (가장 확실)
+      // 관리자: localStorage에서 직접 읽어서 /api/generate로 전달 (tarry 방식)
       if (isAdmin) {
-        let adminKey = ''
-        try {
-          const adminKeys = JSON.parse(localStorage.getItem('storeauto_admin_keys') || '{}')
-          adminKey = adminKeys[provider] || adminKeys.gemini || ''
-        } catch { /* ignore */ }
-
-        // localStorage에 없으면 서버에서 admin_config 조회
-        if (!adminKey) {
-          const res = await fetch('/api/ai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, provider, isAdmin: true }),
-          })
-          const data = await res.json()
-          if (!res.ok || data.error) throw new Error(data.error || '알 수 없는 오류')
-          return data.text || ''
-        }
-
-        // admin 키로 /api/generate 직접 호출
+        const adminKey = localStorage.getItem(`storeauto_admin_${provider}`) || ''
+        if (!adminKey) throw new Error(`🔑 관리자 페이지에 접속해서 ${provider} 키를 한번 더 저장해주세요.`)
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
