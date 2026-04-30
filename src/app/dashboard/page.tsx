@@ -267,16 +267,16 @@ export default function DashboardPage() {
 
       {/* ──────────── 모바일 하단 탭바 ──────────── */}
       <div id="mob-bar" style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:T.surface, borderTop:`1px solid ${T.border}`, backdropFilter:'blur(24px)', paddingBottom:'env(safe-area-inset-bottom)' }}>
-        <div style={{ display:'flex', justifyContent:'space-around', padding:'6px 0' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 16px 8px' }}>
           {[
-            { icon:'🏠', label:'대시보드', path:'/dashboard',  color:ACCENT,    active:true  },
-            { icon:'📄', label:'상세페이지',path:'/',           color:'#ff6b35', active:false },
-            { icon:'💬', label:'리뷰',     path:'/reviews',    color:'#10b981', active:false },
-            { icon:'🏛️', label:'정부지원', path:'/government', color:'#3b82f6', active:false },
-            { icon:'👤', label:'마이페이지',path:'/mypage',    color:'#8b5cf6', active:false },
+            { icon:'🏠', label:'대시보드',  path:'/dashboard',  color:ACCENT,    active:true  },
+            { icon:'📄', label:'상세페이지', path:'/',           color:'#ff6b35', active:false },
+            { icon:'💬', label:'리뷰',      path:'/reviews',    color:'#10b981', active:false },
+            { icon:'🏛️', label:'정부지원',  path:'/government', color:'#3b82f6', active:false },
+            { icon:'👤', label:'마이페이지', path:'/mypage',    color:'#8b5cf6', active:false },
           ].map(t => (
-            <button key={t.path} onClick={() => router.push(t.path)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', flex:1, background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:9, fontWeight:800, color:t.active?t.color:T.muted }}>
-              <div style={{ width:32, height:32, borderRadius:10, background:t.active?`${t.color}18`:'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}>{t.icon}</div>
+            <button key={t.path} onClick={() => router.push(t.path)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, flex:1, background:'transparent', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:10, fontWeight:800, color:t.active?t.color:T.muted }}>
+              <span style={{ fontSize:26 }}>{t.icon}</span>
               <span style={{ whiteSpace:'nowrap' }}>{t.label}</span>
             </button>
           ))}
