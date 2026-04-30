@@ -172,6 +172,11 @@ export default function DashboardPage() {
             {/* 등급 + 수정 버튼 */}
             <div className="grade-btn" style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
               <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:`${gradeColor}20`, color:gradeColor, fontWeight:800, border:`1px solid ${gradeColor}40` }}>{gradeLabel}</span>
+              {profile?.grade === 'free' || !profile?.grade ? (
+                <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(255,215,0,0.1)', color:'#ffd700', fontWeight:700, border:'1px solid rgba(255,215,0,0.25)', cursor:'default' }}>
+                  PRO: 무제한 생성 · 우선 지원
+                </span>
+              ) : null}
               <button className="nbtn" onClick={() => router.push('/mypage')} style={{ padding:'8px 14px', background:T.s2, border:`1px solid ${T.border}`, borderRadius:10, color:T.text, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>⚙️ 프로필 수정</button>
             </div>
           </div>
