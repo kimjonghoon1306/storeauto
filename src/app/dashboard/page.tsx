@@ -112,12 +112,12 @@ export default function DashboardPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(20px,4vw,40px) 20px', animation: 'fadeUp 0.4s ease' }}>
 
         {/* 환영 + 프로필 */}
-        <div style={{ background: `linear-gradient(135deg, ${ACCENT}15, rgba(139,92,246,0.08))`, border: `1px solid ${ACCENT}25`, borderRadius: 20, padding: '24px 28px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ background: `linear-gradient(135deg, ${ACCENT}15, rgba(139,92,246,0.08))`, border: `1px solid ${ACCENT}25`, borderRadius: 20, padding: '20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, boxShadow: `0 0 24px ${ACCENT}44`, flexShrink: 0 }}>
             {profile?.name ? profile.name[0] : '😊'}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 'clamp(16px,3vw,20px)', fontWeight: 900, marginBottom: 4 }}>
+          <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+            <div style={{ fontSize: 'clamp(15px,3vw,20px)', fontWeight: 900, marginBottom: 6, wordBreak: 'keep-all', lineHeight: 1.4 }}>
               안녕하세요, {profile?.name || user?.email?.split('@')[0]}님! 👋
             </div>
             <div style={{ fontSize: 13, color: T.muted, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -201,4 +201,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
