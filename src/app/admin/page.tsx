@@ -62,6 +62,7 @@ export default function AdminPage() {
   const [dlSec, setDlSec]   = useState('')
   const [openai, setOpenai] = useState('')
   const [groq, setGroq]     = useState('')
+  const [aiProvider, setAiProvider] = useState<'gemini'|'openai'|'groq'>('gemini')
   const [showG, setShowG]   = useState(false)
   const [showI, setShowI]   = useState(false)
   const [showS, setShowS]   = useState(false)
@@ -130,6 +131,7 @@ export default function AdminPage() {
           if (c.key==='datalab_secret') setDlSec(c.value||'')
           if (c.key==='openai_key')     setOpenai(c.value||'')
           if (c.key==='groq_key')       setGroq(c.value||'')
+          if (c.key==='default_ai_provider') setAiProvider((c.value||'gemini') as 'gemini'|'openai'|'groq')
         })
       }
       if (Array.isArray(pops)) setPopups(pops as PopupItem[])
@@ -217,6 +219,7 @@ export default function AdminPage() {
         ['datalab_secret', dlSec],
         ['openai_key', openai],
         ['groq_key', groq],
+        ['default_ai_provider', aiProvider],
       ]) {
         if (existKeys.includes(k)) {
           await supabaseQuery('admin_config','PATCH',{value:v},'key=eq.'+k)
@@ -632,6 +635,44 @@ export default function AdminPage() {
           {tab==='keys' && (
             <div style={{ display:'flex', gap:40, alignItems:'flex-start' }}>
               <div style={{ maxWidth:560, flex:1 }}>
+
+              {/* AI 선택 */}
+              <div style={{ marginBottom:28 }}>
+                <div style={{ fontSize:13, fontWeight:900, color:TEXT, marginBottom:4 }}>기본 AI 선택</div>
+                <div style={{ fontSize:11, color:MUTED, marginBottom:14 }}>정부지원 챗봇 및 일반 회원 AI 미설정 시 사용할 AI를 선택하세요</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                  {([
+                    { key:'gemini', icon:'✦', label:'Gemini', badge:'일부무료', color:'#f59e0b', desc:'Google AI\n빠르고 무료' },
+                    { key:'openai', icon:'⬡', label:'OpenAI', badge:'유료', color:'#10b981', desc:'GPT-4o\n이미지 분석 가능' },
+                    { key:'groq',   icon:'⚡', label:'Groq',   badge:'무료', color:'#00e5a0', desc:'Llama 3.3\n완전 무료' },
+                  ] as const).map(p => {
+                    const isSelected = aiProvider === p.key
+                    return (
+                      <button key={p.key} onClick={() => setAiProvider(p.key)} style={{
+                        padding:'16px 12px', borderRadius:14, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif",
+                        border: isSelected ? `2px solid ${p.color}` : `1px solid ${BORDER}`,
+                        background: isSelected ? `${p.color}18` : SURFACE,
+                        transition:'all 0.2s',
+                        transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                        boxShadow: isSelected ? `0 0 20px ${p.color}33` : 'none',
+                        position:'relative' as const,
+                      }}>
+                        {isSelected && (
+                          <div style={{ position:'absolute', top:8, right:8, width:18, height:18, borderRadius:'50%', background:p.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#000', fontWeight:900 }}>✓</div>
+                        )}
+                        <div style={{ fontSize:22, marginBottom:6, color:p.color }}>{p.icon}</div>
+                        <div style={{ fontSize:14, fontWeight:900, color:TEXT, marginBottom:3 }}>{p.label}</div>
+                        <div style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:`${p.color}22`, color:p.color, fontWeight:800, display:'inline-block', marginBottom:6 }}>{p.badge}</div>
+                        <div style={{ fontSize:11, color:MUTED, whiteSpace:'pre-line', lineHeight:1.5 }}>{p.desc}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ marginTop:10, padding:'10px 14px', borderRadius:10, background:`rgba(255,215,0,0.06)`, border:`1px solid rgba(255,215,0,0.15)`, fontSize:12, color:'#ffd700', fontWeight:700 }}>
+                  현재 선택: <span style={{ textTransform:'uppercase' }}>{aiProvider}</span> — 키 저장 버튼을 눌러야 적용돼요
+                </div>
+              </div>
+
               {[
                 { label:'Gemini API 키', badge:'일부무료', badgeColor:'#f59e0b', value:gemini, set:setGemini, show:showG, toggleShow:()=>setShowG(!showG), ph:'AIza...' },
                 { label:'OpenAI API 키', badge:'유료', badgeColor:'#ef4444', value:openai, set:setOpenai, show:showO, toggleShow:()=>setShowO(!showO), ph:'sk-...' },
