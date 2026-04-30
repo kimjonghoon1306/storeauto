@@ -411,19 +411,25 @@ export default function MyPage() {
                 🔒 API 키는 이 기기에만 저장됩니다. 서버로 전송되지 않아요.
               </div>
               {([
-                { l: 'Gemini API 키', k: 'gemini' as const, ph: 'AIza...', bc: '#10b981', badge: '무료'   },
-                { l: 'OpenAI API 키', k: 'openai' as const, ph: 'sk-...',  bc: '#ef4444', badge: '유료'   },
-                { l: 'Groq API 키',   k: 'groq'   as const, ph: 'gsk_...', bc: '#00e5a0', badge: '무료'   },
+                { l: 'Gemini API 키', k: 'gemini' as const, ph: 'AIza...', bc: '#10b981', badge: '무료', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio에서 발급' },
+                { l: 'OpenAI API 키', k: 'openai' as const, ph: 'sk-...',  bc: '#ef4444', badge: '유료', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform에서 발급' },
+                { l: 'Groq API 키',   k: 'groq'   as const, ph: 'gsk_...', bc: '#00e5a0', badge: '무료', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console에서 발급' },
               ]).map(f => (
                 <div key={f.k} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, color: T.muted, fontWeight: 700 }}>{f.l}</span>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: `${f.bc}22`, color: f.bc, fontWeight: 700 }}>{f.badge}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: T.muted, fontWeight: 700 }}>{f.l}</span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: `${f.bc}22`, color: f.bc, fontWeight: 700 }}>{f.badge}</span>
+                    </div>
+                    <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: f.bc, fontWeight: 800, textDecoration: 'none', padding: '4px 10px', borderRadius: 8, background: `${f.bc}12`, border: `1px solid ${f.bc}30`, whiteSpace: 'nowrap' }}>
+                      🔗 발급받기
+                    </a>
                   </div>
                   <input type="password" value={keys[f.k]} onChange={e => setKeys(k => ({ ...k, [f.k]: e.target.value }))} placeholder={f.ph} style={inputSt}
                     onFocus={e => { (e.target as HTMLInputElement).style.borderColor = '#8b5cf6' }}
                     onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
                   />
+                  <div style={{ fontSize: 11, color: T.muted, marginTop: 5 }}>{f.urlLabel}</div>
                 </div>
               ))}
               <button onClick={saveKeys} style={{ padding: '11px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, color: 'white', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}>
