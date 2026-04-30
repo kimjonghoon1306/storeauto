@@ -8,6 +8,7 @@ import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { loadSession, checkSession } from '@/lib/auth'
+import { loadUserKeys } from '@/lib/keys'
 
 
 const CATEGORIES = [
@@ -78,20 +79,24 @@ export default function Home() {
   // 설정 페이지에서 저장한 키 불러오기
   useEffect(() => {
     try {
+      const savedTheme = localStorage.getItem('storeauto_theme')
+      if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'yellow')
+      // 네이버 키는 로컬(설정 페이지)
       const sess = loadSession()
       const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
       const saved = localStorage.getItem(keysKey)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (parsed.gemini) setGeminiKey(parsed.gemini)
-        if (parsed.openai) setOpenaiKey(parsed.openai)
-        if (parsed.groq) setGroqKey(parsed.groq)
         if (parsed.naverClient) setNaverClientId(parsed.naverClient)
         if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
       }
-      const savedTheme = localStorage.getItem('storeauto_theme')
-      if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'yellow')
     } catch {}
+    // AI 키는 Supabase에서 불러오기 (모든 기기 동일)
+    loadUserKeys().then(k => {
+      if (k.gemini) setGeminiKey(k.gemini)
+      if (k.openai) setOpenaiKey(k.openai)
+      if (k.groq)   setGroqKey(k.groq)
+    }).catch(() => {})
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
   const [seoKeyword, setSeoKeyword] = useState('')
@@ -332,10 +337,23 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
           const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
           if (sess.access_token) {
+            // usage_stats 기록
             fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
               method: 'POST',
               headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
               body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
+            }).catch(() => {})
+            // ✅ generated_results에 결과물 저장 (DB 영구 저장)
+            fetch(SUPABASE_URL + '/rest/v1/generated_results', {
+              method: 'POST',
+              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=minimal' },
+              body: JSON.stringify({
+                user_id: authUser.id,
+                product_name: input.productName,
+                category: input.category,
+                provider,
+                result: parsed,
+              }),
             }).catch(() => {})
           }
         } catch (_e) { /* ignore */ }
