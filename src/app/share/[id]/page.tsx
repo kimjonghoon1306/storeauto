@@ -1,130 +1,152 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 
-interface SharedData {
-  id: string
+interface Result {
+  keywords: string[]
+  oneLiner: string
+  description: string
+  recommendation: string
+  cta: string
+  faq: { q: string; a: string }[]
+}
+
+interface ShareData {
   product_name: string
-  content: { description?: string; keywords?: string[]; oneLiner?: string; faq?: { q: string; a: string }[] }
+  category: string
+  result: Result
   created_at: string
-  expires_at: string
 }
 
 export default function SharePage() {
   const params = useParams()
-  const router = useRouter()
-  const [data, setData] = useState<SharedData | null>(null)
+  const id = params?.id as string
+  const [data, setData] = useState<ShareData | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!params?.id) return
-    fetch(`/api/share?id=${params.id}`)
+    if (!id) return
+    const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    fetch(`${SURL}/rest/v1/generated_results?id=eq.${id}&select=product_name,category,result,created_at&limit=1`, {
+      headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` }
+    })
       .then(r => r.json())
-      .then(d => { if (d.error) setError(d.error); else setData(d) })
+      .then(d => {
+        if (Array.isArray(d) && d[0]) setData(d[0])
+        else setError('페이지를 찾을 수 없어요.')
+      })
       .catch(() => setError('불러오기 실패'))
-  }, [params])
+      .finally(() => setLoading(false))
+  }, [id])
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#050510', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR', sans-serif", color: '#44446a' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>⚡</div>
+        <div>불러오는 중...</div>
+      </div>
+    </div>
+  )
+
+  if (error || !data) return (
+    <div style={{ minHeight: '100vh', background: '#050510', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR', sans-serif", color: '#f0f0ff' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
+        <div style={{ fontSize: 16 }}>{error || '페이지를 찾을 수 없어요.'}</div>
+      </div>
+    </div>
+  )
+
+  const r = data.result
+  const ACCENT = '#ff6b35'
 
   return (
-    <div style={{ minHeight: '100vh', background: '#050510', color: '#f0f0ff', fontFamily: "'Noto Sans KR',sans-serif", padding: '20px' }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap'); *{box-sizing:border-box}`}</style>
+    <div style={{ minHeight: '100vh', background: '#050510', color: '#f0f0ff', fontFamily: "'Noto Sans KR', sans-serif", paddingBottom: 60 }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
 
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        {/* 헤더 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, paddingTop: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#ff6b35,#ffd700)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⚡</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 900 }}>STORE AUTO</div>
-              <div style={{ fontSize: 11, color: '#44446a' }}>공유된 상세페이지</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={copyLink} style={{ padding: '8px 16px', background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${copied ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 10, color: copied ? '#34d399' : '#f0f0ff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              {copied ? '✓ 복사됨!' : '🔗 링크 복사'}
-            </button>
-            <button onClick={() => router.push('/')} style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#ff6b35,#ff8c5a)', border: 'none', borderRadius: 10, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              나도 만들기 →
-            </button>
-          </div>
+      {/* 헤더 */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900 }}>⚡</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 900 }}>STORE AUTO</div>
+          <div style={{ fontSize: 10, color: '#44446a' }}>AI 상품 상세페이지</div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 16px' }}>
+        {/* 상품명 */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 11, color: '#44446a', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{data.category || '상품'}</div>
+          <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 900, lineHeight: 1.3 }}>{data.product_name}</h1>
         </div>
 
-        {error && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>😢</div>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>{error}</div>
-            <div style={{ fontSize: 13, color: '#44446a', marginBottom: 24 }}>링크가 만료됐거나 존재하지 않아요</div>
-            <button onClick={() => router.push('/')} style={{ padding: '12px 28px', background: 'linear-gradient(135deg,#ff6b35,#ff8c5a)', border: 'none', borderRadius: 12, color: 'white', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
-              STORE AUTO 시작하기
-            </button>
+        {/* 핵심 카피 */}
+        {r.oneLiner && (
+          <div style={{ background: `${ACCENT}12`, border: `1px solid ${ACCENT}30`, borderRadius: 16, padding: '18px 20px', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: ACCENT, fontWeight: 800, marginBottom: 8 }}>✦ 핵심 카피</div>
+            <div style={{ fontSize: 17, fontWeight: 900, lineHeight: 1.6, color: '#ffd700' }}>{r.oneLiner}</div>
           </div>
         )}
 
-        {data && (
+        {/* 키워드 */}
+        {r.keywords?.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: '#44446a', fontWeight: 700, marginBottom: 10 }}>🔍 SEO 키워드</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {r.keywords.map((k, i) => (
+                <span key={i} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, background: `${ACCENT}15`, color: ACCENT, fontWeight: 700, border: `1px solid ${ACCENT}25` }}>{k}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 상세 설명 */}
+        {r.description && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: '#44446a', fontWeight: 700, marginBottom: 10 }}>📝 상세 설명</div>
+            <div style={{ fontSize: 14, lineHeight: 1.9, whiteSpace: 'pre-line', color: '#d0d0e8', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '16px 18px' }}>{r.description}</div>
+          </div>
+        )}
+
+        {/* 추천 고객 */}
+        {r.recommendation && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: '#44446a', fontWeight: 700, marginBottom: 10 }}>👥 추천 고객</div>
+            <div style={{ fontSize: 14, lineHeight: 1.8, color: '#d0d0e8', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 18px' }}>{r.recommendation}</div>
+          </div>
+        )}
+
+        {/* 구매 유도 */}
+        {r.cta && (
+          <div style={{ marginBottom: 24, background: 'rgba(255,215,0,0.06)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 14, padding: '14px 18px' }}>
+            <div style={{ fontSize: 11, color: '#ffd700', fontWeight: 700, marginBottom: 6 }}>🛒 구매 유도</div>
+            <div style={{ fontSize: 14, lineHeight: 1.8, color: '#d0d0e8' }}>{r.cta}</div>
+          </div>
+        )}
+
+        {/* FAQ */}
+        {r.faq?.length > 0 && (
           <div>
-            <div style={{ background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
-              <div style={{ fontSize: 12, color: '#ff6b35', fontWeight: 700, marginBottom: 4 }}>상품명</div>
-              <div style={{ fontSize: 22, fontWeight: 900 }}>{data.product_name}</div>
-              <div style={{ fontSize: 11, color: '#44446a', marginTop: 8 }}>
-                생성: {new Date(data.created_at).toLocaleDateString('ko-KR')} · 만료: {new Date(data.expires_at).toLocaleDateString('ko-KR')}
-              </div>
-            </div>
-
-            {data.content.oneLiner && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#44446a', fontWeight: 700, marginBottom: 8 }}>✨ 핵심 한 줄</div>
-                <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.6 }}>{data.content.oneLiner}</div>
-              </div>
-            )}
-
-            {data.content.keywords && data.content.keywords.length > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#44446a', fontWeight: 700, marginBottom: 10 }}>🔍 검색 키워드</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {data.content.keywords.map((k, i) => (
-                    <span key={i} style={{ padding: '5px 14px', background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.2)', borderRadius: 20, fontSize: 13, color: '#ff6b35', fontWeight: 700 }}>#{k}</span>
-                  ))}
+            <div style={{ fontSize: 11, color: '#44446a', fontWeight: 700, marginBottom: 12 }}>❓ 자주 묻는 질문</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {r.faq.map((f, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: ACCENT, marginBottom: 6 }}>Q. {f.q}</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: '#b0b0cc' }}>A. {f.a}</div>
                 </div>
-              </div>
-            )}
-
-            {data.content.description && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 22px', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#44446a', fontWeight: 700, marginBottom: 10 }}>📝 상품 설명</div>
-                <div style={{ fontSize: 14, lineHeight: 1.8, color: '#d0d0e0', whiteSpace: 'pre-wrap' }}>{data.content.description}</div>
-              </div>
-            )}
-
-            {data.content.faq && data.content.faq.length > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '18px 22px', marginBottom: 24 }}>
-                <div style={{ fontSize: 12, color: '#44446a', fontWeight: 700, marginBottom: 12 }}>❓ FAQ</div>
-                {data.content.faq.map((f, i) => (
-                  <div key={i} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: i < data.content.faq!.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4, color: '#ff6b35' }}>Q. {f.q}</div>
-                    <div style={{ fontSize: 13, color: '#d0d0e0', lineHeight: 1.7 }}>A. {f.a}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.15)', borderRadius: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>나도 AI로 상세페이지 만들어보기</div>
-              <div style={{ fontSize: 12, color: '#44446a', marginBottom: 16 }}>10초만에 스마트스토어 · 쿠팡 · 11번가 상세페이지 완성</div>
-              <button onClick={() => router.push('/')} style={{ padding: '12px 32px', background: 'linear-gradient(135deg,#ff6b35,#ffd700)', border: 'none', borderRadius: 12, color: 'white', fontSize: 14, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 6px 24px rgba(255,107,53,0.4)' }}>
-                🚀 무료로 시작하기
-              </button>
+              ))}
             </div>
           </div>
         )}
+
+        {/* 하단 */}
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', fontSize: 12, color: '#44446a' }}>
+          STORE AUTO로 생성된 상세페이지 · {new Date(data.created_at).toLocaleDateString('ko-KR')}
+        </div>
       </div>
     </div>
   )
 }
-
