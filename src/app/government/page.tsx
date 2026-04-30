@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { loadUserKeys } from '@/lib/keys'
 import { loadSession } from '@/lib/auth'
 
 interface Message {
@@ -655,15 +656,11 @@ export default function GovernmentPage() {
   }
 
   const callAI = async (systemPrompt: string, msgs: Message[]): Promise<string> => {
-    let userGemini = '', userOpenai = '', userGroq = ''
-    try {
-      const s = JSON.parse(localStorage.getItem('sa_session') || 'null')
-      const keysKey = s?.id ? `storeauto_keys_${s.id}` : 'storeauto_keys'
-      const saved = JSON.parse(localStorage.getItem(keysKey) || '{}')
-      userGemini = saved.gemini || ''
-      userOpenai = saved.openai || ''
-      userGroq   = saved.groq   || ''
-    } catch { /* ignore */ }
+    // Supabase에서 키 불러오기 (모든 기기 동일)
+    const userKeys = await loadUserKeys().catch(() => ({ gemini: '', openai: '', groq: '' }))
+    const userGemini = userKeys.gemini
+    const userOpenai = userKeys.openai
+    const userGroq   = userKeys.groq
 
     // 키가 하나도 없으면 즉시 안내
     if (!userGemini && !userOpenai && !userGroq) {
