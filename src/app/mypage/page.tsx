@@ -62,13 +62,14 @@ function MyPageInner() {
     const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     const headers = { apikey: SKEY, Authorization: `Bearer ${token}` }
     try {
-      const [pRes, uRes, wRes, rRes] = await Promise.all([
+      const [pRes, uRes, wRes, rRes, kRes] = await Promise.all([
         fetch(`${SURL}/rest/v1/profiles?id=eq.${id}&select=*&limit=1`, { headers }),
         fetch(`${SURL}/rest/v1/usage_stats?user_id=eq.${id}&order=created_at.desc&limit=100`, { headers }),
         fetch(`${SURL}/rest/v1/work_logs?user_id=eq.${id}&order=created_at.desc&limit=50`, { headers }),
         fetch(`${SURL}/rest/v1/generated_results?user_id=eq.${id}&order=created_at.desc&limit=100`, { headers }),
+        fetch(`${SURL}/rest/v1/user_keys?user_id=eq.${id}&select=gemini_key,openai_key,groq_key&limit=1`, { headers }),
       ])
-      const [pData, uData, wData, rData] = await Promise.all([pRes.json(), uRes.json(), wRes.json(), rRes.json()])
+      const [pData, uData, wData, rData, kData] = await Promise.all([pRes.json(), uRes.json(), wRes.json(), rRes.json(), kRes.json()])
       if (Array.isArray(pData) && pData[0]) {
         const p = pData[0]
         setProf({ name: p.name||'', business_name: p.business_name||'', phone: p.phone||'', business_type: p.business_type||'', region: p.region||'' })
