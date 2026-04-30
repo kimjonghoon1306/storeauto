@@ -443,18 +443,19 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
               body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
             }).catch(() => {})
-            // ✅ generated_results에 결과물 저장 (DB 영구 저장)
+            // ✅ generated_results에 결과물 저장 + id 받아서 공유 URL 생성
             fetch(SUPABASE_URL + '/rest/v1/generated_results', {
               method: 'POST',
-              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=minimal' },
+              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
               body: JSON.stringify({
                 user_id: authUser.id,
                 product_name: input.productName,
                 category: input.category,
                 provider,
-                // htmlCode는 용량이 크므로 제외하고 저장
                 result: { ...parsed, htmlCode: '' },
               }),
+            }).then(r => r.json()).then(d => {
+              if (Array.isArray(d) && d[0]?.id) setShareId(d[0].id)
             }).catch(() => {})
           }
         } catch (_e) { /* ignore */ }
@@ -1210,10 +1211,19 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 onClick={() => {
                   const clean = (t: string) => t.replace(/[\u4E00-\u9FFF\u3040-\u30FF]/g, '').replace(/[\u2726\U0001F50D\u2605\u2606]/g, '').trim()
                   const shareText = `[${input.productName}] 상세페이지\n\n${clean(result.oneLiner)}\n\n${clean(result.description.slice(0, 300))}...\n\n키워드: ${result.keywords.slice(0,5).join(', ')}`
-                  if (navigator.share) {
-                    navigator.share({ text: shareText }).catch(() => {})
+                  const shareUrl = shareId ? `${window.location.origin}/share/${shareId}` : window.location.origin
+                  const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void; Share?: { sendDefault?: (o: unknown) => void } } }
+                  if (win.Kakao && !win.Kakao.isInitialized?.()) win.Kakao.init?.('23d3b649f46af9c7c321eb539c21720c')
+                  if (win.Kakao?.Share?.sendDefault) {
+                    win.Kakao.Share.sendDefault({
+                      objectType: 'text',
+                      text: shareText,
+                      link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+                    })
+                  } else if (navigator.share) {
+                    navigator.share({ text: shareText, url: shareUrl }).catch(() => {})
                   } else {
-                    navigator.clipboard.writeText(shareText).then(() => {
+                    navigator.clipboard.writeText(shareText + '\n\n' + shareUrl).then(() => {
                       alert('복사됐어요! 카카오톡에 붙여넣기 하세요.')
                     })
                   }
