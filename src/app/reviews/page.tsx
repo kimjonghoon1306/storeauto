@@ -258,12 +258,12 @@ export default function ReviewsPage() {
         {/* 헤더 */}
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-            <button onClick={() => router.push('/')} style={{
+            <button onClick={() => router.push('/dashboard')} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               background: t.surface2, border: `1px solid ${t.border}`,
               borderRadius: '10px', padding: '8px 16px', color: t.muted,
               fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}>← 메인으로</button>
+            }}>← 대시보드</button>
             <div style={{ display: 'flex', gap: '6px' }}>
               {((['dark','light','yellow'] as const)).map(th => (
                 <button key={th} onClick={() => setTheme(th)} style={{
@@ -686,7 +686,7 @@ export default function ReviewsPage() {
 
       {/* 플로팅 메인 버튼 */}
       <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
-        <button onClick={() => router.push('/')} style={{
+        <button onClick={() => router.push('/dashboard')} style={{
           background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
           color: '#fff', border: 'none', borderRadius: '50px',
           padding: '11px 18px', fontSize: '13px', fontWeight: 700,
