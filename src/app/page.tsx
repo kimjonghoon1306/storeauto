@@ -158,7 +158,7 @@ export default function Home() {
       if (!resolvedKey) {
         try {
           // 1. localStorage 시도
-          const sess = loadSession()
+          const sess = JSON.parse(localStorage.getItem('sa_session') || 'null')
           const keysKey = sess?.id ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
           const saved = JSON.parse(localStorage.getItem(keysKey) || localStorage.getItem('storeauto_keys') || '{}')
           resolvedKey = saved.gemini || ''
@@ -435,30 +435,28 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         try {
           const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
           const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-          const sess = loadSession()
-          if (sess?.access_token) {
-            // usage_stats 기록 (fire-and-forget)
+          const sess = JSON.parse(localStorage.getItem('sa_session') || '{}')
+          if (sess.access_token) {
+            // usage_stats 기록
             fetch(SUPABASE_URL + '/rest/v1/usage_stats', {
               method: 'POST',
               headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
               body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
             }).catch(() => {})
-            // generated_results 저장 → await로 shareId 확보 후 카카오 버튼 활성화
-            try {
-              const saveRes = await fetch(SUPABASE_URL + '/rest/v1/generated_results', {
-                method: 'POST',
-                headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
-                body: JSON.stringify({
-                  user_id: authUser.id,
-                  product_name: input.productName,
-                  category: input.category,
-                  provider,
-                  result: { ...parsed, htmlCode: '' },
-                }),
-              })
-              const saveData = await saveRes.json()
-              if (Array.isArray(saveData) && saveData[0]?.id) setShareId(saveData[0].id)
-            } catch (_e) { /* 저장 실패해도 생성 결과는 정상 표시 */ }
+            // ✅ generated_results에 결과물 저장 + id 받아서 공유 URL 생성
+            fetch(SUPABASE_URL + '/rest/v1/generated_results', {
+              method: 'POST',
+              headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
+              body: JSON.stringify({
+                user_id: authUser.id,
+                product_name: input.productName,
+                category: input.category,
+                provider,
+                result: { ...parsed, htmlCode: '' },
+              }),
+            }).then(r => r.json()).then(d => {
+              if (Array.isArray(d) && d[0]?.id) setShareId(d[0].id)
+            }).catch(() => {})
           }
         } catch (_e) { /* ignore */ }
       }
@@ -1218,9 +1216,13 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   if (win.Kakao && !win.Kakao.isInitialized?.()) win.Kakao.init?.('23d3b649f46af9c7c321eb539c21720c')
                   if (win.Kakao?.Share?.sendDefault) {
                     win.Kakao.Share.sendDefault({
-                      objectType: 'text',
-                      text: shareText,
-                      link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+                      objectType: 'feed',
+                      content: {
+                        title: `[${input.productName}] 상세페이지`,
+                        description: clean(result.oneLiner),
+                        imageUrl: '',
+                        link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+                      },
                     })
                   } else if (navigator.share) {
                     navigator.share({ text: shareText, url: shareUrl }).catch(() => {})
