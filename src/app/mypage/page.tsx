@@ -41,6 +41,8 @@ function MyPageInner() {
   const [prof, setProf]           = useState({ name: '', business_name: '', phone: '', business_type: '', region: '' })
   const [stats, setStats]         = useState<{ type: string; created_at: string }[]>([])
   const [logs, setLogs]           = useState<{ id: string; title: string; content: string; category: string; created_at: string }[]>([])
+  const [results, setResults]     = useState<{ id: string; product_name: string; category: string; provider: string; result: Record<string,unknown>; created_at: string }[]>([])
+  const [expandedResult, setExpandedResult] = useState<string | null>(null)
   const [keys, setKeys]           = useState({ gemini: '', openai: '', groq: '' })
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
@@ -60,18 +62,24 @@ function MyPageInner() {
     const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     const headers = { apikey: SKEY, Authorization: `Bearer ${token}` }
     try {
-      const [pRes, uRes, wRes] = await Promise.all([
+      const [pRes, uRes, wRes, rRes] = await Promise.all([
         fetch(`${SURL}/rest/v1/profiles?id=eq.${id}&select=*&limit=1`, { headers }),
         fetch(`${SURL}/rest/v1/usage_stats?user_id=eq.${id}&order=created_at.desc&limit=100`, { headers }),
         fetch(`${SURL}/rest/v1/work_logs?user_id=eq.${id}&order=created_at.desc&limit=50`, { headers }),
+        fetch(`${SURL}/rest/v1/generated_results?user_id=eq.${id}&order=created_at.desc&limit=100`, { headers }),
       ])
-      const [pData, uData, wData] = await Promise.all([pRes.json(), uRes.json(), wRes.json()])
+      const [pData, uData, wData, rData] = await Promise.all([pRes.json(), uRes.json(), wRes.json(), rRes.json()])
       if (Array.isArray(pData) && pData[0]) {
         const p = pData[0]
         setProf({ name: p.name||'', business_name: p.business_name||'', phone: p.phone||'', business_type: p.business_type||'', region: p.region||'' })
       }
       if (Array.isArray(uData)) setStats(uData)
       if (Array.isArray(wData)) setLogs(wData)
+      if (Array.isArray(rData)) setResults(rData)
+      if (Array.isArray(kData) && kData[0]) {
+        const k = kData[0]
+        setKeys({ gemini: k.gemini_key||'', openai: k.openai_key||'', groq: k.groq_key||'' })
+      }
     } catch (_e) { /* ignore */ }
     setLoading(false)
   }, [])
@@ -84,7 +92,7 @@ function MyPageInner() {
       const sess = JSON.parse(raw)
       if (!sess?.id || !sess?.access_token) { router.replace('/login'); return }
       setUid(sess.id); setTok(sess.access_token); setUserEmail(sess.email || '')
-      try { const k = JSON.parse(localStorage.getItem(`storeauto_keys_${sess.id}`) || '{}'); setKeys({ gemini: k.gemini||'', openai: k.openai||'', groq: k.groq||'' }) } catch (_e) { /* ignore */ }
+      // 키는 loadData에서 Supabase로 불러옴
       loadData(sess.id, sess.access_token)
     } catch (_e) { router.replace('/login') }
   }, [router, loadData])
@@ -101,10 +109,18 @@ function MyPageInner() {
     setSaving(false)
   }
 
-  const saveKeys = () => {
-    if (!uid) return
-    try { localStorage.setItem(`storeauto_keys_${uid}`, JSON.stringify(keys)); localStorage.removeItem('storeauto_keys'); showToast('✅ API 키 저장!') }
-    catch (_e) { showToast('❌ 저장 실패') }
+  const saveKeys = async () => {
+    if (!uid || !tok) return
+    try {
+      const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+      await fetch(`${SURL}/rest/v1/user_keys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SKEY, Authorization: `Bearer ${tok}`, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ user_id: uid, gemini_key: keys.gemini, openai_key: keys.openai, groq_key: keys.groq }),
+      })
+      showToast('✅ API 키 저장! 모든 기기에서 사용 가능해요')
+    } catch (_e) { showToast('❌ 저장 실패') }
   }
 
   const logout = async () => {
@@ -430,42 +446,87 @@ function MyPageInner() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: '#10b98120', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📋</div>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 900 }}>사용 히스토리</div>
-                    <div style={{ fontSize: 11, color: T.muted }}>최근 50건</div>
+                    <div style={{ fontSize: 18, fontWeight: 900 }}>생성 히스토리</div>
+                    <div style={{ fontSize: 11, color: T.muted }}>생성한 상세페이지 결과물 — 클라우드 저장</div>
                   </div>
                 </div>
-                <div style={{ padding: '6px 14px', borderRadius: 20, background: '#10b98118', color: '#10b981', fontSize: 12, fontWeight: 800 }}>총 {total}회</div>
+                <div style={{ padding: '6px 14px', borderRadius: 20, background: '#10b98118', color: '#10b981', fontSize: 12, fontWeight: 800 }}>{results.length}건</div>
               </div>
 
-              {total === 0 ? (
+              {results.length === 0 ? (
                 <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '60px 20px', textAlign: 'center', color: T.muted }}>
                   <div style={{ fontSize: 48, opacity: 0.2, marginBottom: 12 }}>📋</div>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>아직 사용 기록이 없어요</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>아직 생성 기록이 없어요</div>
+                  <div style={{ fontSize: 13 }}>상세페이지를 생성하면 여기에 자동 저장됩니다</div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {Object.entries(groupedStats).map(([date, items]) => (
-                    <div key={date}>
-                      <div style={{ fontSize: 12, color: T.muted, fontWeight: 800, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ padding: '3px 12px', background: T.s2, borderRadius: 20, border: `1px solid ${T.border}` }}>{date}</span>
-                        <span style={{ fontSize: 11 }}>{items.length}건</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: 8 }}>
-                        {items.map((s, i) => {
-                          const info = TYPE_INFO[s.type] || { label: s.type, color: ACCENT, emoji: '📌', desc: '' }
-                          return (
-                            <div key={i} className="hov" style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${info.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{info.emoji}</div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: info.color, marginBottom: 2 }}>{info.label}</div>
-                                <div style={{ fontSize: 11, color: T.muted }}>{new Date(s.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {results.map((r) => {
+                    const res = r.result as { keywords?: string[]; oneLiner?: string; description?: string; cta?: string; faq?: {q:string;a:string}[] }
+                    const isExpanded = expandedResult === r.id
+                    return (
+                      <div key={r.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 18, overflow: 'hidden' }}>
+                        {/* 헤더 */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer' }}
+                          onClick={() => setExpandedResult(isExpanded ? null : r.id)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `${ACCENT}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>📄</div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.product_name || '상품명 없음'}</div>
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {r.category && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: T.s2, color: T.muted, fontWeight: 700 }}>{r.category}</span>}
+                                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: `${ACCENT}15`, color: ACCENT, fontWeight: 700 }}>{r.provider || 'AI'}</span>
+                                <span style={{ fontSize: 10, color: T.muted }}>{new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                             </div>
-                          )
-                        })}
+                          </div>
+                          <span style={{ fontSize: 16, color: T.muted, marginLeft: 8 }}>{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+
+                        {/* 펼침 내용 */}
+                        {isExpanded && (
+                          <div style={{ borderTop: `1px solid ${T.border}`, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {res.oneLiner && (
+                              <div>
+                                <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, marginBottom: 6 }}>✦ 핵심 카피</div>
+                                <div style={{ fontSize: 14, fontWeight: 800, color: '#ffd700', lineHeight: 1.6 }}>{res.oneLiner}</div>
+                              </div>
+                            )}
+                            {res.keywords && res.keywords.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, marginBottom: 8 }}>🔍 SEO 키워드</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  {res.keywords.map((k, i) => (
+                                    <span key={i} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: `${ACCENT}15`, color: ACCENT, fontWeight: 700 }}>{k}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {res.description && (
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                  <div style={{ fontSize: 11, color: T.muted, fontWeight: 700 }}>📝 상세 설명</div>
+                                  <button onClick={() => { navigator.clipboard.writeText(res.description || ''); showToast('✅ 복사 완료!') }}
+                                    style={{ fontSize: 11, padding: '3px 10px', borderRadius: 8, background: T.s2, border: `1px solid ${T.border}`, color: T.muted, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>📋 복사</button>
+                                </div>
+                                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.8, whiteSpace: 'pre-line', padding: '12px 14px', background: T.s2, borderRadius: 10, maxHeight: 200, overflowY: 'auto' }}>{res.description}</div>
+                              </div>
+                            )}
+                            {res.cta && (
+                              <div>
+                                <div style={{ fontSize: 11, color: T.muted, fontWeight: 700, marginBottom: 6 }}>🛒 구매 유도 멘트</div>
+                                <div style={{ fontSize: 13, color: T.text, lineHeight: 1.7, padding: '10px 14px', background: T.s2, borderRadius: 10 }}>{res.cta}</div>
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button onClick={() => { const t = [res.oneLiner, res.description, res.cta].filter(Boolean).join('\n\n'); navigator.clipboard.writeText(t); showToast('✅ 전체 복사!') }}
+                                style={{ flex: 1, padding: '10px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,${ACCENT},#ffd700)`, color: 'white', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>📋 전체 복사</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
