@@ -92,12 +92,12 @@ export default function Home() {
       }
     } catch {}
     // 템플릿 로드
-    if (loadSession()) {
-      const sess = loadSession()!
+    const sessForTemplates = loadSession()
+    if (sessForTemplates) {
       const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
       const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      fetch(`${SURL}/rest/v1/product_templates?user_id=eq.${sess.id}&order=created_at.desc`, {
-        headers: { apikey: SKEY, Authorization: `Bearer ${sess.access_token}` }
+      fetch(`${SURL}/rest/v1/product_templates?user_id=eq.${sessForTemplates.id}&order=created_at.desc`, {
+        headers: { apikey: SKEY, Authorization: `Bearer ${sessForTemplates.access_token}` }
       }).then(r => r.json()).then(d => { if (Array.isArray(d)) setTemplates(d) }).catch(() => {})
     }
     // AI 키는 Supabase에서 불러오기 (모든 기기 동일)
@@ -108,9 +108,8 @@ export default function Home() {
     }).catch(() => {})
   }, [])
   const [regenLoading, setRegenLoading] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<{id:string; name:string; input:Record<string,unknown>}[]>([])
+  const [templates, setTemplates] = useState<{id:string; name:string; input:unknown}[]>([])
   const [showTemplates, setShowTemplates] = useState(false)
-  const [templateName, setTemplateName] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [seoKeyword, setSeoKeyword] = useState('')
   const [trendQuery, setTrendQuery] = useState('')
@@ -865,10 +864,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                           <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <p style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</p>
-                              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(t.input as {productName?:string}).productName || ''}</p>
+                              <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{((t.input as {productName?:string})?.productName) || ''}</p>
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => { setInput(t.input as ProductInput); setShowTemplates(false) }} style={{ padding: '5px 10px', background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>불러오기</button>
+                              <button onClick={() => { setInput(t.input as unknown as ProductInput); setShowTemplates(false) }} style={{ padding: '5px 10px', background: 'var(--accent)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>불러오기</button>
                               <button onClick={() => deleteTemplate(t.id)} style={{ padding: '5px 8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#ef4444', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>🗑</button>
                             </div>
                           </div>
