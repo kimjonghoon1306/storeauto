@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { loadSession, signOut, checkSession, getProfile, upsertProfile, getUsageStats, getBookmarks, deleteBookmark, type Profile, type AuthUser } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
 type Tab = 'profile' | 'stats' | 'history' | 'worklog' | 'bookmark' | 'keys'
 
 const THEMES = {
-  dark:   { bg: '#050510', surface: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', surface2: 'rgba(255,255,255,0.02)', card: 'rgba(255,255,255,0.06)' },
-  light:  { bg: '#f0f2ff', surface: 'rgba(255,255,255,0.9)',  border: 'rgba(0,0,0,0.08)',       text: '#1a1a2e', muted: '#9999bb', surface2: 'rgba(255,255,255,0.7)', card: 'rgba(255,255,255,0.95)' },
-  yellow: { bg: '#0a0900', surface: 'rgba(255,215,0,0.06)',   border: 'rgba(255,215,0,0.15)',    text: '#fff8dc', muted: '#aa9900', surface2: 'rgba(255,215,0,0.03)', card: 'rgba(255,215,0,0.08)' },
+  dark:   { bg: '#050510', surface: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', s2: 'rgba(255,255,255,0.02)' },
+  light:  { bg: '#f0f2ff', surface: 'rgba(255,255,255,0.9)',  border: 'rgba(0,0,0,0.08)',       text: '#1a1a2e', muted: '#9999bb', s2: 'rgba(255,255,255,0.7)' },
+  yellow: { bg: '#0a0900', surface: 'rgba(255,215,0,0.06)',   border: 'rgba(255,215,0,0.15)',    text: '#fff8dc', muted: '#aa9900', s2: 'rgba(255,215,0,0.03)' },
 }
 
 const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
@@ -22,376 +21,248 @@ const TABS: { key: Tab; icon: string; label: string; color: string }[] = [
   { key: 'keys',     icon: '🔑', label: 'API 키',   color: '#8b5cf6' },
 ]
 
-const BUSINESS_TYPES = ['음식점/카페', '소매업/편의점', '온라인 쇼핑몰', '제조업', '서비스업', '뷰티/미용', '학원/교육', '의류/패션', '농업/축산', '기타']
-const REGIONS = ['서울', '부산', '인천', '대구', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
+const BIZ = ['음식점/카페','소매업/편의점','온라인 쇼핑몰','제조업','서비스업','뷰티/미용','학원/교육','의류/패션','농업/축산','기타']
+const REGS = ['서울','부산','인천','대구','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주']
+const AC = '#ff6b35'
+const SU = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SK = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 export default function MyPage() {
   const router = useRouter()
   const [theme, setTheme] = useState<Theme>('dark')
   const [tab, setTab] = useState<Tab>('profile')
-  const [session, setSession] = useState<AuthUser | null>(null)
-  const [profile, setProfile] = useState<Partial<Profile>>({})
-  const [usageStats, setUsageStats] = useState<{ type: string; created_at: string }[]>([])
-  const [bookmarks, setBookmarks] = useState<{ id: string; title: string; url: string; category: string }[]>([])
+  const [uid, setUid] = useState('')
+  const [tok, setTok] = useState('')
+  const [email, setEmail] = useState('')
+  const [prof, setProf] = useState({ name:'', business_name:'', phone:'', business_type:'', region:'' })
+  const [stats, setStats] = useState<{type:string;created_at:string}[]>([])
+  const [bmarks, setBmarks] = useState<{id:string;title:string;url:string;category:string}[]>([])
+  const [logs, setLogs] = useState<{id:string;title:string;content:string;category:string;created_at:string}[]>([])
+  const [keys, setKeys] = useState({ gemini:'', openai:'', groq:'' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [wS, setWS] = useState(false)
+  const [wT, setWT] = useState('')
+  const [wC, setWC] = useState('')
+  const [wCat, setWCat] = useState('일반')
   const [toast, setToast] = useState('')
-  const [keys, setKeys] = useState({ gemini: '', openai: '', groq: '' })
-  // 작업일지
-  const [workLogs, setWorkLogs] = useState<{ id: string; title: string; content: string; category: string; created_at: string }[]>([])
-  const [wTitle, setWTitle] = useState('')
-  const [wContent, setWContent] = useState('')
-  const [wCategory, setWCategory] = useState('일반')
-  const [wSaving, setWSaving] = useState(false)
 
   const T = THEMES[theme]
-  const ACCENT = '#ff6b35'
+  const pop = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
+  const stT = (t: Theme) => { setTheme(t); try { localStorage.setItem('storeauto_theme', t) } catch { /**/ } }
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
-
-  const saveTheme = (t: Theme) => {
-    setTheme(t)
-    try { localStorage.setItem('storeauto_theme', t) } catch (_e) { /* ignore */ }
-  }
-
-  const loadData = useCallback(async (sess: AuthUser) => {
+  const load = useCallback(async (id: string, token: string) => {
+    const h = { apikey: SK, Authorization: `Bearer ${token}` }
     try {
-      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${sess.access_token}` }
       const [p, u, b, w] = await Promise.all([
-        getProfile(sess.id, sess.access_token),
-        getUsageStats(sess.id, sess.access_token),
-        getBookmarks(sess.id, sess.access_token),
-        fetch(`${SUPABASE_URL}/rest/v1/work_logs?user_id=eq.${sess.id}&order=created_at.desc&limit=50`, { headers }).then(r => r.json()),
+        fetch(`${SU}/rest/v1/profiles?id=eq.${id}&select=*&limit=1`, { headers: h }).then(r => r.json()),
+        fetch(`${SU}/rest/v1/usage_stats?user_id=eq.${id}&order=created_at.desc&limit=100`, { headers: h }).then(r => r.json()),
+        fetch(`${SU}/rest/v1/bookmarks?user_id=eq.${id}&order=created_at.desc`, { headers: h }).then(r => r.json()),
+        fetch(`${SU}/rest/v1/work_logs?user_id=eq.${id}&order=created_at.desc&limit=50`, { headers: h }).then(r => r.json()),
       ])
-      if (p) setProfile(p)
-      setUsageStats(u)
-      setBookmarks(b)
-      if (Array.isArray(w)) setWorkLogs(w)
-    } catch (_e) { /* ignore */ }
+      if (Array.isArray(p) && p[0]) setProf({ name: p[0].name||''  , business_name: p[0].business_name||'', phone: p[0].phone||'', business_type: p[0].business_type||'', region: p[0].region||'' })
+      if (Array.isArray(u)) setStats(u)
+      if (Array.isArray(b)) setBmarks(b)
+      if (Array.isArray(w)) setLogs(w)
+    } catch { /**/ }
     setLoading(false)
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    try { const t = localStorage.getItem('storeauto_theme') as Theme; if (t && THEMES[t]) setTheme(t) } catch { /**/ }
     try {
-      const t = localStorage.getItem('storeauto_theme') as Theme
-      if (t && THEMES[t]) setTheme(t)
-    } catch (_e) { /* ignore */ }
+      const s = JSON.parse(localStorage.getItem('sa_session') || 'null')
+      if (!s || !s.id) { router.replace('/login'); return }
+      setUid(s.id); setTok(s.access_token); setEmail(s.email)
+      const k = JSON.parse(localStorage.getItem(`storeauto_keys_${s.id}`) || '{}')
+      setKeys({ gemini: k.gemini||'', openai: k.openai||'', groq: k.groq||'' })
+      load(s.id, s.access_token)
+    } catch { router.replace('/login') }
+  }, [router, load])
 
-    const sess = loadSession()
-    if (!sess) { router.replace('/login'); return }
-    setSession(sess)
-    try {
-      const userKeysKey = `storeauto_keys_${sess.id}`
-      const k = JSON.parse(localStorage.getItem(userKeysKey) || '{}')
-      setKeys({ gemini: k.gemini || '', openai: k.openai || '', groq: k.groq || '' })
-    } catch (_e) { /* ignore */ }
-    loadData(sess)
-  }, [router, loadData])
-
-  const handleSaveProfile = async () => {
-    if (!session) return
+  const saveProf = async () => {
     setSaving(true)
     try {
-      await upsertProfile({ ...profile, id: session.id, email: session.email }, session.access_token)
-      showToast('✅ 프로필 저장 완료!')
-    } catch (_e) { showToast('❌ 저장 실패') }
+      await fetch(`${SU}/rest/v1/profiles`, { method: 'POST', headers: { 'Content-Type':'application/json', apikey: SK, Authorization:`Bearer ${tok}`, Prefer:'return=minimal,resolution=merge-duplicates' }, body: JSON.stringify({ id: uid, email, ...prof }) })
+      pop('✅ 프로필 저장 완료!')
+    } catch { pop('❌ 저장 실패') }
     setSaving(false)
   }
 
-  const handleSaveKeys = () => {
-    if (!session) return
-    try {
-      const userKeysKey = `storeauto_keys_${session.id}`
-      localStorage.setItem(userKeysKey, JSON.stringify(keys))
-      // 구버전 공용 키는 삭제
-      localStorage.removeItem('storeauto_keys')
-      showToast('✅ API 키 저장 완료!')
-    } catch (_e) { showToast('❌ 저장 실패') }
+  const saveKeys = () => {
+    try { localStorage.setItem(`storeauto_keys_${uid}`, JSON.stringify(keys)); localStorage.removeItem('storeauto_keys'); pop('✅ API 키 저장!') } catch { pop('❌ 실패') }
   }
 
-  const handleLogout = async () => {
-    if (session) await signOut(session.access_token)
+  const logout = async () => {
+    try { await fetch(`${SU}/auth/v1/logout`, { method:'POST', headers:{ apikey:SK, Authorization:`Bearer ${tok}` } }) } catch { /**/ }
+    try { localStorage.removeItem('sa_session') } catch { /**/ }
     router.push('/login')
   }
 
-  const handleSaveWorkLog = async () => {
-    if (!session || !wTitle.trim()) return
-    setWSaving(true)
+  const addLog = async () => {
+    if (!wT.trim()) return; setWS(true)
     try {
-      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/work_logs`, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}`, Prefer:'return=representation' },
-        body: JSON.stringify({ user_id:session.id, title:wTitle, content:wContent, category:wCategory }),
-      })
-      const data = await res.json()
-      if (Array.isArray(data) && data[0]) setWorkLogs(prev => [data[0], ...prev])
-      setWTitle(''); setWContent('')
-      showToast('✅ 작업일지 저장!')
-    } catch (_e) { showToast('❌ 저장 실패') }
-    setWSaving(false)
+      const r = await fetch(`${SU}/rest/v1/work_logs`, { method:'POST', headers:{'Content-Type':'application/json',apikey:SK,Authorization:`Bearer ${tok}`,Prefer:'return=representation'}, body:JSON.stringify({user_id:uid,title:wT,content:wC,category:wCat}) })
+      const d = await r.json(); if (Array.isArray(d) && d[0]) setLogs(p => [d[0],...p])
+      setWT(''); setWC(''); pop('✅ 저장!')
+    } catch { pop('❌ 실패') }
+    setWS(false)
   }
 
-  const handleDeleteWorkLog = async (id: string) => {
-    if (!session) return
-    try {
-      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-      await fetch(`${SUPABASE_URL}/rest/v1/work_logs?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: { apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${session.access_token}` },
-      })
-      setWorkLogs(prev => prev.filter(w => w.id !== id))
-    } catch (_e) { showToast('❌ 삭제 실패') }
+  const delLog = async (id: string) => {
+    try { await fetch(`${SU}/rest/v1/work_logs?id=eq.${id}`,{method:'DELETE',headers:{apikey:SK,Authorization:`Bearer ${tok}`}}); setLogs(p=>p.filter(w=>w.id!==id)) } catch {/**/ }
   }
 
-  const handleDeleteBookmark = async (id: string) => {
-    if (!session) return
-    await deleteBookmark(id, session.access_token)
-    setBookmarks(prev => prev.filter(b => b.id !== id))
+  const delBmark = async (id: string) => {
+    try { await fetch(`${SU}/rest/v1/bookmarks?id=eq.${id}`,{method:'DELETE',headers:{apikey:SK,Authorization:`Bearer ${tok}`}}); setBmarks(p=>p.filter(b=>b.id!==id)) } catch {/**/ }
   }
 
-  // 통계 계산
-  const thisMonth = usageStats.filter(u => new Date(u.created_at).getMonth() === new Date().getMonth())
-  const statsByType = usageStats.reduce((acc: Record<string, number>, u) => { acc[u.type] = (acc[u.type] || 0) + 1; return acc }, {})
+  const tM = stats.filter(s => new Date(s.created_at).getMonth()===new Date().getMonth()).length
+  const bT = stats.reduce((a:{[k:string]:number},s) => { a[s.type]=(a[s.type]||0)+1; return a }, {})
+  const TI: Record<string,{l:string;c:string;e:string}> = { detail_page:{l:'상세페이지',c:'#ff6b35',e:'📄'}, review:{l:'리뷰답글',c:'#10b981',e:'💬'}, government:{l:'정부지원',c:'#3b82f6',e:'🏛️'} }
+  const iS: React.CSSProperties = { width:'100%', background:T.s2, border:`1px solid ${T.border}`, borderRadius:12, padding:'11px 14px', color:T.text, fontSize:14, outline:'none', fontFamily:"'Noto Sans KR',sans-serif", transition:'all 0.2s' }
 
-  const TYPE_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
-    detail_page: { label: '상세페이지', emoji: '📄', color: '#ff6b35' },
-    review:      { label: '리뷰 답글',  emoji: '💬', color: '#10b981' },
-    government:  { label: '정부지원',   emoji: '🏛️', color: '#3b82f6' },
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', background: T.surface2, border: `1px solid ${T.border}`,
-    borderRadius: 12, padding: '11px 14px', color: T.text,
-    fontSize: 14, outline: 'none', fontFamily: "'Noto Sans KR',sans-serif",
-    transition: 'all 0.2s',
-  }
-
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Noto Sans KR',sans-serif" }}>
-      <div style={{ fontSize: 14, color: T.muted }}>불러오는 중...</div>
-    </div>
-  )
+  if (loading) return <div style={{minHeight:'100vh',background:T.bg,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Noto Sans KR',sans-serif",color:T.muted}}>불러오는 중...</div>
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: "'Noto Sans KR',sans-serif" }}>
+    <div style={{minHeight:'100vh',background:T.bg,color:T.text,fontFamily:"'Noto Sans KR',sans-serif"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-        @keyframes toastIn { from{opacity:0;transform:translateX(60px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes glow { 0%,100%{opacity:0.2} 50%{opacity:0.5} }
-        input::placeholder, textarea::placeholder { color: ${T.muted}; }
-        select option { background: #1a1a2e; }
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: ${T.border}; border-radius: 4px; }
-        .tab-btn:hover { background: rgba(255,107,53,0.08) !important; }
+        @keyframes fIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes tIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:translateX(0)}}
+        *{box-sizing:border-box} input::placeholder,textarea::placeholder{color:${T.muted}}
+        select option{background:#1a1a2e} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:${T.border};border-radius:4px}
+        @media(max-width:640px){.pcsb{display:none!important}#mtb{display:block!important}}
       `}</style>
 
-      {/* 토스트 */}
-      {toast && (
-        <div style={{ position:'fixed', top:20, right:20, zIndex:9999, padding:'12px 20px', borderRadius:12, fontSize:14, fontWeight:700, background:toast.includes('✅')?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)', border:`1px solid ${toast.includes('✅')?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, color:toast.includes('✅')?'#34d399':'#f87171', animation:'toastIn 0.3s ease', backdropFilter:'blur(20px)' }}>
-          {toast}
-        </div>
-      )}
+      {toast && <div style={{position:'fixed',top:20,right:20,zIndex:9999,padding:'12px 20px',borderRadius:12,fontSize:14,fontWeight:700,background:toast.includes('✅')?'rgba(16,185,129,0.15)':'rgba(239,68,68,0.15)',border:`1px solid ${toast.includes('✅')?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`,color:toast.includes('✅')?'#34d399':'#f87171',animation:'tIn 0.3s ease',backdropFilter:'blur(20px)'}}>{toast}</div>}
 
-      {/* 헤더 */}
-      <div style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, padding: '0 20px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(30px)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={() => router.push('/')} style={{ background: T.surface2, border: `1px solid ${T.border}`, color: T.text, borderRadius: 10, padding: '8px 14px', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', fontWeight: 700 }}>← 홈</button>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: `0 0 16px ${ACCENT}44`, animation: 'bounce 2.5s ease-in-out infinite' }}>👤</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 900 }}>마이페이지</div>
-            <div style={{ fontSize: 11, color: T.muted }}>{session?.email}</div>
-          </div>
+      <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'0 16px',height:60,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100,backdropFilter:'blur(30px)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={()=>router.push('/')} style={{background:T.s2,border:`1px solid ${T.border}`,color:T.text,borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:13,fontFamily:'inherit',fontWeight:700}}>← 홈</button>
+          <span style={{fontSize:15,fontWeight:900}}>마이페이지</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {(['dark','light','yellow'] as Theme[]).map(t => (
-            <button key={t} onClick={() => saveTheme(t)} style={{ width: 30, height: 30, borderRadius: '50%', border: `2px solid ${theme===t?ACCENT:'transparent'}`, cursor: 'pointer', fontSize: 14, background: t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', boxShadow: theme===t?`0 0 12px ${ACCENT}88`:'' }}>
-              {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
-            </button>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {(['dark','light','yellow'] as Theme[]).map(t=>(
+            <button key={t} onClick={()=>stT(t)} style={{width:28,height:28,borderRadius:'50%',border:`2px solid ${theme===t?AC:'transparent'}`,cursor:'pointer',fontSize:13,background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600'}}>{t==='dark'?'🌙':t==='light'?'☀️':'⭐'}</button>
           ))}
-          <button onClick={handleLogout} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>로그아웃</button>
+          <button onClick={logout} style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',borderRadius:8,padding:'6px 10px',cursor:'pointer',fontSize:12,fontFamily:'inherit'}}>로그아웃</button>
         </div>
       </div>
 
-      {/* 바디 */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)' }}>
-
-        {/* 사이드바 */}
-        <div style={{ width: 200, flexShrink: 0, background: T.surface, borderRight: `1px solid ${T.border}`, padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: 4 }} className="pc-sidebar">
-          {/* 프로필 카드 */}
-          <div style={{ background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 14, padding: '14px 12px', marginBottom: 12, textAlign: 'center' }}>
-            <div style={{ width: 50, height: 50, borderRadius: '50%', background: `linear-gradient(135deg,${ACCENT},#ffd700)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 8px', boxShadow: `0 0 20px ${ACCENT}33` }}>
-              {profile.name ? profile.name[0] : '😊'}
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{profile.name || '이름 없음'}</div>
-            <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{profile.business_type || '업종 미설정'}</div>
-            {profile.region && <div style={{ fontSize: 11, color: ACCENT, marginTop: 2, fontWeight: 700 }}>📍 {profile.region}</div>}
+      <div style={{display:'flex',minHeight:'calc(100vh - 60px)'}}>
+        <div className="pcsb" style={{width:190,flexShrink:0,background:T.surface,borderRight:`1px solid ${T.border}`,padding:'16px 8px',display:'flex',flexDirection:'column',gap:4}}>
+          <div style={{background:T.s2,border:`1px solid ${T.border}`,borderRadius:12,padding:12,marginBottom:10,textAlign:'center'}}>
+            <div style={{width:44,height:44,borderRadius:'50%',background:`linear-gradient(135deg,${AC},#ffd700)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,margin:'0 auto 6px',fontWeight:900}}>{prof.name?prof.name[0]:'😊'}</div>
+            <div style={{fontSize:13,fontWeight:800}}>{prof.name||'이름 없음'}</div>
+            <div style={{fontSize:11,color:T.muted}}>{email}</div>
           </div>
-
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} className="tab-btn" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 12, cursor: 'pointer', border: 'none', fontFamily: 'inherit', fontSize: 13, fontWeight: 800, textAlign: 'left', width: '100%', transition: 'all 0.2s', background: tab===t.key?`${t.color}18`:'transparent', color: tab===t.key?t.color:T.muted, borderLeft: tab===t.key?`3px solid ${t.color}`:'3px solid transparent' }}>
-              <span style={{ fontSize: 18 }}>{t.icon}</span>{t.label}
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>setTab(t.key)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',borderRadius:10,cursor:'pointer',border:'none',fontFamily:'inherit',fontSize:13,fontWeight:800,textAlign:'left',width:'100%',transition:'all 0.2s',background:tab===t.key?`${t.color}18`:'transparent',color:tab===t.key?t.color:T.muted,borderLeft:tab===t.key?`3px solid ${t.color}`:'3px solid transparent'}}>
+              <span style={{fontSize:16}}>{t.icon}</span>{t.label}
             </button>
           ))}
         </div>
 
-        {/* 컨텐츠 */}
-        <div style={{ flex: 1, padding: 'clamp(16px,3vw,32px)', overflowY: 'auto', animation: 'fadeIn 0.3s ease' }}>
+        <div style={{flex:1,padding:'clamp(16px,3vw,28px)',overflowY:'auto',paddingBottom:80,animation:'fIn 0.3s ease'}}>
 
-          {/* 프로필 탭 */}
-          {tab === 'profile' && (
-            <div style={{ maxWidth: 560 }}>
-              <SHead icon="👤" title="프로필 수정" color={ACCENT} />
-              <div style={{ display: 'grid', gap: 14 }}>
-                {[
-                  { label:'이름', key:'name', placeholder:'홍길동', type:'text' },
-                  { label:'상호명', key:'business_name', placeholder:'OO마트', type:'text' },
-                  { label:'연락처', key:'phone', placeholder:'010-0000-0000', type:'tel' },
-                ].map(f => (
-                  <div key={f.key}>
-                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>{f.label}</div>
-                    <input type={f.type} value={(profile as Record<string, string>)[f.key] || ''} onChange={e => setProfile(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} style={inputStyle}
-                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
-                      onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+          {tab==='profile' && (
+            <div style={{maxWidth:520}}>
+              <SHd icon="👤" title="프로필 수정" color={AC}/>
+              <div style={{display:'grid',gap:14}}>
+                {([{l:'이름',k:'name',ph:'홍길동'},{l:'상호명',k:'business_name',ph:'OO마트'},{l:'연락처',k:'phone',ph:'010-0000-0000'}] as const).map(f=>(
+                  <div key={f.k}>
+                    <div style={{fontSize:12,color:T.muted,fontWeight:700,marginBottom:7}}>{f.l}</div>
+                    <input value={prof[f.k]} onChange={e=>setProf(p=>({...p,[f.k]:e.target.value}))} placeholder={f.ph} style={iS}
+                      onFocus={e=>{(e.target as HTMLInputElement).style.borderColor=AC}}
+                      onBlur={e=>{(e.target as HTMLInputElement).style.borderColor=T.border}}
                     />
                   </div>
                 ))}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   <div>
-                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>업종</div>
-                    <select value={profile.business_type || ''} onChange={e => setProfile(p => ({ ...p, business_type: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <div style={{fontSize:12,color:T.muted,fontWeight:700,marginBottom:7}}>업종</div>
+                    <select value={prof.business_type} onChange={e=>setProf(p=>({...p,business_type:e.target.value}))} style={{...iS,cursor:'pointer'}}>
                       <option value="">선택</option>
-                      {BUSINESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {BIZ.map(t=><option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 7 }}>지역</div>
-                    <select value={profile.region || ''} onChange={e => setProfile(p => ({ ...p, region: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <div style={{fontSize:12,color:T.muted,fontWeight:700,marginBottom:7}}>지역</div>
+                    <select value={prof.region} onChange={e=>setProf(p=>({...p,region:e.target.value}))} style={{...iS,cursor:'pointer'}}>
                       <option value="">선택</option>
-                      {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                      {REGS.map(r=><option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                 </div>
-                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.15)', fontSize: 13, color: ACCENT, lineHeight: 1.7 }}>
-                  💡 업종과 지역을 설정하면 정부지원 챗봇에서 맞춤 지원사업을 추천해드려요!
-                </div>
-                <GlowBtn onClick={handleSaveProfile} loading={saving} label="💾 저장하기" color={`linear-gradient(135deg,${ACCENT},#ffd700)`} glow={`${ACCENT}44`} />
+                <GBt onClick={saveProf} loading={saving} label="💾 저장하기" color={`linear-gradient(135deg,${AC},#ffd700)`}/>
               </div>
             </div>
           )}
 
-          {/* 통계 탭 */}
-          {tab === 'stats' && (
+          {tab==='stats' && (
             <div>
-              <SHead icon="📊" title="사용 통계" color="#3b82f6" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 14, marginBottom: 24 }}>
-                <StatCard label="이번 달 사용" value={thisMonth.length} emoji="🔥" color={ACCENT} />
-                <StatCard label="전체 사용" value={usageStats.length} emoji="📈" color="#3b82f6" />
-                <StatCard label="상세페이지" value={statsByType['detail_page'] || 0} emoji="📄" color="#8b5cf6" />
-                <StatCard label="리뷰 답글" value={statsByType['review'] || 0} emoji="💬" color="#10b981" />
-                <StatCard label="정부지원 상담" value={statsByType['government'] || 0} emoji="🏛️" color="#f59e0b" />
+              <SHd icon="📊" title="사용 통계" color="#3b82f6"/>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:12,marginBottom:20}}>
+                {[{l:'이번달',v:tM,e:'🔥',c:AC},{l:'상세페이지',v:bT['detail_page']||0,e:'📄',c:'#8b5cf6'},{l:'리뷰답글',v:bT['review']||0,e:'💬',c:'#10b981'},{l:'정부지원',v:bT['government']||0,e:'🏛️',c:'#f59e0b'}].map((s,i)=>(
+                  <div key={i} style={{background:`${s.c}10`,border:`1px solid ${s.c}25`,borderRadius:14,padding:16,textAlign:'center'}}>
+                    <div style={{fontSize:24,marginBottom:4}}>{s.e}</div>
+                    <div style={{fontSize:26,fontWeight:900,color:s.c}}>{s.v}</div>
+                    <div style={{fontSize:11,color:T.muted,marginTop:2,fontWeight:700}}>{s.l}</div>
+                  </div>
+                ))}
               </div>
+              {stats.length===0 && <Emp text="아직 사용 기록이 없어요"/>}
+            </div>
+          )}
 
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '20px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>기능별 사용 비중</div>
-                {Object.entries(TYPE_LABELS).map(([type, info]) => {
-                  const count = statsByType[type] || 0
-                  const pct = usageStats.length > 0 ? Math.round((count / usageStats.length) * 100) : 0
-                  return (
-                    <div key={type} style={{ marginBottom: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 13 }}>
-                        <span style={{ fontWeight: 700 }}>{info.emoji} {info.label}</span>
-                        <span style={{ color: T.muted }}>{count}회 ({pct}%)</span>
-                      </div>
-                      <div style={{ height: 6, background: T.border, borderRadius: 6, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${info.color},${info.color}88)`, borderRadius: 6, transition: 'width 0.6s ease' }} />
-                      </div>
+          {tab==='history' && (
+            <div>
+              <SHd icon="📋" title="사용 히스토리" color="#10b981"/>
+              {stats.length===0 ? <Emp text="아직 사용 기록이 없어요"/> : (
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {stats.slice(0,50).map((s,i)=>{const info=TI[s.type]||{l:s.type,c:AC,e:'📌'};return(
+                    <div key={i} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:12,padding:'12px 16px',display:'flex',alignItems:'center',gap:10}}>
+                      <span style={{fontSize:18}}>{info.e}</span>
+                      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:info.c}}>{info.l}</div><div style={{fontSize:11,color:T.muted}}>{new Date(s.created_at).toLocaleString('ko-KR')}</div></div>
                     </div>
-                  )
-                })}
-                {usageStats.length === 0 && <div style={{ textAlign: 'center', padding: '30px', color: T.muted, fontSize: 14 }}>아직 사용 기록이 없어요 😊</div>}
-              </div>
-            </div>
-          )}
-
-          {/* 히스토리 탭 */}
-          {tab === 'history' && (
-            <div>
-              <SHead icon="📋" title="사용 히스토리" color="#10b981" />
-              {usageStats.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
-                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📋</div>
-                  아직 사용 기록이 없어요
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {usageStats.slice(0, 50).map((u, i) => {
-                    const info = TYPE_LABELS[u.type] || { label: u.type, emoji: '📌', color: ACCENT }
-                    return (
-                      <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontSize: 20, flexShrink: 0 }}>{info.emoji}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: info.color }}>{info.label}</div>
-                          <div style={{ fontSize: 11, color: T.muted }}>{new Date(u.created_at).toLocaleString('ko-KR')}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                  )})}
                 </div>
               )}
             </div>
           )}
 
-          {/* 즐겨찾기 탭 */}
-          {tab === 'worklog' && (
+          {tab==='worklog' && (
             <div>
-              <SHead icon="📝" title="작업일지" color="#f59e0b" />
-              {/* 새 일지 작성 */}
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: '18px 20px', marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', marginBottom: 14 }}>+ 새 작업일지 작성</div>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <select value={wCategory} onChange={e => setWCategory(e.target.value)} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>
-                    {['일반','상품등록','마케팅','고객응대','정부지원','기타'].map(c => <option key={c} value={c}>{c}</option>)}
+              <SHd icon="📝" title="작업일지" color="#f59e0b"/>
+              <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,padding:18,marginBottom:18}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#f59e0b',marginBottom:12}}>+ 새 작업일지</div>
+                <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap'}}>
+                  <select value={wCat} onChange={e=>setWCat(e.target.value)} style={{...iS,width:'auto',cursor:'pointer'}}>
+                    {['일반','상품등록','마케팅','고객응대','정부지원','기타'].map(c=><option key={c} value={c}>{c}</option>)}
                   </select>
-                  <input value={wTitle} onChange={e => setWTitle(e.target.value)} placeholder="작업 제목" style={{ ...inputStyle, flex: 1, minWidth: 140 }}
-                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = '#f59e0b' }}
-                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+                  <input value={wT} onChange={e=>setWT(e.target.value)} placeholder="작업 제목" style={{...iS,flex:1,minWidth:120}}
+                    onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#f59e0b'}}
+                    onBlur={e=>{(e.target as HTMLInputElement).style.borderColor=T.border}}
                   />
                 </div>
-                <textarea value={wContent} onChange={e => setWContent(e.target.value)} placeholder="작업 내용, 메모, 참고사항 등..." rows={3} style={{ ...inputStyle, resize: 'vertical', marginBottom: 10 }}
-                  onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = '#f59e0b' }}
-                  onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = T.border }}
-                />
-                <GlowBtn onClick={handleSaveWorkLog} loading={wSaving} label="📝 저장" color="linear-gradient(135deg,#f59e0b,#d97706)" glow="rgba(245,158,11,0.4)" />
+                <textarea value={wC} onChange={e=>setWC(e.target.value)} placeholder="작업 내용..." rows={3} style={{...iS,resize:'vertical',marginBottom:10}}/>
+                <GBt onClick={addLog} loading={wS} label="📝 저장" color="linear-gradient(135deg,#f59e0b,#d97706)"/>
               </div>
-
-              {/* 일지 목록 */}
-              {workLogs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
-                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📝</div>
-                  첫 작업일지를 작성해보세요!
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {workLogs.map(w => (
-                    <div key={w.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: '14px 18px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 20, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 800 }}>{w.category}</span>
-                          <span style={{ fontSize: 15, fontWeight: 900, color: T.text }}>{w.title}</span>
+              {logs.length===0 ? <Emp text="첫 작업일지를 작성해보세요!"/> : (
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  {logs.map(w=>(
+                    <div key={w.id} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:'14px 16px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                        <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                          <span style={{fontSize:11,padding:'2px 8px',borderRadius:20,background:'rgba(245,158,11,0.15)',color:'#f59e0b',fontWeight:800}}>{w.category}</span>
+                          <span style={{fontSize:14,fontWeight:900}}>{w.title}</span>
                         </div>
-                        <button onClick={() => handleDeleteWorkLog(w.id)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}>🗑</button>
+                        <button onClick={()=>delLog(w.id)} style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',borderRadius:8,padding:'4px 8px',cursor:'pointer',fontSize:13}}>🗑</button>
                       </div>
-                      {w.content && <div style={{ fontSize: 13, color: T.muted, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{w.content}</div>}
-                      <div style={{ fontSize: 11, color: T.muted, marginTop: 8 }}>{new Date(w.created_at).toLocaleString('ko-KR')}</div>
+                      {w.content && <div style={{fontSize:13,color:T.muted,lineHeight:1.7,whiteSpace:'pre-line'}}>{w.content}</div>}
+                      <div style={{fontSize:11,color:T.muted,marginTop:6}}>{new Date(w.created_at).toLocaleString('ko-KR')}</div>
                     </div>
                   ))}
                 </div>
@@ -399,28 +270,16 @@ export default function MyPage() {
             </div>
           )}
 
-          {tab === 'bookmark' && (
+          {tab==='bookmark' && (
             <div>
-              <SHead icon="⭐" title="즐겨찾기 정부지원" color="#f59e0b" />
-              <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 12, fontSize: 13, color: '#f59e0b', lineHeight: 1.7 }}>
-                💡 정부지원 챗봇에서 마음에 드는 지원사업을 즐겨찾기에 추가할 수 있어요. (기능 준비 중)
-              </div>
-              {bookmarks.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px', color: T.muted }}>
-                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>⭐</div>
-                  저장된 즐겨찾기가 없어요
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {bookmarks.map(b => (
-                    <div key={b.id} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 20 }}>⭐</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{b.title}</div>
-                        {b.url && <a href={b.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>{b.url}</a>}
-                        <div style={{ fontSize: 11, color: T.muted }}>{b.category}</div>
-                      </div>
-                      <button onClick={() => handleDeleteBookmark(b.id)} style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 13 }}>🗑</button>
+              <SHd icon="⭐" title="즐겨찾기" color="#f59e0b"/>
+              {bmarks.length===0 ? <Emp text="저장된 즐겨찾기가 없어요"/> : (
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {bmarks.map(b=>(
+                    <div key={b.id} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:12,padding:'12px 16px',display:'flex',alignItems:'center',gap:10}}>
+                      <span style={{fontSize:18}}>⭐</span>
+                      <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{b.title}</div>{b.url&&<a href={b.url} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:'#60a5fa'}}>{b.url}</a>}</div>
+                      <button onClick={()=>delBmark(b.id)} style={{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',color:'#ef4444',borderRadius:8,padding:'4px 8px',cursor:'pointer',fontSize:13}}>🗑</button>
                     </div>
                   ))}
                 </div>
@@ -428,80 +287,41 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* API 키 탭 */}
-          {tab === 'keys' && (
-            <div style={{ maxWidth: 520 }}>
-              <SHead icon="🔑" title="API 키 관리" color="#8b5cf6" />
-              <div style={{ padding: '14px 16px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 12, fontSize: 13, color: '#a78bfa', lineHeight: 1.7, marginBottom: 20 }}>
-                🔒 API 키는 이 기기에만 저장되며 서버로 전송되지 않아요.<br />
-                Gemini는 무료 | OpenAI는 유료 (이미지 분석용) | Groq는 완전 무료
+          {tab==='keys' && (
+            <div style={{maxWidth:480}}>
+              <SHd icon="🔑" title="API 키 관리" color="#8b5cf6"/>
+              <div style={{padding:'12px 14px',background:'rgba(139,92,246,0.06)',border:'1px solid rgba(139,92,246,0.15)',borderRadius:12,fontSize:13,color:'#a78bfa',lineHeight:1.7,marginBottom:18}}>
+                🔒 API 키는 이 기기에만 저장됩니다.
               </div>
-              {[
-                { label:'Gemini API 키', badge:'무료', badgeColor:'#10b981', key:'gemini', ph:'AIza...' },
-                { label:'OpenAI API 키', badge:'유료', badgeColor:'#ef4444', key:'openai', ph:'sk-...' },
-                { label:'Groq API 키', badge:'무료', badgeColor:'#00e5a0', key:'groq', ph:'gsk_...' },
-              ].map(f => (
-                <div key={f.key} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, color: T.muted, fontWeight: 700, letterSpacing: '0.5px' }}>{f.label}</span>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: `${f.badgeColor}22`, color: f.badgeColor, fontWeight: 700 }}>{f.badge}</span>
-                  </div>
-                  <input type="password" value={(keys as Record<string, string>)[f.key] || ''} onChange={e => setKeys(k => ({ ...k, [f.key]: e.target.value }))} placeholder={f.ph} style={inputStyle}
-                    onFocus={e => { (e.target as HTMLInputElement).style.borderColor = '#8b5cf6' }}
-                    onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
+              {([{l:'Gemini API 키',k:'gemini',ph:'AIza...',bc:'#10b981'},{l:'OpenAI API 키',k:'openai',ph:'sk-...',bc:'#ef4444'},{l:'Groq API 키',k:'groq',ph:'gsk_...',bc:'#00e5a0'}] as const).map(f=>(
+                <div key={f.k} style={{marginBottom:16}}>
+                  <div style={{fontSize:12,color:T.muted,fontWeight:700,marginBottom:8}}>{f.l}</div>
+                  <input type="password" value={keys[f.k]} onChange={e=>setKeys(k=>({...k,[f.k]:e.target.value}))} placeholder={f.ph} style={iS}
+                    onFocus={e=>{(e.target as HTMLInputElement).style.borderColor='#8b5cf6'}}
+                    onBlur={e=>{(e.target as HTMLInputElement).style.borderColor=T.border}}
                   />
                 </div>
               ))}
-              <GlowBtn onClick={handleSaveKeys} loading={false} label="💾 저장하기" color="linear-gradient(135deg,#8b5cf6,#6366f1)" glow="rgba(139,92,246,0.4)" />
+              <GBt onClick={saveKeys} loading={false} label="💾 저장하기" color="linear-gradient(135deg,#8b5cf6,#6366f1)"/>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* 모바일 탭바 */}
-      <div style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: T.surface, borderTop: `1px solid ${T.border}`, paddingBottom: 'env(safe-area-inset-bottom)', backdropFilter: 'blur(30px)' }} id="mobile-tab">
-        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '6px 0' }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '6px 0', flex: 1, background: 'transparent', border: 'none', cursor: 'pointer', color: tab===t.key?t.color:T.muted, fontFamily: 'inherit', fontSize: 9, fontWeight: 800 }}>
-              <span style={{ fontSize: 20 }}>{t.icon}</span>
-              <span style={{ whiteSpace: 'nowrap' }}>{t.label}</span>
+      <div id="mtb" style={{display:'none',position:'fixed',bottom:0,left:0,right:0,zIndex:200,background:T.surface,borderTop:`1px solid ${T.border}`,paddingBottom:'env(safe-area-inset-bottom)',backdropFilter:'blur(30px)'}}>
+        <div style={{display:'flex',justifyContent:'space-around',padding:'6px 0'}}>
+          {TABS.map(t=>(
+            <button key={t.key} onClick={()=>setTab(t.key)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 0',flex:1,background:'transparent',border:'none',cursor:'pointer',color:tab===t.key?t.color:T.muted,fontFamily:'inherit',fontSize:9,fontWeight:800}}>
+              <span style={{fontSize:18}}>{t.icon}</span>
+              <span style={{whiteSpace:'nowrap'}}>{t.label}</span>
             </button>
           ))}
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 640px) {
-          .pc-sidebar { display: none !important; }
-          #mobile-tab { display: block !important; }
-        }
-      `}</style>
     </div>
   )
 }
 
-function SHead({ icon, title, color }: { icon: string; title: string; color: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: `0 0 16px ${color}30` }}>{icon}</div>
-      <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.3px' }}>{title}</div>
-    </div>
-  )
-}
-
-function StatCard({ label, value, emoji, color }: { label: string; value: number; emoji: string; color: string }) {
-  return (
-    <div style={{ background: `${color}10`, border: `1px solid ${color}25`, borderRadius: 16, padding: '20px 16px', textAlign: 'center', animation: 'bounce 3s ease-in-out infinite' }}>
-      <div style={{ fontSize: 28, marginBottom: 6 }}>{emoji}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color, opacity: 0.7, marginTop: 4, fontWeight: 700 }}>{label}</div>
-    </div>
-  )
-}
-
-function GlowBtn({ onClick, loading, label, color, glow }: { onClick: () => void; loading: boolean; label: string; color: string; glow: string }) {
-  return (
-    <button onClick={onClick} disabled={loading} style={{ padding: '12px 28px', borderRadius: 12, border: 'none', cursor: loading?'not-allowed':'pointer', fontFamily: "'Noto Sans KR',sans-serif", fontSize: 14, fontWeight: 800, color: 'white', background: loading?'rgba(255,255,255,0.1)':color, boxShadow: loading?'none':`0 6px 20px ${glow}`, opacity: loading?0.6:1, transition: 'all 0.2s' }}>{loading?'저장 중...':label}</button>
-  )
-}
+function SHd({icon,title,color}:{icon:string;title:string;color:string}){return(<div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}><div style={{width:38,height:38,borderRadius:12,background:`${color}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{icon}</div><div style={{fontSize:18,fontWeight:900}}>{title}</div></div>)}
+function GBt({onClick,loading,label,color}:{onClick:()=>void;loading:boolean;label:string;color:string}){return(<button onClick={onClick} disabled={loading} style={{padding:'11px 24px',borderRadius:12,border:'none',cursor:loading?'not-allowed':'pointer',fontFamily:"'Noto Sans KR',sans-serif",fontSize:14,fontWeight:800,color:'white',background:loading?'rgba(255,255,255,0.1)':color,opacity:loading?0.6:1,transition:'all 0.2s'}}>{loading?'저장 중...':label}</button>)}
+function Emp({text}:{text:string}){return(<div style={{textAlign:'center',padding:'50px 20px',color:'#555'}}><div style={{fontSize:40,marginBottom:10,opacity:0.2}}>📭</div><div style={{fontSize:14}}>{text}</div></div>)}
