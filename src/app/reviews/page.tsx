@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { loadUserKeys } from '@/lib/keys'
 
 type Theme = 'dark' | 'light' | 'yellow'
 type StarRating = 1 | 2 | 3 | 4 | 5
@@ -70,14 +71,13 @@ export default function ReviewsPage() {
   useEffect(() => {
     document.body.style.background = t.bg
     try {
-      const savedKeys = localStorage.getItem('storeauto_keys')
-      if (savedKeys) {
-        const parsed = JSON.parse(savedKeys)
-        setKeys(parsed)
-        if (parsed.gemini) setProvider('gemini')
-        else if (parsed.openai) setProvider('openai')
-        else if (parsed.groq) setProvider('groq')
-      }
+      // AI 키는 Supabase에서 불러오기 (모든 기기 동일)
+      loadUserKeys().then(k => {
+        setKeys(k)
+        if (k.gemini) setProvider('gemini')
+        else if (k.openai) setProvider('openai')
+        else if (k.groq) setProvider('groq')
+      }).catch(() => {})
       const savedTheme = localStorage.getItem('storeauto_theme') as Theme
       if (savedTheme) setTheme(savedTheme)
       const savedHistory = localStorage.getItem('storeauto_reviews')
