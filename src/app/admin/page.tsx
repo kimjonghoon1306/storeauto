@@ -125,18 +125,15 @@ export default function AdminPage() {
         supabaseQuery('profiles','GET',undefined,'order=created_at.desc'),
       ])
       if (Array.isArray(configs)) {
+        const adminKeys: Record<string, string> = {}
         configs.forEach((c: { key: string; value: string }) => {
-          if (c.key==='gemini_key')     { setGemini(c.value||''); if (c.value) _adminKeys.gemini = c.value }
-          if (c.key==='datalab_id')     setDlId(c.value||'')
-          if (c.key==='datalab_secret') setDlSec(c.value||'')
-          if (c.key==='openai_key')     { setOpenai(c.value||''); if (c.value) _adminKeys.openai = c.value }
-          if (c.key==='groq_key')       { setGroq(c.value||''); if (c.value) _adminKeys.groq = c.value }
+          if (c.key==='gemini_key')          { setGemini(c.value||''); if (c.value) { adminKeys.gemini = c.value; try { localStorage.setItem('storeauto_admin_gemini', c.value) } catch {} } }
+          if (c.key==='datalab_id')          setDlId(c.value||'')
+          if (c.key==='datalab_secret')      setDlSec(c.value||'')
+          if (c.key==='openai_key')          { setOpenai(c.value||''); if (c.value) { adminKeys.openai = c.value; try { localStorage.setItem('storeauto_admin_openai', c.value) } catch {} } }
+          if (c.key==='groq_key')            { setGroq(c.value||''); if (c.value) { adminKeys.groq = c.value; try { localStorage.setItem('storeauto_admin_groq', c.value) } catch {} } }
           if (c.key==='default_ai_provider') setAiProvider((c.value||'gemini') as 'gemini'|'openai'|'groq')
         })
-        // 관리자 키 localStorage에 저장 → 메인 페이지에서 바로 사용
-        if (Object.keys(_adminKeys).length > 0) {
-          try { localStorage.setItem('storeauto_admin_keys', JSON.stringify(_adminKeys)) } catch { /* ignore */ }
-        }
       }
       if (Array.isArray(pops)) setPopups(pops as PopupItem[])
       if (Array.isArray(govs)) setGovList(govs as GovItem[])
@@ -212,6 +209,12 @@ export default function AdminPage() {
   }
 
   const saveKeys = async () => {
+    // tarry 방식: localStorage에도 저장해서 메인페이지에서 바로 읽기
+    try {
+      localStorage.setItem('storeauto_admin_gemini', gemini)
+      localStorage.setItem('storeauto_admin_openai', openai)
+      localStorage.setItem('storeauto_admin_groq', groq)
+    } catch { /* ignore */ }
     setBusy(true)
     try {
       const existing = await supabaseQuery('admin_config','GET',undefined,'select=key') as Array<{key:string}>
