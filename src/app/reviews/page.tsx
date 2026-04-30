@@ -58,7 +58,7 @@ export default function ReviewsPage() {
   const [hoverRating, setHoverRating] = useState<StarRating | null>(null)
   const [charLimit, setCharLimit] = useState<number>(0) // 0 = 제한없음
   const [versionCount, setVersionCount] = useState<2 | 3>(3)
-  const [isMalicious, setIsMalicious] = useState(false)
+  const [isMalicious, setIsMalicious] = useState<'high'|'mid'|null>(null)
   // 대량처리
   const [batchInput, setBatchInput] = useState('')
   const [batchResults, setBatchResults] = useState<{review: string; reply: string; done: boolean}[]>([])
@@ -96,51 +96,33 @@ export default function ReviewsPage() {
   }
 
   const callAI = useCallback(async (prompt: string): Promise<string> => {
-    const key = provider === 'gemini' ? keys.gemini : provider === 'openai' ? keys.openai : keys.groq
-    if (!key) throw new Error('🔑 API 키가 없어요. 설정 페이지에서 키를 등록해주세요.')
-
-    if (provider === 'gemini') {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key.trim()}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.8, maxOutputTokens: 1024 },
-          }),
-        }
-      )
-      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
-      const data = await res.json()
-      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      if (!txt) throw new Error('😅 AI가 응답하지 않았어요. 다시 시도해주세요.')
-      return txt
-    } else if (provider === 'openai') {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key.trim()}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
-      })
-      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
-      const data = await res.json()
-      return data.choices?.[0]?.message?.content || ''
-    } else {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key.trim()}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 1024 }),
-      })
-      if (!res.ok) { const e = await res.json(); throw new Error(toKorErr(e?.error?.message || String(res.status))) }
-      const data = await res.json()
-      return data.choices?.[0]?.message?.content || ''
+    // 키 없으면 즉시 안내
+    if (!keys.gemini && !keys.openai && !keys.groq) {
+      throw new Error('NO_KEY')
     }
-    throw new Error('지원하지 않는 AI예요.')
+    // /api/ai 서버 경유 (키가 클라이언트에 노출되지 않음 - 보안)
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        provider,
+        userGemini: keys.gemini,
+        userOpenai: keys.openai,
+        userGroq:   keys.groq,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok || data.error) throw new Error(data.error || '오류가 발생했어요.')
+    return data.text || ''
   }, [provider, keys])
 
-  const detectMalicious = (text: string): boolean => {
-    const kw = ['환불','신고','고소','사기','거짓','허위','최악','쓰레기','엉터리','가짜','짝퉁','소비자원','공정위']
-    return kw.some(k => text.includes(k))
+  const MALICIOUS_HIGH = ['고소','신고','공정위','소비자원','소비자보호원','집단소송','명예훼손','허위광고','사기','경찰']
+  const MALICIOUS_MID  = ['환불','반품거부','거짓','가짜','짝퉁','최악','쓰레기','엉터리','불량','환불불가','무시','연락두절','먹튀']
+  const detectMalicious = (text: string): 'high' | 'mid' | null => {
+    if (MALICIOUS_HIGH.some(k => text.includes(k))) return 'high'
+    if (MALICIOUS_MID.some(k => text.includes(k))) return 'mid'
+    return null
   }
 
   const handleGenerate = async () => {
@@ -159,7 +141,11 @@ export default function ReviewsPage() {
         excited: '밝고 에너지 넘치게. 이모지 1~2개 사용. 고객이 기분 좋아지는 톤.',
       }
       const charGuide = charLimit > 0 ? `\n- 반드시 ${charLimit}자 이내로 작성` : ''
-      const malGuide = malicious ? '\n- 주의: 분쟁/악성 가능성 리뷰. 감정적 대응 금지. 정중하고 사실 기반. 필요시 고객센터 안내.' : ''
+      const malGuide = malicious === 'high'
+        ? '\n- 위험: 법적 분쟁 가능 리뷰. 감정적 표현 절대 금지. 사실만 간결하게. 고객센터 오시도록 안내. 사과는 절대 하지 말 것.'
+        : malicious === 'mid'
+        ? '\n- 주의: 불만 강한 리뷰. 감정적 대응 금지. 공감 + 해결책 제시. 고객센터 연락처 안내.'
+        : ''
       const basePrompt = `스마트스토어 판매자입니다. 고객 리뷰에 답글을 작성해주세요.\n상품명: ${productName || '저희 상품'}\n별점: ${rating}점 (${STAR_LABELS[rating]})\n고객 리뷰: ${reviewText}\n답글 톤: ${toneGuide[tone]}\n규칙: 2~4문장, 자연스러운 한국어, 판매자 입장, 마크다운 금지${charGuide}${malGuide}\n답글 텍스트만 출력`
       const promises = Array.from({ length: versionCount }, (_, vi) =>
         callAI(basePrompt + `\n(버전${vi + 1}: 앞 버전과 다른 표현으로)`)
@@ -180,7 +166,12 @@ export default function ReviewsPage() {
         return updated
       })
     } catch (e: unknown) {
-      setReplyError(e instanceof Error ? e.message : '오류가 발생했습니다.')
+      const raw = e instanceof Error ? e.message : '오류가 발생했습니다.'
+      if (raw === 'NO_KEY') {
+        setReplyError('🔑 API 키가 없어요. 마이페이지 → API 키 탭에서 키를 등록해주세요.')
+      } else {
+        setReplyError(toKorErr(raw))
+      }
     } finally {
       setLoading(false)
     }
@@ -199,7 +190,7 @@ export default function ReviewsPage() {
       const review = reviews[i]
       try {
         const charGuide = charLimit > 0 ? ` ${charLimit}자 이내.` : ''
-        const malGuide = detectMalicious(review) ? ' (주의:분쟁가능. 정중하게 사실기반으로.)' : ''
+        const malLevel = detectMalicious(review); const malGuide = malLevel === 'high' ? ' (위험:법적분쟁가능. 사실만, 사과금지)' : malLevel === 'mid' ? ' (주의:불만강함. 공감+해결책)' : ''
         const prompt = `판매자 리뷰 답글. 상품:${productName||'상품'}. 리뷰:${review}. 톤:따뜻하게.${charGuide}${malGuide} 2~3문장, 답글만 출력.`
         const reply = await callAI(prompt)
         results.push({ review, reply: reply.replace(/[*#_`]/g, '').trim(), done: false })
@@ -412,7 +403,7 @@ export default function ReviewsPage() {
                 </div>
                 {batchResults.map((r, i) => (
                   <div key={i} style={{ background: t.surface, border: `1px solid ${r.reply.includes('⚠️') ? '#ef4444' : t.border}`, borderRadius: '12px', padding: '14px 16px' }}>
-                    <div style={{ fontSize: '12px', color: t.muted, marginBottom: '6px' }}>리뷰 {i+1}{detectMalicious(r.review) ? ' 🚨 악성 가능성' : ''}</div>
+                    <div style={{ fontSize: '12px', color: t.muted, marginBottom: '6px' }}>리뷰 {i+1}{detectMalicious(r.review) === 'high' ? ' 🚨 법적분쟁 주의' : detectMalicious(r.review) === 'mid' ? ' ⚠️ 불만 강함' : ''}</div>
                     <div style={{ fontSize: '13px', color: t.muted, marginBottom: '8px', padding: '8px', background: t.surface2, borderRadius: '8px', lineHeight: 1.6 }}>{r.review}</div>
                     <div style={{ fontSize: '14px', color: t.text, lineHeight: 1.7, marginBottom: '8px' }}>{r.reply}</div>
                     <button onClick={() => navigator.clipboard.writeText(r.reply)} style={{ padding: '5px 12px', background: 'transparent', border: `1px solid ${t.border}`, borderRadius: '8px', color: t.muted, fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>복사</button>
@@ -571,9 +562,29 @@ export default function ReviewsPage() {
               <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', fontSize: '13px', color: '#ff6666' }}>⚠️ {replyError}</div>
             )}
 
-            {isMalicious && generatedReply && (
-              <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', fontSize: '13px', color: '#f87171', lineHeight: 1.6 }}>
-                🚨 <strong>악성/분쟁 가능성 리뷰 감지</strong> — 답글이 신중하게 작성됐어요. 감정적 표현 없이 정중하게 대응하세요. 필요시 고객센터 직접 연락을 유도하세요.
+            {isMalicious && (
+              <div style={{ padding: '16px', borderRadius: '12px', background: isMalicious === 'high' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)', border: `1px solid ${isMalicious === 'high' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: isMalicious === 'high' ? '#f87171' : '#f59e0b', marginBottom: 10 }}>
+                  {isMalicious === 'high' ? '🚨 법적 분쟁 가능성 리뷰' : '⚠️ 강한 불만 리뷰 감지'}
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: 1.8, color: isMalicious === 'high' ? '#fca5a5' : '#fcd34d' }}>
+                  {isMalicious === 'high' ? (
+                    <>
+                      <div>① 감정적 표현·사과 절대 금지 — 법적 불리하게 작용할 수 있어요</div>
+                      <div>② 사실 관계만 간결하게 — "확인 후 안내드리겠습니다"</div>
+                      <div>③ 고객센터로 유도 — 공개 댓글에서 분쟁 확대 방지</div>
+                      <div>④ 스크린샷 보관 — 향후 분쟁 대비 증거 확보</div>
+                      <div>⑤ 허위·과장 리뷰 → 네이버 신고 기능 활용 가능</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>① 고객 불편에 공감 표현 — 방어적 태도 금지</div>
+                      <div>② 구체적 해결책 제시 — "교환/환불 도와드릴게요"</div>
+                      <div>③ 고객센터 연락처 안내 — 빠른 해결 의지 표현</div>
+                      <div>④ 짧고 명확하게 — 변명성 긴 답글은 역효과</div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
