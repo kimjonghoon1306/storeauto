@@ -267,7 +267,7 @@ export default function DashboardPage() {
 
       {/* ──────────── 모바일 하단 탭바 ──────────── */}
       <div id="mob-bar" style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:T.surface, borderTop:`1px solid ${T.border}`, backdropFilter:'blur(24px)', paddingBottom:'env(safe-area-inset-bottom)' }}>
-        <div style={{ display:'flex', padding:'10px 0 8px' }}>
+        <div style={{ display:'flex', width:'100%', padding:'10px 0 8px' }}>
           {[
             { icon:'👤', label:'프로필',   path:'/mypage?tab=profile', color:'#ff6b35', active:true  },
             { icon:'📊', label:'통계',     path:'/mypage?tab=stats',   color:'#3b82f6', active:false },
