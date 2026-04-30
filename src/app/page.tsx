@@ -37,6 +37,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [browseMode, setBrowseMode] = useState(false)
   const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light' | 'yellow'>('dark')
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function Home() {
       })
       const params = new URLSearchParams(window.location.search)
       if (params.get('browse') === '1') setBrowseMode(true)
+      try { if (localStorage.getItem('storeauto_admin_authed') === '1') setIsAdmin(true) } catch { /* ignore */ }
       setIsOffline(!navigator.onLine)
       const onOnline  = () => setIsOffline(false)
       const onOffline = () => setIsOffline(true)
@@ -146,6 +148,7 @@ export default function Home() {
         userGemini: geminiKey || undefined,
         userOpenai: openaiKey || undefined,
         userGroq:   groqKey   || undefined,
+        isAdmin: isAdmin || undefined,
       }),
     })
     const data = await res.json()
