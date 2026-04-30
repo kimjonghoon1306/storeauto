@@ -32,10 +32,13 @@ export async function POST(req: NextRequest) {
 
     if (!prompt) return NextResponse.json({ error: '프롬프트가 없어요.' }, { status: 400 })
 
-    // 회원 키만 사용 — 관리자 키 폴백 없음 — 회원 간 격리
+    // provider 없으면 관리자가 설정한 기본 AI 사용
+    const resolvedProvider = provider || await getAdminKey('default_ai_provider') || 'gemini'
+
+    // 회원 키 없으면 관리자 키 서버사이드 폴백 (클라이언트에 노출 안됨)
     let text = ''
 
-    if (provider === 'gemini' || !provider) {
+    if (resolvedProvider === 'gemini') {
       const geminiKey = userGemini || await getAdminKey('gemini_key')
       if (!geminiKey) return NextResponse.json({ error: '🔑 Gemini API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const MODELS = ['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash-latest']
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
       }
       if (!text) return NextResponse.json({ error: toKoreanError(lastErr) }, { status: 500 })
 
-    } else if (provider === 'openai') {
+    } else if (resolvedProvider === 'openai') {
       const openaiKey = userOpenai || await getAdminKey('openai_key')
       if (!openaiKey) return NextResponse.json({ error: '🔑 OpenAI API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
       const data = await res.json()
       text = data.choices?.[0]?.message?.content || ''
 
-    } else if (provider === 'groq') {
+    } else if (resolvedProvider === 'groq') {
       const groqKey = userGroq || await getAdminKey('groq_key')
       if (!groqKey) return NextResponse.json({ error: '🔑 Groq API 키를 설정 페이지에서 입력해주세요.' }, { status: 400 })
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
       const data = await res.json()
       text = data.choices?.[0]?.message?.content || ''
     } else {
-      return NextResponse.json({ error: '지원하지 않는 AI 제공자예요.' }, { status: 400 })
+      return NextResponse.json({ error: `지원하지 않는 AI예요: ${resolvedProvider}` }, { status: 400 })
     }
 
     if (!text) return NextResponse.json({ error: '😅 AI가 응답을 생성하지 못했어요. 다시 시도해주세요.' }, { status: 500 })
