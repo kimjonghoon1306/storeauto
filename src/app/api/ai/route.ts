@@ -7,6 +7,20 @@ import { NextRequest, NextResponse } from 'next/server'
  * - 키 미입력 회원 → AI 사용 불가 + 안내 메시지 반환
  */
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+async function getAdminKey(keyName: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/admin_config?key=eq.${keyName}&select=value&limit=1`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    )
+    const data = await res.json()
+    return Array.isArray(data) && data[0]?.value ? data[0].value : ''
+  } catch { return '' }
+}
+
 function toKoreanError(msg: string): string {
   if (!msg) return '알 수 없는 오류가 발생했어요.'
   if (msg.includes('quota') || msg.includes('limit') || msg.includes('RESOURCE_EXHAUSTED')) return '⏳ API 사용 한도를 초과했어요. 잠시 후 다시 시도해주세요.'
@@ -23,18 +37,18 @@ const NO_KEY_ERROR = (provider: string) =>
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { prompt, provider, userGemini, userOpenai, userGroq } = body
+    const { prompt, provider, userGemini, userOpenai, userGroq, isAdmin } = body
 
     if (!prompt) return NextResponse.json({ error: '프롬프트가 없어요.' }, { status: 400 })
 
     // provider 미지정 시 gemini 기본값 (관리자 DB 조회 제거)
-    const resolvedProvider = provider || 'gemini'
+    const resolvedProvider = provider || (isAdmin ? await getAdminKey('default_ai_provider') : '') || 'gemini'
 
     let text = ''
 
     if (resolvedProvider === 'gemini') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
-      const geminiKey = userGemini || ''
+      const geminiKey = userGemini || (isAdmin ? await getAdminKey('gemini_key') : '')
       if (!geminiKey) return NextResponse.json({ error: NO_KEY_ERROR('Gemini') }, { status: 400 })
 
       const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest']
@@ -61,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     } else if (resolvedProvider === 'openai') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
-      const openaiKey = userOpenai || ''
+      const openaiKey = userOpenai || (isAdmin ? await getAdminKey('openai_key') : '')
       if (!openaiKey) return NextResponse.json({ error: NO_KEY_ERROR('OpenAI') }, { status: 400 })
 
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -75,7 +89,7 @@ export async function POST(req: NextRequest) {
 
     } else if (resolvedProvider === 'groq') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
-      const groqKey = userGroq || ''
+      const groqKey = userGroq || (isAdmin ? await getAdminKey('groq_key') : '')
       if (!groqKey) return NextResponse.json({ error: NO_KEY_ERROR('Groq') }, { status: 400 })
 
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
