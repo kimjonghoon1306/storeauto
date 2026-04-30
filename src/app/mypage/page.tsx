@@ -78,7 +78,7 @@ function MyPageInner() {
       if (Array.isArray(wData)) setLogs(wData)
       if (Array.isArray(rData)) setResults(rData)
       if (Array.isArray(kData) && kData[0]) {
-        const k = kData[0]
+        const k = kData[0] as { gemini_key?: string; openai_key?: string; groq_key?: string }
         setKeys({ gemini: k.gemini_key||'', openai: k.openai_key||'', groq: k.groq_key||'' })
       }
     } catch (_e) { /* ignore */ }
