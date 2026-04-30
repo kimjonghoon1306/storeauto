@@ -3,16 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 function removeNonKorean(text: string): string {
   if (!text) return ''
   return text
-    .replace(/[一-鿿㐀-䶿]/g, '')       // 한자 제거
-    .replace(/[぀-ヿ]/g, '')    // 일본어 제거
-    .replace(/\*{2,}/g, '')             // ** 강조 제거
-    .replace(/^#{3,}\s+/gm, '')         // ### 이상 헤더 제거
-    .replace(/_{2,}/g, '')              // __ 제거
-    .replace(/ {2,}/g, ' ')             // 연속 공백 정리
-    .replace(/
-{3,}/g, '
-
-')         // 연속 줄바꿈 정리
+    .replace(/[一-鿿㐀-䶿]/g, '')
+    .replace(/[぀-ヿ]/g, '')
+    .replace(/\*{2,}/g, '')
+    .replace(/^#{3,}\s+/gm, '')
+    .replace(/_{2,}/g, '')
+    .replace(/ {2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
