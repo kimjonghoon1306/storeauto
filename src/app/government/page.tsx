@@ -929,12 +929,12 @@ export default function GovernmentPage() {
         padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <button onClick={() => router.push('/')} style={{
+        <button onClick={() => router.push('/dashboard')} style={{
           background: 'var(--surface2)', border: '1px solid var(--border)',
           color: 'var(--text)', borderRadius: '10px', padding: '10px 14px',
-          cursor: 'pointer', fontSize: '14px', whiteSpace: 'nowrap', flexShrink: 0,
-          minHeight: 44, display: 'flex', alignItems: 'center',
-        }}>←</button>
+          cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', flexShrink: 0,
+          minHeight: 44, display: 'flex', alignItems: 'center', fontWeight: 700, fontFamily: 'inherit',
+        }}>← 대시보드</button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
           <span style={{ fontSize: '20px', flexShrink: 0 }}>🏛️</span>
