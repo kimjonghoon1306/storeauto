@@ -154,13 +154,24 @@ export default function Home() {
         return data.text || ''
       }
 
+      // geminiKey state가 비었으면 직접 다시 읽기
+      let resolvedKey = key
+      if (!resolvedKey) {
+        try {
+          const { loadUserKeys } = await import('@/lib/keys')
+          const k = await loadUserKeys()
+          resolvedKey = k.gemini || ''
+        } catch { /* ignore */ }
+      }
+      if (!resolvedKey) throw new Error('🔑 Gemini API 키가 없어요. 마이페이지에서 키를 등록해주세요.')
+
       // 회원: 브라우저에서 직접 호출
       const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
       let lastErr = ''
       for (const model of MODELS) {
         try {
           const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${resolvedKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
