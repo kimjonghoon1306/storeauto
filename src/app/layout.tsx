@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -9,7 +10,19 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <Script
+          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"
+          strategy="afterInteractive"
+          onLoad={() => {
+            const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void } }
+            if (win.Kakao && !win.Kakao.isInitialized?.()) {
+              win.Kakao.init?.('a54ee93898bb809b1c261f778178415c')
+            }
+          }}
+        />
+        {children}
+      </body>
     </html>
   )
 }
