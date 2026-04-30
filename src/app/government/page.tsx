@@ -548,6 +548,7 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 - 복잡한 절차는 단계별(1→2→3)로 설명
 - 답변은 핵심부터 간결하게, 모바일에서 읽기 편하게
 - 반드시 모든 텍스트는 순수 한국어로만 작성 (한자, 중국어, 일본어 문자 절대 사용 금지)
+- URL/링크는 아래 검증된 목록에서만 제공: sbiz.or.kr, k-startup.go.kr, mss.go.kr, bizinfo.go.kr, gov.kr, moel.go.kr, unikorea.go.kr, koreahana.or.kr, kodit.co.kr, kibo.or.kr, 8899.or.kr, hometax.go.kr. 목록에 없는 URL은 절대 제공하지 말고 기관명과 전화번호만 제공할 것
 - 반드시 답변 맨 마지막에 아래 형식으로 추천 질문 3개 추가 (형식 절대 변경 금지, 한자 금지):
 [추천: 질문1||질문2||질문3]
 
@@ -570,18 +571,18 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 - 교육비 지원: 중·고·대학교 전액 지원
 - 국가장학금 우선 지원
 
-### 주요 기관 및 링크
-- 통일부 북한이탈주민포털: www.unikorea.go.kr
-- 남북하나재단: www.koreahana.or.kr ☎ 1577-6635
-- 하나센터 (지역별 지원): www.hanacenter.or.kr
-- 취업·창업 상담: 남북하나재단 취업지원팀 02-3215-5714
+### 주요 기관 및 연락처
+- 통일부 공식 사이트: www.unikorea.go.kr
+- 남북하나재단 ☎ 1577-6635 (공식: www.koreahana.or.kr)
+- 북한이탈주민 지원재단 상담 ☎ 1577-6635
+- 취업지원 상담: 남북하나재단 02-3215-5714
+- 정착 관련: 통일부 남북통합문화센터 02-2085-7300
 
 ### 사업계획서 공식 양식 다운로드
-- 소진공 창업사업계획서 양식: www.sbiz.or.kr → 자료실 → 서식자료
-- 창진원 예비창업패키지 양식: www.kised.or.kr → 공지사항
-- K-Startup 표준양식: www.k-startup.go.kr → 자료실
-- 중기부 공식 양식: www.mss.go.kr → 자료실 → 서식
-- 소상공인 정책자금 신청서: 소상공인24(www.sbiz.or.kr) → 신청서류 다운로드`
+- 소상공인24: www.sbiz.or.kr (자료실 → 서식자료)
+- K-Startup: www.k-startup.go.kr (자료실)
+- 중소벤처기업부: www.mss.go.kr (자료실 → 서식)
+- 기업마당: www.bizinfo.go.kr (자료실)`
 
 export default function GovernmentPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -791,17 +792,25 @@ export default function GovernmentPage() {
         const nodes: React.ReactNode[] = []
         parts.forEach((part, j) => {
           if (/^https?:\/\//.test(part) || /^www\./.test(part)) {
-            const href = /^https?:\/\//.test(part) ? part : 'https://' + part
-            const domain = href.replace(/https?:\/\//, '').split('/')[0]
+            // www. 링크는 Google 검색으로 안전하게 처리 (없는 도메인 방지)
+            const isHttp = /^https?:\/\//.test(part)
+            const domain = isHttp ? part.replace(/https?:\/\//, '').split('/')[0] : part.split('/')[0]
+            // 검증된 공식 도메인은 직접 연결, 나머지는 Google 검색
+            const SAFE_DOMAINS = ['sbiz.or.kr','k-startup.go.kr','mss.go.kr','bizinfo.go.kr','kised.or.kr','kodit.co.kr','kibo.or.kr','8899.or.kr','gov.kr','bokjiro.go.kr','hometax.go.kr','sbc.or.kr','comwel.or.kr','nts.go.kr','unikorea.go.kr','koreahana.or.kr','moel.go.kr','kbiz.or.kr','ccrs.or.kr','socialenterprise.or.kr','coop.go.kr','wbiz.or.kr','debc.or.kr','iros.go.kr','mogef.go.kr']
+            const isSafe = SAFE_DOMAINS.some(d => domain.endsWith(d))
+            const href = isSafe
+              ? (isHttp ? part : 'https://' + part)
+              : `https://www.google.com/search?q=${encodeURIComponent(domain)}`
+            const label = isSafe ? domain : `${domain} 검색`
             nodes.push(
               <a key={j} href={href} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: '5px',
-                background: 'rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.3)',
+                background: isSafe ? 'rgba(59,130,246,0.12)' : 'rgba(99,102,241,0.12)',
+                border: isSafe ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(99,102,241,0.3)',
                 borderRadius: '8px', padding: '5px 12px', margin: '2px 2px',
-                color: '#60a5fa', fontSize: '13px', fontWeight: 700,
+                color: isSafe ? '#60a5fa' : '#a78bfa', fontSize: '13px', fontWeight: 700,
                 textDecoration: 'none',
-              }}>🔗 {domain}</a>
+              }}>{isSafe ? '🔗' : '🔍'} {label}</a>
             )
           } else if (part.trim()) {
             nodes.push(<span key={j} style={{ fontSize: '14px' }}>{part}</span>)
