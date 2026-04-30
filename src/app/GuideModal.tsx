@@ -25,14 +25,16 @@ export default function GuideModal() {
       sub: '처음 사용하시는 분도 5분이면 완성됩니다. 함께 시작해볼까요?',
     },
     {
-      emoji: '⚙️',
-      title: '0단계 — 키 설정 (최초 1회)',
-      desc: '헤더의 ⚙️ 키 설정 버튼을 눌러\nAI 키와 네이버 데이터랩 키를\n설정 페이지에서 등록하세요.',
-      sub: 'Groq는 완전 무료! 키 발급은 1분이면 됩니다.',
+      emoji: '🔑',
+      title: '0단계 — AI 키 발급 (최초 1회, 무료)',
+      desc: 'Gemini 또는 Groq 키 하나만 있으면\n모든 기능을 바로 사용할 수 있어요!\n둘 다 완전 무료예요.',
+      sub: '마이페이지 → API 키 탭에서 저장하면 폰·PC 어디서든 그대로 사용할 수 있어요.',
       img: [
-        '🤖 AI 키: Gemini(일부무료) / OpenAI(유료) / Groq(무료) 중 선택',
-        '📊 네이버 데이터랩: 검색 트렌드 분석용 (선택)',
-        '💾 마이페이지 → API 키 탭에서 저장하면 저장소에 보관돼 어디서든 사용 가능해요',
+        '🟢 Gemini 무료 발급: aistudio.google.com/apikey 접속 → Google 로그인 → Create API Key',
+        '🔵 Groq 무료 발급: console.groq.com 접속 → 가입 → API Keys → Create API Key',
+        '⚫ OpenAI: platform.openai.com (유료, 선택사항)',
+        '📲 마이페이지 → API 키 탭에 붙여넣기 → 저장 완료!',
+        '✅ 저장 후 폰·PC 어디서 로그인해도 자동으로 불러와져요',
       ],
     },
     {
