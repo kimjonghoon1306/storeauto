@@ -654,86 +654,34 @@ export default function GovernmentPage() {
   }
 
   const callAI = async (systemPrompt: string, msgs: Message[]): Promise<string> => {
-    let keys = { gemini: '', openai: '', groq: '' }
+    // 회원 키 로드 (없으면 서버에서 관리자 키 자동 사용)
+    let userGemini = '', userOpenai = '', userGroq = ''
     try {
-      const { loadSession } = await import('@/lib/auth')
-      const sess = loadSession()
-      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
-      const saved = localStorage.getItem(keysKey)
-      if (saved) keys = { ...keys, ...JSON.parse(saved) }
-    } catch (_e) { /* ignore */ }
+      const s = JSON.parse(localStorage.getItem('sa_session') || 'null')
+      const keysKey = s?.id ? `storeauto_keys_${s.id}` : 'storeauto_keys'
+      const saved = JSON.parse(localStorage.getItem(keysKey) || '{}')
+      userGemini = saved.gemini || ''
+      userOpenai = saved.openai || ''
+      userGroq   = saved.groq   || ''
+    } catch { /* ignore */ }
 
-    const fullPrompt = systemPrompt + '\n\n' + msgs.map((m) => (m.role === 'user' ? '사용자: ' : 'AI: ') + m.content).join('\n')
+    const fullPrompt = systemPrompt + '\n\n' + msgs.map(m => (m.role==='user'?'사용자: ':'AI: ') + m.content).join('\n')
 
-    // 1순위: Gemini
-    if (keys.gemini) {
-      const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest']
-      for (const model of GEMINI_MODELS) {
-        try {
-          const res = await fetch(
-            'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + keys.gemini.trim(),
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: fullPrompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-              }),
-            }
-          )
-          if (!res.ok) continue
-          const data = await res.json()
-          const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-          if (text) return text
-        } catch (_e) { continue }
-      }
-    }
-
-    // 2순위: Groq
-    if (keys.groq) {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys.groq.trim() },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...msgs.map((m) => ({ role: m.role, content: m.content })),
-          ],
-          max_tokens: 2048,
-          temperature: 0.7,
-        }),
-      })
-      if (res.ok) {
+    // /api/ai 서버 경유 - 키 없으면 서버에서 관리자 키 자동 사용
+    const providers: Array<'gemini'|'groq'|'openai'> = ['gemini', 'groq', 'openai']
+    for (const provider of providers) {
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: fullPrompt, provider, userGemini, userOpenai, userGroq }),
+        })
         const data = await res.json()
-        const text: string = data.choices?.[0]?.message?.content || ''
-        if (text) return text
-      }
+        if (res.ok && data.text) return data.text
+        if (data.error?.includes('키')) continue // 키 없으면 다음 provider
+      } catch { continue }
     }
-
-    // 3순위: OpenAI
-    if (keys.openai) {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys.openai.trim() },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...msgs.map((m) => ({ role: m.role, content: m.content })),
-          ],
-          max_tokens: 2048,
-          temperature: 0.7,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        const text: string = data.choices?.[0]?.message?.content || ''
-        if (text) return text
-      }
-    }
-
-    throw new Error('사용 가능한 API 키가 없어요. 설정 페이지에서 키를 입력해주세요.')
+    throw new Error('AI 응답에 실패했어요. 설정에서 API 키를 확인해주세요.')
   }
 
   const sendMessage = async (text?: string) => {
