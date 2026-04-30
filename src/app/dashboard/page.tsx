@@ -252,7 +252,7 @@ export default function DashboardPage() {
             )}
 
             <div style={{ marginTop:16, paddingTop:14, borderTop:`1px solid ${T.border}` }}>
-              <button className="nbtn" onClick={() => router.push('/mypage')} style={{ width:'100%', padding:'9px', background:`${ACCENT}12`, border:`1px solid ${ACCENT}25`, borderRadius:10, color:ACCENT, fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+              <button className="nbtn" onClick={() => router.push('/mypage?tab=stats')} style={{ width:'100%', padding:'9px', background:`${ACCENT}12`, border:`1px solid ${ACCENT}25`, borderRadius:10, color:ACCENT, fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
                 📊 상세 통계 →
               </button>
             </div>
