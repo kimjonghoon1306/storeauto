@@ -541,7 +541,7 @@ function MyPageInner() {
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f59e0b20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📝</div>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 900 }}>작업일지</div>
-                    <div style={{ fontSize: 11, color: T.muted }}>업무 기록을 남기세요</div>
+                    <div style={{ fontSize: 11, color: T.muted }}>오늘의 작업을 기록하면 AI가 요약해드려요</div>
                   </div>
                 </div>
                 <div style={{ padding: '6px 14px', borderRadius: 20, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', fontSize: 12, fontWeight: 800 }}>{logs.length}개</div>
@@ -578,6 +578,25 @@ function MyPageInner() {
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* 이번달 자동 요약 */}
+                  {logs.length > 0 && (() => {
+                    const thisMonthLogs = logs.filter(l => new Date(l.created_at).getMonth() === new Date().getMonth())
+                    const cats = thisMonthLogs.reduce((acc: Record<string,number>, l) => { acc[l.category] = (acc[l.category]||0)+1; return acc }, {})
+                    const topCat = Object.entries(cats).sort((a,b) => b[1]-a[1])[0]
+                    return thisMonthLogs.length > 0 ? (
+                      <div style={{ background: `${ACCENT}08`, border: `1px solid ${ACCENT}20`, borderRadius: 16, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ fontSize: 32 }}>📊</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 4 }}>이번달 작업 요약</div>
+                          <div style={{ fontSize: 12, color: T.muted, lineHeight: 1.7 }}>
+                            총 <span style={{ color: ACCENT, fontWeight: 800 }}>{thisMonthLogs.length}건</span> 기록
+                            {topCat && <> · 가장 많은 분야: <span style={{ color: '#f59e0b', fontWeight: 800 }}>{topCat[0]} ({topCat[1]}건)</span></>}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
+
                   {logs.length === 0 ? (
                     <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: '60px 20px', textAlign: 'center', color: T.muted }}>
                       <div style={{ fontSize: 48, opacity: 0.2, marginBottom: 12 }}>📝</div>
