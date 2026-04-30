@@ -655,7 +655,6 @@ export default function GovernmentPage() {
   }
 
   const callAI = async (systemPrompt: string, msgs: Message[]): Promise<string> => {
-    // 회원 키 로드 (없으면 서버에서 관리자 키 자동 사용)
     let userGemini = '', userOpenai = '', userGroq = ''
     try {
       const s = JSON.parse(localStorage.getItem('sa_session') || 'null')
@@ -666,10 +665,19 @@ export default function GovernmentPage() {
       userGroq   = saved.groq   || ''
     } catch { /* ignore */ }
 
+    // 키가 하나도 없으면 즉시 안내
+    if (!userGemini && !userOpenai && !userGroq) {
+      throw new Error('NO_KEY')
+    }
+
     const fullPrompt = systemPrompt + '\n\n' + msgs.map(m => (m.role==='user'?'사용자: ':'AI: ') + m.content).join('\n')
 
-    // /api/ai 서버 경유 - 키 없으면 서버에서 관리자 키 자동 사용
-    const providers: Array<'gemini'|'groq'|'openai'> = ['gemini', 'groq', 'openai']
+    const providers: Array<'gemini'|'groq'|'openai'> = [
+      ...(userGemini ? ['gemini' as const] : []),
+      ...(userGroq   ? ['groq'   as const] : []),
+      ...(userOpenai ? ['openai' as const] : []),
+    ]
+
     for (const provider of providers) {
       try {
         const res = await fetch('/api/ai', {
@@ -679,10 +687,9 @@ export default function GovernmentPage() {
         })
         const data = await res.json()
         if (res.ok && data.text) return data.text
-        if (data.error?.includes('키')) continue // 키 없으면 다음 provider
       } catch { continue }
     }
-    throw new Error('AI 응답에 실패했어요. 설정에서 API 키를 확인해주세요.')
+    throw new Error('AI 응답에 실패했어요. 다시 시도해주세요.')
   }
 
   const sendMessage = async (text?: string) => {
@@ -726,8 +733,11 @@ export default function GovernmentPage() {
       }
     } catch (_e) {
       const raw = _e instanceof Error ? _e.message : ''
-      const errMsg = toKorErr(raw) 
-      setMessages([...newMessages, { role: 'assistant', content: errMsg }])
+      if (raw === 'NO_KEY') {
+        setMessages([...newMessages, { role: 'assistant', content: 'NO_KEY_UI' }])
+      } else {
+        setMessages([...newMessages, { role: 'assistant', content: toKorErr(raw) }])
+      }
     } finally {
       setLoading(false)
     }
@@ -1052,7 +1062,12 @@ export default function GovernmentPage() {
               boxShadow: msg.role === 'assistant' ? '0 2px 12px rgba(0,0,0,0.08)' : 'none',
               wordBreak: 'break-word',
             }}>
-              {msg.role === 'assistant' && msg.content.length > 400 ? (
+              {msg.content === 'NO_KEY_UI' ? (
+                <div>
+                  <div style={{ fontSize: 14, marginBottom: 14 }}>🔑 API 키가 설정되지 않았어요. 마이페이지에서 <strong>Gemini(무료)</strong> 또는 Groq(무료) 키를 등록하면 바로 사용할 수 있어요!</div>
+                  <a href="/mypage?tab=keys" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'linear-gradient(135deg,#ff6b35,#ffd700)', borderRadius: 10, color: 'white', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>🔑 마이페이지에서 키 설정하기</a>
+                </div>
+              ) : msg.role === 'assistant' && msg.content.length > 400 ? (
                 <>
                   {expandedMsgs.has(i)
                     ? formatMessage(msg.content)
