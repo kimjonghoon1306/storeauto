@@ -1146,14 +1146,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
                 <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
               </div>
-              <button onClick={handleShare} disabled={sharing} style={{
-                    background: shareId ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.1)', border: `1px solid ${shareId ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
-                    borderRadius: '8px', padding: '6px 14px', fontSize: '12px',
-                    color: shareId ? '#34d399' : '#a78bfa', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
-                    {sharing ? '생성 중...' : shareId ? '✓ 링크 복사됨!' : '🔗 공유 링크'}
-                  </button>
-                  <button onClick={() => {
+              <button onClick={() => {
                 if (confirm('생성된 콘텐츠를 삭제할까요?')) setResult(null)
               }} style={{
                 background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.25)',
