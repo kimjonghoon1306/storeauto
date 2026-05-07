@@ -743,9 +743,9 @@ export default function GovernmentPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const finishWizard = () => {
+  const finishWizard = (data?: typeof wizardData) => {
     setShowWizard(false)
-    const { bizType, region, employees, years } = wizardData
+    const { bizType, region, employees, years } = data || wizardData
     const q = `나는 ${region}에서 ${bizType} 업종을 운영하는 소상공인이야. 직원은 ${employees}이고 창업한 지 ${years} 됐어. 내 상황에 맞는 지원금을 우선순위 TOP 5로 추천해줘. 각 지원금마다 ① 금액 ② 신청 시기 ③ 나한테 해당되는 이유를 간단히 알려줘.`
     sendMessage(q)
   }
@@ -1144,7 +1144,7 @@ export default function GovernmentPage() {
                       const next = { ...wizardData, [key]: opt }
                       setWizardData(next)
                       if (wizardStep < 3) setWizardStep(wizardStep+1)
-                      else { setWizardData(next); finishWizard() }
+                      else { setWizardData(next); finishWizard(next) }
                     }} style={{
                       padding:'12px 8px', borderRadius:14, border:'1px solid var(--border)',
                       background:'var(--surface2)', color:'var(--text)', cursor:'pointer',
