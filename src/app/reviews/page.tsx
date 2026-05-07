@@ -65,6 +65,8 @@ export default function ReviewsPage() {
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchProgress, setBatchProgress] = useState(0)
   const [batchCancelled, setBatchCancelled] = useState(false)
+  const [batchTone, setBatchTone] = useState<ReplyTone>('warm')
+  const [batchProduct, setBatchProduct] = useState('')
 
   const t = THEMES[theme]
 
@@ -185,13 +187,14 @@ export default function ReviewsPage() {
     setBatchProgress(0)
     setBatchCancelled(false)
     const results: {review: string; reply: string; done: boolean}[] = []
+    const toneLabel = TONE_LABELS[batchTone].label
     for (let i = 0; i < reviews.length; i++) {
       if (batchCancelled) break
       const review = reviews[i]
       try {
         const charGuide = charLimit > 0 ? ` ${charLimit}자 이내.` : ''
         const malLevel = detectMalicious(review); const malGuide = malLevel === 'high' ? ' (위험:법적분쟁가능. 사실만, 사과금지)' : malLevel === 'mid' ? ' (주의:불만강함. 공감+해결책)' : ''
-        const prompt = `판매자 리뷰 답글. 상품:${productName||'상품'}. 리뷰:${review}. 톤:따뜻하게.${charGuide}${malGuide} 2~3문장, 답글만 출력.`
+        const prompt = `판매자 리뷰 답글. 상품:${batchProduct||productName||'상품'}. 리뷰:${review}. 톤:${toneLabel}.${charGuide}${malGuide} 2~3문장, 답글만 출력.`
         const reply = await callAI(prompt)
         results.push({ review, reply: reply.replace(/[*#_`]/g, '').trim(), done: false })
       } catch {
@@ -368,8 +371,37 @@ export default function ReviewsPage() {
         {activeTab === 'batch' && (
           <div className="fade-up" style={{ display: 'grid', gap: '16px' }}>
             <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: '14px', padding: '20px' }}>
-              <p style={{ fontWeight: 700, fontSize: '13px', color: t.muted, marginBottom: '8px', letterSpacing: '0.5px' }}>📦 대량 리뷰 처리</p>
-              <p style={{ fontSize: '12px', color: t.muted, marginBottom: '12px', lineHeight: 1.6 }}>리뷰를 한 줄에 하나씩 입력하세요. 한 번에 최대 20개까지 처리할 수 있어요.</p>
+              <p style={{ fontWeight: 700, fontSize: '13px', color: t.muted, marginBottom: '16px', letterSpacing: '0.5px' }}>📦 대량 리뷰 처리</p>
+
+              {/* 상품명 */}
+              <div style={{ marginBottom: '12px' }}>
+                <p style={{ fontSize: '12px', color: t.muted, marginBottom: '6px', fontWeight: 700 }}>상품명 (선택)</p>
+                <input
+                  value={batchProduct}
+                  onChange={e => setBatchProduct(e.target.value)}
+                  placeholder="예: 국내산 저염 소세지 1kg"
+                  style={{ width: '100%', background: t.surface2, border: `1px solid ${t.border}`, borderRadius: '10px', padding: '10px 14px', color: t.text, fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+
+              {/* 톤 선택 */}
+              <div style={{ marginBottom: '14px' }}>
+                <p style={{ fontSize: '12px', color: t.muted, marginBottom: '8px', fontWeight: 700 }}>답글 톤</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {(Object.entries(TONE_LABELS) as [ReplyTone, typeof TONE_LABELS[ReplyTone]][]).map(([key, val]) => (
+                    <button key={key} onClick={() => setBatchTone(key)} style={{
+                      padding: '8px 14px', borderRadius: '20px', cursor: 'pointer', fontFamily: 'inherit',
+                      border: batchTone === key ? `2px solid ${val.color}` : `1px solid ${t.border}`,
+                      background: batchTone === key ? val.color + '22' : t.surface2,
+                      color: batchTone === key ? val.color : t.muted,
+                      fontSize: '13px', fontWeight: 700, transition: 'all 0.15s',
+                    }}>{val.emoji} {val.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 리뷰 입력 */}
+              <p style={{ fontSize: '12px', color: t.muted, marginBottom: '6px', fontWeight: 700 }}>리뷰 목록 <span style={{ fontWeight: 400 }}>(한 줄에 하나씩, 최대 30개)</span></p>
               <textarea
                 value={batchInput}
                 onChange={e => setBatchInput(e.target.value)}
@@ -378,28 +410,54 @@ export default function ReviewsPage() {
                 style={{ width: '100%', background: t.surface2, border: `1px solid ${t.border}`, borderRadius: '10px', padding: '12px', color: t.text, fontSize: '14px', resize: 'vertical', outline: 'none', fontFamily: 'inherit', lineHeight: 1.7 }}
               />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: t.muted }}>{batchInput.split('\n').filter(r => r.trim()).length}개 리뷰 입력됨</span>
-                <button onClick={handleBatch} disabled={batchLoading || !batchInput.trim()} style={{ padding: '10px 24px', background: batchLoading ? t.border : `linear-gradient(135deg, ${t.accent}, #ff8c5a)`, border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: batchLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                  {batchLoading ? `처리 중... (${batchProgress}/${batchInput.split('\n').filter(r => r.trim()).length})` : '🚀 일괄 생성'}
-                </button>
-                {batchLoading && (
-                  <button onClick={() => setBatchCancelled(true)} style={{ padding: '10px 18px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#f87171', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    ⛔ 취소
+                <span style={{ fontSize: '12px', color: t.muted }}>{batchInput.split('\n').filter(r => r.trim()).length}개 입력됨</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {batchLoading && (
+                    <button onClick={() => setBatchCancelled(true)} style={{ padding: '10px 18px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#f87171', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      ⛔ 취소
+                    </button>
+                  )}
+                  <button onClick={handleBatch} disabled={batchLoading || !batchInput.trim()} style={{ padding: '10px 24px', background: batchLoading ? t.border : `linear-gradient(135deg, ${t.accent}, #ff8c5a)`, border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: batchLoading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                    {batchLoading ? `처리 중... (${batchProgress}/${batchInput.split('\n').filter(r => r.trim()).length})` : '🚀 일괄 생성'}
                   </button>
-                )}
+                </div>
               </div>
+
+              {/* 진행 바 */}
+              {batchLoading && (
+                <div style={{ marginTop: '12px', background: t.surface2, borderRadius: '6px', overflow: 'hidden', height: '6px' }}>
+                  <div style={{
+                    height: '100%', borderRadius: '6px',
+                    background: `linear-gradient(90deg, ${t.accent}, #ff8c5a)`,
+                    width: `${(batchProgress / batchInput.split('\n').filter(r => r.trim()).length) * 100}%`,
+                    transition: 'width 0.3s',
+                  }} />
+                </div>
+              )}
             </div>
 
             {batchResults.length > 0 && (
               <div style={{ display: 'grid', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <p style={{ fontWeight: 700, fontSize: '14px', color: t.text }}>생성 결과 ({batchResults.length}건)</p>
-                  <button onClick={() => {
-                    const text = batchResults.map((r, i) => `[${i+1}] 리뷰: ${r.review}\n    답글: ${r.reply}`).join('\n\n')
-                    navigator.clipboard.writeText(text)
-                  }} style={{ padding: '6px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: '8px', color: t.muted, fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    📋 전체 복사
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => {
+                      const text = batchResults.map((r, i) => `[${i+1}] 리뷰: ${r.review}\n    답글: ${r.reply}`).join('\n\n')
+                      navigator.clipboard.writeText(text)
+                    }} style={{ padding: '6px 12px', background: t.surface, border: `1px solid ${t.border}`, borderRadius: '8px', color: t.muted, fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                      📋 전체 복사
+                    </button>
+                    <button onClick={() => {
+                      const text = batchResults.map((r, i) => `[${i+1}] 리뷰: ${r.review}\n    답글: ${r.reply}`).join('\n\n')
+                      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a'); a.href = url
+                      a.download = `리뷰답글_${batchProduct || '결과'}.txt`
+                      a.click(); URL.revokeObjectURL(url)
+                    }} style={{ padding: '6px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#34d399', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                      ⬇️ 파일 저장
+                    </button>
+                  </div>
                 </div>
                 {batchResults.map((r, i) => (
                   <div key={i} style={{ background: t.surface, border: `1px solid ${r.reply.includes('⚠️') ? '#ef4444' : t.border}`, borderRadius: '12px', padding: '14px 16px' }}>
