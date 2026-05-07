@@ -189,6 +189,19 @@ export default function LoginPage() {
       {/* 오른쪽 폼 */}
       <div style={{ width:'100%', maxWidth:480, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px 24px', position:'relative', zIndex:10 }}>
         <div style={{ width:'100%', animation:'fadeUp 0.5s ease' }}>
+          {/* 대문으로 가기 */}
+          <div style={{ textAlign:'center', marginBottom:16 }}>
+            <button onClick={() => router.push('/')} style={{
+              background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+              borderRadius:20, padding:'8px 20px', color:T.muted, fontSize:13, fontWeight:700,
+              cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif",
+              display:'inline-flex', alignItems:'center', gap:6, transition:'all 0.15s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(255,107,53,0.1)'; e.currentTarget.style.borderColor='rgba(255,107,53,0.3)'; e.currentTarget.style.color=ACCENT }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; e.currentTarget.style.color=T.muted }}
+            >← 대문으로 가기</button>
+          </div>
+
           {/* 카드 */}
           <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:28, padding:'40px 36px', backdropFilter:'blur(30px)', boxShadow:'0 40px 80px rgba(0,0,0,0.4)' }}>
             {/* 로고 */}
@@ -251,7 +264,7 @@ export default function LoginPage() {
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = ACCENT; (e.currentTarget as HTMLElement).style.color = ACCENT }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = T.border; (e.currentTarget as HTMLElement).style.color = T.muted }}
                   >👀 로그인 없이 둘러보기</button>
-                  <button onClick={() => router.push('/admin')} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit', opacity:0.5 }}>
+                  <button onClick={() => router.push('/admin')} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'6px 14px', color:T.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
                     관리자 페이지 →
                   </button>
                 </div>
