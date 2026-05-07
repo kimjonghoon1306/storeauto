@@ -68,7 +68,16 @@ export default function Home() {
   }, [])
 
   const [persona, setPersona] = useState<'A' | 'B' | 'C' | 'D'>('A')
-  const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>('gemini')
+  const [provider, setProvider] = useState<'gemini' | 'openai' | 'groq'>(() => {
+    try {
+      const isAdm = typeof window !== 'undefined' && localStorage.getItem('storeauto_admin_authed') === '1'
+      if (isAdm) {
+        const saved = localStorage.getItem('storeauto_admin_provider') as 'gemini'|'openai'|'groq'|null
+        if (saved === 'gemini' || saved === 'openai' || saved === 'groq') return saved
+      }
+    } catch { /* ignore */ }
+    return 'gemini'
+  })
   const [platform, setPlatform] = useState<'smartstore' | 'coupang' | 'elevenst' | 'own'>('smartstore')
   const [geminiKey, setGeminiKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
