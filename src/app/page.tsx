@@ -582,19 +582,19 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       `}</style>
 
       {/* 네비 */}
-      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(5,5,16,0.88)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 24px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ background:'var(--accent)', color:'#fff', fontWeight:900, fontSize:12, letterSpacing:2, padding:'4px 10px', borderRadius:4 }}>STORE AUTO</div>
-          <span style={{ color:'var(--text-muted)', fontSize:12 }}>AI 소상공인 비서</span>
+      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(5,5,16,0.88)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 16px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, minWidth:0 }}>
+          <div style={{ background:'var(--accent)', color:'#fff', fontWeight:900, fontSize:11, letterSpacing:1.5, padding:'4px 8px', borderRadius:4, flexShrink:0 }}>STORE AUTO</div>
+          <span style={{ color:'var(--text-muted)', fontSize:11, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>AI 소상공인 비서</span>
         </div>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
           {(['dark','light','yellow'] as const).map(t => (
-            <button key={t} onClick={() => setTheme(t)} style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${theme===t?'var(--accent)':'transparent'}`, cursor:'pointer', fontSize:10, background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', flexShrink:0 }}>
+            <button key={t} onClick={() => setTheme(t)} style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${theme===t?'var(--accent)':'transparent'}`, cursor:'pointer', fontSize:9, background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
             </button>
           ))}
-          <button className="land-btn" onClick={() => router.push('/login')} style={{ padding:'7px 14px', background:'rgba(255,107,53,0.1)', border:'1px solid rgba(255,107,53,0.3)', color:'var(--accent)', borderRadius:8, fontSize:13, fontWeight:700, fontFamily:'inherit' }}>로그인</button>
-          <button className="land-btn" onClick={() => router.push('/signup')} style={{ padding:'7px 14px', background:'var(--accent)', border:'none', color:'#fff', borderRadius:8, fontSize:13, fontWeight:800, fontFamily:'inherit' }}>무료 시작</button>
+          <button className="land-btn" onClick={() => router.push('/login')} style={{ padding:'7px 10px', background:'rgba(255,107,53,0.1)', border:'1px solid rgba(255,107,53,0.3)', color:'var(--accent)', borderRadius:8, fontSize:18, lineHeight:1, fontFamily:'inherit' }}>🔐</button>
+          <button className="land-btn" onClick={() => router.push('/signup')} style={{ padding:'7px 12px', background:'var(--accent)', border:'none', color:'#fff', borderRadius:8, fontSize:12, fontWeight:800, fontFamily:'inherit', whiteSpace:'nowrap' }}>무료 시작</button>
         </div>
       </nav>
 
