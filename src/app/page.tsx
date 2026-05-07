@@ -582,7 +582,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           .nav-login-text{display:none!important}
           .nav-login-icon{display:inline!important}
           .nav-right{gap:4px!important}
-          .nav-theme-btn{width:18px!important;height:18px!important;font-size:8px!important}
+          .nav-theme-btn{width:22px!important;height:22px!important;font-size:11px!important}
         }
         @media(min-width:641px){
           .nav-login-icon{display:none!important}
