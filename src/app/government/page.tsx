@@ -37,7 +37,7 @@ const CATEGORY_CARDS = [
 ]
 
 const WIZARD_BIZ = ['음식점/카페','소매업/편의점','온라인 쇼핑몰','제조업','서비스업','뷰티/미용','학원/교육','농업/축산','기타']
-const WIZARD_REGION = ['서울','경기','인천','부산','대구','광주','대전','강원','충남','충북','전남','전북','경남','경북','제주','기타']
+const WIZARD_REGION = ['서울','경기·인천','부산·경남','대구·경북','광주·전라','대전·충청','강원·제주','기타']
 const WIZARD_EMP = ['나 혼자','1~4명','5~9명','10명 이상']
 const WIZARD_YEAR = ['창업 준비중','1년 미만','1~3년','3~7년','7년 이상']
 
@@ -1104,13 +1104,12 @@ export default function GovernmentPage() {
           AI
         </div>
 
-        <button onClick={() => { setWizardStep(0); setShowWizard(true) }} style={{
+        <button onClick={() => { setWizardStep(0); setShowWizard(true) }} title="맞춤 지원금 추천" style={{
           background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.3)',
-          color: 'var(--accent)', borderRadius: '10px', padding: '10px 14px',
-          cursor: 'pointer', fontSize: '12px', fontWeight: 800, flexShrink: 0,
+          color: 'var(--accent)', borderRadius: '10px', padding: '10px 12px',
+          cursor: 'pointer', fontSize: '18px', fontWeight: 800, flexShrink: 0,
           minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Noto Sans KR',sans-serif", gap: '4px',
-        }}>🎯 맞춤추천</button>
+        }}>🎯</button>
 
         <button onClick={() => setShowReset(true)} title="대화 초기화" style={{
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
@@ -1123,7 +1122,7 @@ export default function GovernmentPage() {
       {/* ── 맞춤 마법사 모달 ── */}
       {showWizard && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'24px', padding:'28px 24px', maxWidth:420, width:'100%', boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'24px', padding:'24px 20px', maxWidth:420, width:'100%', boxShadow:'0 24px 80px rgba(0,0,0,0.5)', maxHeight:'85vh', overflowY:'auto' }}>
             {wizardStep < 4 ? (
               <>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
@@ -1207,12 +1206,12 @@ export default function GovernmentPage() {
                   </div>
 
                   {/* 버튼들 */}
-                  <div style={{ display:'flex', gap:10 }}>
-                    <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ flex:1, display:'block', textAlign:'center', padding:'13px', background:'linear-gradient(135deg,var(--accent),#ff8c42)', color:'white', borderRadius:14, fontSize:14, fontWeight:800, textDecoration:'none' }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ display:'block', textAlign:'center', padding:'14px', background:'linear-gradient(135deg,var(--accent),#ff8c42)', color:'white', borderRadius:14, fontSize:14, fontWeight:800, textDecoration:'none' }}>
                       🔗 신청 사이트 바로가기
                     </a>
-                    <button onClick={() => { setShowChecklist(null); generatePlan(p.title) }} style={{ flex:1, padding:'13px', background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.3)', color:'#a78bfa', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
-                      ✍️ 사업계획서 초안 생성
+                    <button onClick={() => { setShowChecklist(null); generatePlan(p.title) }} style={{ padding:'14px', background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.3)', color:'#a78bfa', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
+                      ✍️ 사업계획서 초안 AI 생성
                     </button>
                   </div>
                 </>
