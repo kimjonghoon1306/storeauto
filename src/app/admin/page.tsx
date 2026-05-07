@@ -132,7 +132,7 @@ export default function AdminPage() {
           if (c.key==='datalab_secret')      setDlSec(c.value||'')
           if (c.key==='openai_key')          { setOpenai(c.value||''); if (c.value) { adminKeys.openai = c.value; try { localStorage.setItem('storeauto_admin_openai', c.value) } catch {} } }
           if (c.key==='groq_key')            { setGroq(c.value||''); if (c.value) { adminKeys.groq = c.value; try { localStorage.setItem('storeauto_admin_groq', c.value) } catch {} } }
-          if (c.key==='default_ai_provider') setAiProvider((c.value||'gemini') as 'gemini'|'openai'|'groq')
+          if (c.key==='default_ai_provider') { const p = (c.value||'gemini') as 'gemini'|'openai'|'groq'; setAiProvider(p); try { localStorage.setItem('storeauto_admin_provider', p) } catch {} }
         })
       }
       if (Array.isArray(pops)) setPopups(pops as PopupItem[])
@@ -214,6 +214,7 @@ export default function AdminPage() {
       localStorage.setItem('storeauto_admin_gemini', gemini)
       localStorage.setItem('storeauto_admin_openai', openai)
       localStorage.setItem('storeauto_admin_groq', groq)
+      localStorage.setItem('storeauto_admin_provider', aiProvider)
     } catch { /* ignore */ }
     setBusy(true)
     try {
