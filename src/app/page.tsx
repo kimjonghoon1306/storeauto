@@ -559,6 +559,187 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
     </button>
   )
 
+  // ── 비로그인 랜딩 페이지 ──
+  if (!authUser && !isAdmin && !browseMode) return (
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'var(--text)', fontFamily:"'Noto Sans KR',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        *{box-sizing:border-box}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .land-fade{animation:fadeUp .6s ease both}
+        .land-card{transition:transform .2s,box-shadow .2s}
+        .land-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.3)!important}
+        .land-btn{transition:all .15s;cursor:pointer}
+        .land-btn:hover{opacity:.88;transform:translateY(-1px)}
+        @media(max-width:640px){
+          .hero-btns{flex-direction:column!important}
+          .feat-grid{grid-template-columns:1fr!important}
+          .faq-grid{grid-template-columns:1fr!important}
+          .stat-row{flex-wrap:wrap!important;gap:24px!important}
+        }
+      `}</style>
+
+      {/* 네비 */}
+      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(5,5,16,0.88)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 24px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ background:'var(--accent)', color:'#fff', fontWeight:900, fontSize:12, letterSpacing:2, padding:'4px 10px', borderRadius:4 }}>STORE AUTO</div>
+          <span style={{ color:'var(--text-muted)', fontSize:12 }}>AI 소상공인 비서</span>
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          {(['dark','light','yellow'] as const).map(t => (
+            <button key={t} onClick={() => setTheme(t)} style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${theme===t?'var(--accent)':'transparent'}`, cursor:'pointer', fontSize:10, background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', flexShrink:0 }}>
+              {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
+            </button>
+          ))}
+          <button className="land-btn" onClick={() => router.push('/login')} style={{ padding:'7px 14px', background:'rgba(255,107,53,0.1)', border:'1px solid rgba(255,107,53,0.3)', color:'var(--accent)', borderRadius:8, fontSize:13, fontWeight:700, fontFamily:'inherit' }}>로그인</button>
+          <button className="land-btn" onClick={() => router.push('/signup')} style={{ padding:'7px 14px', background:'var(--accent)', border:'none', color:'#fff', borderRadius:8, fontSize:13, fontWeight:800, fontFamily:'inherit' }}>무료 시작</button>
+        </div>
+      </nav>
+
+      {/* 히어로 */}
+      <section style={{ textAlign:'center', padding:'clamp(60px,10vw,100px) 24px clamp(40px,6vw,60px)', maxWidth:800, margin:'0 auto' }}>
+        <div className="land-fade" style={{ animationDelay:'.1s', display:'inline-flex', alignItems:'center', gap:8, background:'rgba(255,107,53,0.1)', border:'1px solid rgba(255,107,53,0.25)', borderRadius:20, padding:'6px 16px', fontSize:12, fontWeight:700, color:'var(--accent)', marginBottom:24 }}>
+          ✦ 소상공인·셀러·창업자를 위한 AI 도구
+        </div>
+        <h1 className="land-fade" style={{ animationDelay:'.2s', fontSize:'clamp(30px,7vw,56px)', fontWeight:900, lineHeight:1.15, marginBottom:20, color:'var(--text)' }}>
+          혼자 운영해도<br /><span style={{ color:'var(--accent)' }}>AI가 도와줄게요</span>
+        </h1>
+        <p className="land-fade" style={{ animationDelay:'.3s', fontSize:'clamp(14px,3vw,17px)', color:'var(--text-muted)', lineHeight:1.9, marginBottom:36, maxWidth:480, margin:'0 auto 36px' }}>
+          상세페이지 10초 자동작성 · 리뷰 답글 대량생성<br />정부지원금 맞춤 추천 · 사업계획서 초안 생성
+        </p>
+        <div className="land-fade hero-btns" style={{ animationDelay:'.4s', display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
+          <button className="land-btn" onClick={() => router.push('/signup')} style={{ padding:'15px 34px', background:'linear-gradient(135deg,var(--accent),#ff8c42)', border:'none', borderRadius:14, color:'#fff', fontSize:16, fontWeight:900, fontFamily:'inherit', boxShadow:'0 8px 24px rgba(255,107,53,0.4)' }}>
+            🚀 무료로 시작하기
+          </button>
+          <button className="land-btn" onClick={() => setBrowseMode(true)} style={{ padding:'15px 26px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:14, color:'var(--text)', fontSize:15, fontWeight:700, fontFamily:'inherit' }}>
+            👀 먼저 둘러보기
+          </button>
+        </div>
+        <p style={{ marginTop:14, fontSize:12, color:'var(--text-muted)' }}>신용카드 불필요 · 가입 즉시 사용</p>
+      </section>
+
+      {/* 수치 */}
+      <section style={{ padding:'0 24px 64px', maxWidth:680, margin:'0 auto' }}>
+        <div className="stat-row land-fade" style={{ animationDelay:'.5s', display:'flex', justifyContent:'center', gap:'clamp(24px,5vw,64px)', textAlign:'center', flexWrap:'wrap' }}>
+          {[
+            { n:'10초', label:'상세페이지 생성 시간' },
+            { n:'3종', label:'Gemini · GPT · Groq' },
+            { n:'무료', label:'기본 기능 전부' },
+            { n:'8개+', label:'정부지원 신청가이드' },
+          ].map((s,i) => (
+            <div key={i}>
+              <div style={{ fontSize:'clamp(24px,5vw,34px)', fontWeight:900, color:'var(--accent)' }}>{s.n}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 기능 카드 */}
+      <section style={{ padding:'0 24px 80px', maxWidth:1000, margin:'0 auto' }}>
+        <h2 style={{ textAlign:'center', fontSize:'clamp(20px,4vw,28px)', fontWeight:900, marginBottom:36, color:'var(--text)' }}>이런 걸 할 수 있어요</h2>
+        <div className="feat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:18 }}>
+          {[
+            { emoji:'📄', color:'#ff6b35', title:'상세페이지 자동 생성', desc:'상품명과 특징만 넣으면 키워드·카피·FAQ·HTML까지 10초 완성. 스마트스토어·쿠팡 바로 사용.', items:['네이버 키워드 10개','핵심 카피·상세 설명','FAQ 5개 자동 생성','HTML 파일 다운로드','미리보기 지원'] },
+            { emoji:'💬', color:'#10b981', title:'리뷰 답글 대량 생성', desc:'리뷰를 붙여넣으면 톤에 맞는 답글 즉시 생성. 30개 한 번에 처리하고 파일로 저장.', items:['4가지 톤 선택','30개 대량처리','악성 리뷰 자동 감지','파일 저장','여러 버전 비교'] },
+            { emoji:'🏛️', color:'#3b82f6', title:'정부지원금 AI 상담', desc:'업종·지역 입력 → 맞춤 지원금 TOP 5 추천. 신청 서류 체크리스트와 사업계획서 초안까지.', items:['맞춤 TOP 5 추천','서류 체크리스트','실제 신청 URL 연결','사업계획서 AI 생성','14개 카테고리'] },
+          ].map((f,i) => (
+            <div key={i} className="land-card" style={{ background:'var(--surface)', border:`1px solid ${f.color}22`, borderRadius:20, padding:'26px 22px', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', top:-20, right:-16, fontSize:72, opacity:.05 }}>{f.emoji}</div>
+              <div style={{ width:48, height:48, borderRadius:12, background:`${f.color}15`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, marginBottom:14 }}>{f.emoji}</div>
+              <h3 style={{ fontSize:16, fontWeight:900, marginBottom:10, color:'var(--text)' }}>{f.title}</h3>
+              <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.8, marginBottom:14 }}>{f.desc}</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                {f.items.map((s,j) => <div key={j} style={{ fontSize:12, color:f.color, fontWeight:700 }}>✓ {s}</div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 샘플 결과물 */}
+      <section style={{ padding:'0 24px 80px', maxWidth:800, margin:'0 auto' }}>
+        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:20, padding:'28px 24px' }}>
+          <div style={{ fontSize:12, color:'var(--accent)', fontWeight:800, marginBottom:8 }}>📄 실제 생성 결과 샘플</div>
+          <div style={{ fontSize:'clamp(15px,3vw,18px)', fontWeight:900, marginBottom:18, color:'var(--text)' }}>국내산 저염 소세지 1kg</div>
+          <div style={{ display:'grid', gap:10 }}>
+            <div style={{ background:'var(--surface2)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, marginBottom:8 }}>🔍 검색 최적화 키워드</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {['소세지','국내산','저염','무방부제','간식','도시락반찬','어린이간식','저염소세지','국산','냉장보관'].map(k => (
+                  <span key={k} style={{ background:'rgba(255,107,53,0.1)', color:'var(--accent)', border:'1px solid rgba(255,107,53,0.2)', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700 }}>{k}</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ background:'var(--surface2)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, marginBottom:6 }}>✦ 핵심 카피</div>
+              <div style={{ fontSize:16, fontWeight:800, color:'var(--accent)' }}>엄마도 안심하는 저염 소세지, 아이 입맛을 사로잡다</div>
+            </div>
+            <div style={{ background:'var(--surface2)', borderRadius:12, padding:'14px 16px' }}>
+              <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:700, marginBottom:6 }}>📝 상세 설명 (일부)</div>
+              <div style={{ fontSize:13, color:'var(--text)', lineHeight:1.9 }}>국내 신선한 돼지고기만 엄선하여 나트륨 함량을 일반 소세지 대비 40% 줄였습니다. 아이들이 즐겨 먹는 간식이지만 방부제와 인공색소 없이 깔끔하게 제조하여 엄마도 안심하고 줄 수 있어요...</div>
+            </div>
+          </div>
+          <div style={{ marginTop:14, padding:'12px 16px', background:'rgba(255,107,53,0.06)', border:'1px dashed rgba(255,107,53,0.3)', borderRadius:10, fontSize:13, color:'var(--text-muted)', textAlign:'center' }}>
+            👆 이게 전부 자동으로 생성돼요 — <span style={{ color:'var(--accent)', fontWeight:700, cursor:'pointer' }} onClick={() => router.push('/signup')}>지금 무료로 만들어보기 →</span>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section style={{ padding:'0 24px 80px', maxWidth:720, margin:'0 auto' }}>
+        <h2 style={{ textAlign:'center', fontSize:'clamp(20px,4vw,26px)', fontWeight:900, marginBottom:32, color:'var(--text)' }}>자주 묻는 질문</h2>
+        <div className="faq-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
+          {[
+            { q:'정말 무료인가요?', a:'기본 기능은 전부 무료예요. AI 사용을 위해 Gemini 또는 Groq 키가 필요하고, 둘 다 무료 발급 가능해요.' },
+            { q:'API 키가 뭔가요?', a:'AI를 사용하는 인증키예요. Google AI Studio 또는 Groq에서 1분 안에 무료로 발급받을 수 있고, 가이드를 드려요.' },
+            { q:'어떤 AI를 쓰나요?', a:'Gemini, GPT-4o, Groq(Llama) 3가지를 지원해요. 본인 키로 원하는 AI를 선택할 수 있어요.' },
+            { q:'생성 결과를 어디에 쓰나요?', a:'스마트스토어·쿠팡·11번가에 붙여넣거나 HTML 파일로 다운로드해서 바로 사용하면 돼요.' },
+            { q:'모바일에서도 되나요?', a:'네, 모바일 최적화가 되어 있어요. 스마트폰에서도 모든 기능을 사용할 수 있어요.' },
+            { q:'정부지원금 정보는 정확한가요?', a:'공식 기관 기준으로 작성됐어요. 정책은 변동될 수 있으니 신청 전 공식 사이트 확인을 권장해요.' },
+          ].map((f,i) => (
+            <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'16px 18px' }}>
+              <div style={{ fontSize:13, fontWeight:800, marginBottom:8, color:'var(--text)' }}>Q. {f.q}</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.8 }}>{f.a}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 하단 CTA */}
+      <section style={{ padding:'0 24px 80px', maxWidth:560, margin:'0 auto', textAlign:'center' }}>
+        <div style={{ background:'linear-gradient(135deg,rgba(255,107,53,0.1),rgba(255,140,66,0.05))', border:'1px solid rgba(255,107,53,0.2)', borderRadius:24, padding:'44px 28px' }}>
+          <div style={{ fontSize:36, marginBottom:12 }}>🚀</div>
+          <h2 style={{ fontSize:'clamp(18px,4vw,24px)', fontWeight:900, marginBottom:12, color:'var(--text)' }}>지금 바로 시작해보세요</h2>
+          <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.8, marginBottom:26 }}>신용카드 불필요 · 가입 즉시 사용 · 언제든 탈퇴 가능</p>
+          <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+            <button className="land-btn" onClick={() => router.push('/signup')} style={{ padding:'14px 30px', background:'linear-gradient(135deg,var(--accent),#ff8c42)', border:'none', borderRadius:14, color:'#fff', fontSize:15, fontWeight:900, fontFamily:'inherit', boxShadow:'0 6px 20px rgba(255,107,53,0.35)' }}>
+              무료로 시작하기 →
+            </button>
+            <button className="land-btn" onClick={() => router.push('/login')} style={{ padding:'14px 22px', background:'none', border:'1px solid var(--border)', borderRadius:14, color:'var(--text-muted)', fontSize:14, fontWeight:700, fontFamily:'inherit' }}>
+              이미 계정이 있어요
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 푸터 */}
+      <footer style={{ borderTop:'1px solid var(--border)', padding:'24px', textAlign:'center' }}>
+        <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:10 }}>
+          <span style={{ fontWeight:900 }}>STORE AUTO</span> — 소상공인을 위한 AI 비서
+        </div>
+        <div style={{ display:'flex', gap:16, justifyContent:'center', fontSize:12, color:'var(--text-muted)', flexWrap:'wrap' }}>
+          <button onClick={() => setBrowseMode(true)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>서비스 둘러보기</button>
+          <span>·</span>
+          <button onClick={() => router.push('/login')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>로그인</button>
+          <span>·</span>
+          <button onClick={() => router.push('/signup')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>회원가입</button>
+        </div>
+        <div style={{ marginTop:10, fontSize:11, color:'var(--text-muted)', opacity:.4 }}>© 2025 STORE AUTO. All rights reserved.</div>
+      </footer>
+    </div>
+  )
+
   return (
     <>
       <GuideModal />
