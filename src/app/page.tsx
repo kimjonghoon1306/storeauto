@@ -581,6 +581,8 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           .nav-sub{display:none!important}
           .nav-login-text{display:none!important}
           .nav-login-icon{display:inline!important}
+          .nav-right{gap:4px!important}
+          .nav-theme-btn{width:18px!important;height:18px!important;font-size:8px!important}
         }
         @media(min-width:641px){
           .nav-login-icon{display:none!important}
@@ -593,9 +595,9 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           <div style={{ background:'var(--accent)', color:'#fff', fontWeight:900, fontSize:12, letterSpacing:2, padding:'4px 10px', borderRadius:4, flexShrink:0 }}>STORE AUTO</div>
           <span className="nav-sub" style={{ color:'var(--text-muted)', fontSize:12 }}>AI 소상공인 비서</span>
         </div>
-        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }} className="nav-right">
           {(['dark','light','yellow'] as const).map(t => (
-            <button key={t} onClick={() => setTheme(t)} style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${theme===t?'var(--accent)':'transparent'}`, cursor:'pointer', fontSize:10, background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button key={t} onClick={() => setTheme(t)} className="nav-theme-btn" style={{ width:22, height:22, borderRadius:'50%', border:`2px solid ${theme===t?'var(--accent)':'transparent'}`, cursor:'pointer', fontSize:10, background:t==='dark'?'#1a1a2e':t==='light'?'#e8eaff':'#1a1600', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
               {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
             </button>
           ))}
