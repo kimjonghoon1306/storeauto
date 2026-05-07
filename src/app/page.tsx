@@ -39,6 +39,7 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
   const [isAdmin, setIsAdmin] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('storeauto_admin_authed') === '1' } catch { return false } })
   const [theme, setTheme] = useState<'dark' | 'light' | 'yellow'>('dark')
+  const [showPreview, setShowPreview] = useState(false)
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? '' : `theme-${theme}`
@@ -477,6 +478,48 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
     } finally {
       setLoading(false)
     }
+  }
+
+  const buildHtml = (r: GeneratedResult, productName: string): string => `<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${productName} 상세페이지</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Noto Sans KR',Apple SD Gothic Neo,sans-serif;background:#fff;color:#222;max-width:860px;margin:0 auto;padding:20px}
+.kw{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.kw span{background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:20px;padding:5px 14px;font-size:13px;font-weight:700}
+.copy{font-size:clamp(20px,5vw,28px);font-weight:900;color:#e65100;text-align:center;padding:28px 16px;border-bottom:3px solid #ff6b35;margin-bottom:24px;line-height:1.4}
+.sec{margin:28px 0}.sec h2{font-size:15px;font-weight:900;color:#e65100;border-left:4px solid #ff6b35;padding-left:10px;margin-bottom:14px}
+.desc{font-size:15px;line-height:2;color:#333;white-space:pre-line}
+.rec{background:#fff8f0;border:1px solid #ffe0cc;border-radius:12px;padding:18px;font-size:14px;line-height:2;white-space:pre-line}
+.cta{background:linear-gradient(135deg,#ff6b35,#ff8c42);color:#fff;border-radius:14px;padding:22px;font-size:15px;line-height:1.9;font-weight:600;white-space:pre-line}
+.faq-item{border-bottom:1px solid #eee;padding:16px 0}.faq-item:last-child{border:none}
+.faq-q{font-weight:800;color:#333;margin-bottom:6px;font-size:14px}.faq-a{color:#666;font-size:14px;line-height:1.8}
+</style></head><body>
+<div class="copy">${r.oneLiner}</div>
+<div class="kw">${r.keywords.map(k=>`<span>${k}</span>`).join('')}</div>
+<div class="sec"><h2>📝 상품 상세 설명</h2><p class="desc">${r.description}</p></div>
+<div class="sec"><h2>👤 이런 분께 추천</h2><div class="rec">${r.recommendation}</div></div>
+<div class="sec"><h2>🛒 구매 유도 멘트</h2><div class="cta">${r.cta}</div></div>
+<div class="sec"><h2>❓ 자주 묻는 질문</h2>${r.faq.map(f=>`<div class="faq-item"><div class="faq-q">Q. ${f.q}</div><div class="faq-a">A. ${f.a}</div></div>`).join('')}</div>
+</body></html>`
+
+  const downloadHtml = () => {
+    if (!result) return
+    const html = buildHtml(result, input.productName || '상품')
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url
+    a.download = `${input.productName || '상세페이지'}.html`
+    a.click(); URL.revokeObjectURL(url)
+  }
+
+  const downloadText = () => {
+    if (!result) return
+    const txt = `[검색 키워드]\n${result.keywords.join(', ')}\n\n[핵심 카피]\n${result.oneLiner}\n\n[상세 설명]\n${result.description}\n\n[추천 고객]\n${result.recommendation}\n\n[구매 유도 멘트]\n${result.cta}\n\n[FAQ]\n${result.faq.map(f => `Q. ${f.q}\nA. ${f.a}`).join('\n\n')}`
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url
+    a.download = `${input.productName || '상세페이지'}.txt`
+    a.click(); URL.revokeObjectURL(url)
   }
 
   const copyText = (text: string, key: string) => {
@@ -1216,7 +1259,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   transition: 'all 0.2s',
                 }}
               >
-                {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 텍스트 복사'}
+                {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 복사'}
               </button>
               <button
                 onClick={() => {
@@ -1246,8 +1289,33 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}
               >
-                💬 카카오 공유
+                💬 카카오
               </button>
+            </div>
+
+            {/* 다운로드 버튼 영역 */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <button onClick={() => setShowPreview(true)} style={{
+                padding: 'clamp(12px,3vw,14px)', borderRadius: '12px',
+                background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                color: '#60a5fa', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 'clamp(12px,3vw,14px)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px',
+              }}>👁️ 미리보기</button>
+              <button onClick={downloadHtml} style={{
+                padding: 'clamp(12px,3vw,14px)', borderRadius: '12px',
+                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+                color: '#34d399', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 'clamp(12px,3vw,14px)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px',
+              }}>⬇️ HTML 저장</button>
+              <button onClick={downloadText} style={{
+                padding: 'clamp(12px,3vw,14px)', borderRadius: '12px',
+                background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)',
+                color: '#a78bfa', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 'clamp(12px,3vw,14px)', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '6px',
+              }}>📄 텍스트 저장</button>
             </div>
 
             <DetailPageBuilder
@@ -1259,6 +1327,47 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           </div>
         )}
       </div>
+
+      {/* ── 미리보기 모달 ── */}
+      {showPreview && result && (
+        <div onClick={() => setShowPreview(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px',
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 860, flex: 1, display: 'flex', flexDirection: 'column',
+            background: '#fff', borderRadius: '16px', overflow: 'hidden',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+          }}>
+            {/* 모달 헤더 */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 18px', background: '#111', borderBottom: '1px solid #333',
+            }}>
+              <span style={{ color: '#fff', fontSize: 14, fontWeight: 800 }}>
+                👁️ 미리보기 — {input.productName}
+              </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={downloadHtml} style={{
+                  background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)',
+                  color: '#34d399', borderRadius: 8, padding: '6px 14px',
+                  fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                }}>⬇️ HTML 저장</button>
+                <button onClick={() => setShowPreview(false)} style={{
+                  background: 'none', border: 'none', color: '#aaa', fontSize: 22, cursor: 'pointer',
+                }}>✕</button>
+              </div>
+            </div>
+            {/* iframe 렌더링 */}
+            <iframe
+              srcDoc={buildHtml(result, input.productName || '상품')}
+              style={{ flex: 1, border: 'none', width: '100%' }}
+              title="상세페이지 미리보기"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 숨겨진 관리자 버튼 */}
       <button onClick={() => router.push('/admin')} style={{
