@@ -37,7 +37,7 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false)
   const [browseMode, setBrowseMode] = useState(false)
   const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
-  const [isAdmin, setIsAdmin] = useState(() => { try { return typeof window !== 'undefined' && localStorage.getItem('storeauto_admin_authed') === '1' } catch { return false } })
+  const [isAdmin, setIsAdmin] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light' | 'yellow'>('dark')
   const [showPreview, setShowPreview] = useState(false)
 
@@ -50,6 +50,8 @@ export default function Home() {
     try {
       const saved = localStorage.getItem('storeauto_history')
       if (saved) setHistory(JSON.parse(saved))
+      // 관리자 여부 확인 (클라이언트에서만)
+      if (localStorage.getItem('storeauto_admin_authed') === '1') setIsAdmin(true)
       // 세션 유효성 검사 (만료 시 자동 갱신)
       checkSession().then(session => {
         if (session) setAuthUser({ email: session.email, id: session.id })
