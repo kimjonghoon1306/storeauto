@@ -23,6 +23,13 @@ const FEATURES = [
   { icon: '👤', label: '마이페이지',  sub: '프로필 · 통계 · API키', path: '/mypage',    color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', badge: null },
 ]
 
+const ONBOARD_STEPS = [
+  { icon: '🔑', title: 'AI 키 등록하기', desc: '마이페이지 → API 키 탭에서 Gemini(무료) 또는 Groq(무료) 키를 입력하세요. 키가 있어야 AI 기능을 쓸 수 있어요.', btn: '마이페이지로 가기', path: '/mypage?tab=keys' },
+  { icon: '📄', title: '상세페이지 만들기', desc: '상품명과 특징을 입력하면 AI가 10초 만에 키워드·카피·FAQ까지 완성된 상세페이지를 만들어줘요.', btn: '상세페이지 만들러 가기', path: '/' },
+  { icon: '💬', title: '리뷰 답글 달기', desc: '고객 리뷰를 붙여넣으면 AI가 톤에 맞는 답글을 생성해요. 여러 개를 한 번에 처리하는 대량처리도 지원해요.', btn: '리뷰 답글 써보기', path: '/reviews' },
+  { icon: '🏛️', title: '정부 지원금 찾기', desc: '업종·지역·직원수만 입력하면 나에게 맞는 지원금을 추천해줘요. 신청 서류 체크리스트와 사업계획서 초안도 자동 생성돼요.', btn: '지원금 찾아보기', path: '/government' },
+]
+
 export default function DashboardPage() {
   const router = useRouter()
   const [theme, setTheme]     = useState<Theme>('dark')
@@ -30,6 +37,8 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<{ name: string; business_name: string; business_type: string; region: string; grade: string } | null>(null)
   const [stats, setStats]     = useState<UsageStat[]>([])
   const [loading, setLoading] = useState(true)
+  const [showOnboard, setShowOnboard] = useState(false)
+  const [onboardStep, setOnboardStep] = useState(0)
 
   const T = THEMES[theme]
 
@@ -39,7 +48,11 @@ export default function DashboardPage() {
       if (t && THEMES[t]) setTheme(t)
     } catch { /* ignore */ }
 
-    // ✅ 핵심 수정: localStorage 세션 먼저 체크 (checkSession은 API 호출로 실패 시 세션 소멸)
+    try {
+      const visited = localStorage.getItem('storeauto_onboarded')
+      if (!visited) setShowOnboard(true)
+    } catch { /* ignore */ }
+
     const local = loadSession()
     if (!local) { router.push('/login'); return }
 
@@ -58,11 +71,10 @@ export default function DashboardPage() {
         if (Array.isArray(pData) && pData[0]) setProfile(pData[0])
         if (Array.isArray(sData)) setStats(sData)
       })
-      .catch(() => { /* 데이터 없어도 UI 표시 */ })
+      .catch(() => {})
       .finally(() => setLoading(false))
 
-    // 백그라운드 토큰 검증 (네트워크 오류 시 세션 유지)
-    checkSession().then(v => { if (!v) router.push('/login') }).catch(() => { /* 무시 */ })
+    checkSession().then(v => { if (!v) router.push('/login') }).catch(() => {})
   }, [router])
 
   const saveTheme = (t: Theme) => {
@@ -73,6 +85,11 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try { const s = loadSession(); if (s) await signOut(s.access_token) } catch { /* ignore */ }
     router.push('/login')
+  }
+
+  const closeOnboard = () => {
+    try { localStorage.setItem('storeauto_onboarded', '1') } catch {}
+    setShowOnboard(false)
   }
 
   const thisMonth = stats.filter(s => new Date(s.created_at).getMonth() === new Date().getMonth()).length
@@ -108,7 +125,6 @@ export default function DashboardPage() {
         .feat { transition: transform 0.2s, box-shadow 0.2s !important; }
         .feat:hover { transform: translateY(-3px) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.25) !important; }
         .nbtn { transition: opacity 0.15s !important; } .nbtn:hover { opacity: 0.75 !important; }
-
         @media(max-width:640px){
           .stat-grid  { grid-template-columns:1fr 1fr !important; gap:10px !important; }
           .feat-grid  { grid-template-columns:1fr 1fr !important; gap:10px !important; }
@@ -120,6 +136,47 @@ export default function DashboardPage() {
           #mob-bar    { display:flex !important; }
         }
       `}</style>
+
+      {/* ── 온보딩 모달 ── */}
+      {showOnboard && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div style={{ background:theme === 'dark' ? '#0d0d1a' : T.bg, border:`1px solid ${T.border}`, borderRadius:'24px', padding:'32px 28px', maxWidth:440, width:'100%', boxShadow:'0 24px 80px rgba(0,0,0,0.5)', maxHeight:'90vh', overflowY:'auto' }}>
+            {/* 진행 바 */}
+            <div style={{ display:'flex', gap:'6px', marginBottom:'24px' }}>
+              {ONBOARD_STEPS.map((_, i) => (
+                <div key={i} style={{ flex:1, height:4, borderRadius:4, background: i <= onboardStep ? ACCENT : 'rgba(255,255,255,0.1)', transition:'background 0.3s' }} />
+              ))}
+            </div>
+
+            <div style={{ fontSize:40, marginBottom:12 }}>{ONBOARD_STEPS[onboardStep].icon}</div>
+            <div style={{ fontSize:20, fontWeight:900, marginBottom:10, color:T.text }}>{ONBOARD_STEPS[onboardStep].title}</div>
+            <div style={{ fontSize:14, color:T.muted, lineHeight:1.9, marginBottom:28 }}>{ONBOARD_STEPS[onboardStep].desc}</div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {/* 해당 기능으로 이동 */}
+              <button onClick={() => { closeOnboard(); router.push(ONBOARD_STEPS[onboardStep].path) }}
+                style={{ padding:'14px', background:`linear-gradient(135deg,${ACCENT},#ff8c42)`, border:'none', borderRadius:'14px', color:'white', fontSize:15, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
+                {ONBOARD_STEPS[onboardStep].btn}
+              </button>
+              {/* 이전/다음 */}
+              <div style={{ display:'flex', gap:10 }}>
+                {onboardStep > 0 && (
+                  <button onClick={() => setOnboardStep(s => s - 1)}
+                    style={{ flex:1, padding:'12px', background:'none', border:`1px solid ${T.border}`, borderRadius:'12px', color:T.muted, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>← 이전</button>
+                )}
+                {onboardStep < ONBOARD_STEPS.length - 1 ? (
+                  <button onClick={() => setOnboardStep(s => s + 1)}
+                    style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', border:`1px solid ${T.border}`, borderRadius:'12px', color:T.text, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>다음 →</button>
+                ) : (
+                  <button onClick={closeOnboard}
+                    style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.06)', border:`1px solid ${T.border}`, borderRadius:'12px', color:T.muted, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>닫기</button>
+                )}
+              </div>
+              <button onClick={closeOnboard} style={{ background:'none', border:'none', color:T.muted, fontSize:12, cursor:'pointer', padding:'4px 0' }}>다시 보지 않기</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ──────────── 헤더 ──────────── */}
       <div style={{ background:T.surface, borderBottom:`1px solid ${T.border}`, height:54, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', position:'sticky', top:0, zIndex:100, backdropFilter:'blur(24px)' }}>
@@ -138,6 +195,7 @@ export default function DashboardPage() {
               {t==='dark'?'🌙':t==='light'?'☀️':'⭐'}
             </button>
           ))}
+          <button className="nbtn" onClick={() => { try { localStorage.setItem('storeauto_onboarded','') } catch {} setOnboardStep(0); setShowOnboard(true) }} style={{ padding:'5px 10px', background:'rgba(255,107,53,0.1)', border:`1px solid rgba(255,107,53,0.3)`, color:ACCENT, borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>❓ 가이드</button>
           <button className="nbtn" onClick={() => router.push('/')} style={{ padding:'5px 10px', background:`${ACCENT}15`, border:`1px solid ${ACCENT}30`, color:ACCENT, borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>← 홈</button>
           <button className="nbtn" onClick={handleLogout} style={{ padding:'5px 10px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#ef4444', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>로그아웃</button>
         </div>
@@ -151,12 +209,10 @@ export default function DashboardPage() {
           <div style={{ position:'absolute', top:-40, right:-40, width:160, height:160, borderRadius:'50%', background:`${ACCENT}07`, pointerEvents:'none' }} />
 
           <div className="prof-inner" style={{ display:'flex', alignItems:'center', gap:16 }}>
-            {/* 아바타 */}
             <div style={{ width:52, height:52, borderRadius:'50%', background:`linear-gradient(135deg,${ACCENT},#ffd700)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:900, flexShrink:0, boxShadow:`0 4px 18px ${ACCENT}44` }}>
               {profile?.name ? profile.name[0] : '😊'}
             </div>
 
-            {/* 이름 + 사업장 */}
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:'clamp(15px,4vw,19px)', fontWeight:900, marginBottom:5 }}>
                 안녕하세요, {profile?.name || user?.email?.split('@')[0]}님! 👋
@@ -169,14 +225,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* 등급 + 수정 버튼 */}
             <div className="grade-btn" style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
               <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:`${gradeColor}20`, color:gradeColor, fontWeight:800, border:`1px solid ${gradeColor}40` }}>{gradeLabel}</span>
-              {profile?.grade === 'free' || !profile?.grade ? (
-                <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(255,215,0,0.1)', color:'#ffd700', fontWeight:700, border:'1px solid rgba(255,215,0,0.25)', cursor:'default' }}>
-                  PRO: 무제한 생성 · 우선 지원
-                </span>
-              ) : null}
               <button className="nbtn" onClick={() => router.push('/mypage')} style={{ padding:'8px 14px', background:T.s2, border:`1px solid ${T.border}`, borderRadius:10, color:T.text, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>⚙️ 프로필 수정</button>
             </div>
           </div>
@@ -204,7 +254,6 @@ export default function DashboardPage() {
         {/* 기능 바로가기 + 차트 */}
         <div className="main-grid" style={{ display:'grid', gridTemplateColumns:'1fr 260px', gap:16 }}>
 
-          {/* 기능 2×2 */}
           <div>
             <div style={{ fontSize:13, fontWeight:900, marginBottom:12 }}>🚀 바로 시작하기</div>
             <div className="feat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
@@ -218,14 +267,14 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* 미사용 안내 */}
             {total === 0 && (
               <div style={{ marginTop:14, background:T.surface, border:`1px solid ${T.border}`, borderRadius:16, padding:'24px 20px', textAlign:'center' }}>
                 <div style={{ fontSize:36, opacity:0.2, marginBottom:10 }}>✨</div>
                 <div style={{ fontSize:14, fontWeight:900, marginBottom:5 }}>아직 사용 기록이 없어요</div>
-                <div style={{ fontSize:12, color:T.muted, marginBottom:16 }}>상세페이지 제작부터 시작해보세요!</div>
-                <button className="nbtn" onClick={() => router.push('/')} style={{ padding:'10px 22px', background:`linear-gradient(135deg,${ACCENT},#ffd700)`, border:'none', borderRadius:12, color:'white', fontSize:13, fontWeight:900, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 14px ${ACCENT}44` }}>
-                  상세페이지 만들기 →
+                <div style={{ fontSize:12, color:T.muted, marginBottom:16 }}>가이드를 따라 시작해보세요!</div>
+                <button className="nbtn" onClick={() => { try { localStorage.setItem('storeauto_onboarded','') } catch {} setOnboardStep(0); setShowOnboard(true) }}
+                  style={{ padding:'10px 22px', background:`linear-gradient(135deg,${ACCENT},#ffd700)`, border:'none', borderRadius:12, color:'white', fontSize:13, fontWeight:900, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 14px ${ACCENT}44` }}>
+                  시작 가이드 보기 →
                 </button>
               </div>
             )}
@@ -265,7 +314,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ──────────── 모바일 하단 탭바 ──────────── */}
+      {/* 모바일 하단 탭바 */}
       <div id="mob-bar" style={{ display:'none', position:'fixed', bottom:0, left:0, right:0, zIndex:200, background:T.surface, borderTop:`1px solid ${T.border}`, backdropFilter:'blur(24px)', paddingBottom:'env(safe-area-inset-bottom)' }}>
         <div style={{ display:'flex', width:'100%', padding:'10px 0 8px' }}>
           {[
