@@ -36,6 +36,106 @@ const CATEGORY_CARDS = [
   { emoji: '🕊️', label: '새터민지원', color: '#67e8f9', q: '새터민(북한이탈주민) 창업·취업·정착 지원금과 신청 방법을 자세히 알려줘' },
 ]
 
+const WIZARD_BIZ = ['음식점/카페','소매업/편의점','온라인 쇼핑몰','제조업','서비스업','뷰티/미용','학원/교육','농업/축산','기타']
+const WIZARD_REGION = ['서울','경기','인천','부산','대구','광주','대전','강원','충남','충북','전남','전북','경남','경북','제주','기타']
+const WIZARD_EMP = ['나 혼자','1~4명','5~9명','10명 이상']
+const WIZARD_YEAR = ['창업 준비중','1년 미만','1~3년','3~7년','7년 이상']
+
+interface ChecklistItem { item: string; where: string; tip: string }
+interface ChecklistProgram {
+  title: string; emoji: string; amount: string; period: string; url: string
+  docs: ChecklistItem[]; steps: string[]; eligible: string
+}
+const CHECKLIST_DATA: Record<string, ChecklistProgram> = {
+  경영안정: {
+    title: '소상공인 일반경영안정자금', emoji: '💰', amount: '최대 7천만원 / 연 2~3%',
+    period: '연중 수시 신청', url: 'https://www.sbiz.or.kr',
+    eligible: '사업자등록 후 6개월 이상 소상공인',
+    docs: [
+      { item: '사업자등록증', where: '홈택스(hometax.go.kr) → 민원증명', tip: '무료 즉시 발급' },
+      { item: '부가세 과세표준증명원', where: '홈택스 → 민원증명 → 사실증명', tip: '최근 1년치 필요' },
+      { item: '건강보험료 납부확인서', where: '국민건강보험공단 앱(The건강보험)', tip: '최근 3개월' },
+      { item: '임대차계약서', where: '본인 보유 (사업장 임차 시)', tip: '미보유 시 건물등기부등본으로 대체' },
+      { item: '신용정보 동의서', where: '소진공 센터 방문 시 현장 작성', tip: '' },
+    ],
+    steps: ['① 소상공인24(sbiz.or.kr) → 정책자금 → 신청', '② 서류 업로드 및 온라인 제출', '③ 소진공 지역센터 방문 서류 확인 (1~2주)', '④ 심사 완료 후 협약 → 대출 실행'],
+  },
+  스마트상점: {
+    title: '스마트상점 기술보급사업', emoji: '🖥️', amount: '최대 150만원 (자부담 30%)',
+    period: '매년 3~4월 공고', url: 'https://www.sbiz.or.kr',
+    eligible: '오프라인 소매·음식점 소상공인',
+    docs: [
+      { item: '사업자등록증', where: '홈택스', tip: '' },
+      { item: '부가세 과세표준증명원', where: '홈택스', tip: '최근 1년' },
+      { item: '사업장 현장사진', where: '직접 촬영', tip: '외부+내부 각 1장' },
+    ],
+    steps: ['① 소상공인24 공고 확인 → 온라인 신청', '② 심사 후 적격 통보', '③ 공급업체 선택 (키오스크·POS·서빙로봇 등)', '④ 설치 완료 후 보조금 지급'],
+  },
+  온라인판로: {
+    title: '온라인 판로 개척 바우처', emoji: '🛒', amount: '최대 200만원',
+    period: '매년 2~3월 공고', url: 'https://www.sbiz.or.kr',
+    eligible: '온라인 진출을 원하는 소상공인',
+    docs: [
+      { item: '사업자등록증', where: '홈택스', tip: '' },
+      { item: '온라인 입점 계획서', where: '직접 작성 (양식 없음)', tip: 'A4 1~2장, 판매할 플랫폼·상품 간단히 기재' },
+    ],
+    steps: ['① 소상공인24 공고 → 신청', '② 선정 후 바우처 발급', '③ 네이버스토어·쿠팡·11번가 등 입점 비용·광고비 사용', '④ 증빙자료 제출 후 정산'],
+  },
+  노란우산: {
+    title: '노란우산공제 가입', emoji: '🌻', amount: '연 소득공제 최대 500만원',
+    period: '연중 수시', url: 'https://www.8899.or.kr',
+    eligible: '사업자등록증 보유 소상공인 (법인 대표 포함)',
+    docs: [
+      { item: '사업자등록증', where: '홈택스', tip: '' },
+      { item: '신분증', where: '본인 보유', tip: '' },
+    ],
+    steps: ['① 노란우산(8899.or.kr) 온라인 가입 또는 은행·우체국 방문', '② 납입금액 선택 (월 5만~100만원)', '③ 자동이체 설정', '④ 연말정산 시 소득공제 자동 적용'],
+  },
+  예비창업: {
+    title: '예비창업패키지', emoji: '🚀', amount: '최대 1억원 사업화 자금',
+    period: '매년 2~3월 공고', url: 'https://www.k-startup.go.kr',
+    eligible: '사업자등록 전 예비창업자',
+    docs: [
+      { item: '사업계획서', where: 'K-Startup 양식 다운로드', tip: '가장 중요한 서류 — AI 초안 생성 기능 활용' },
+      { item: '신분증', where: '본인 보유', tip: '' },
+      { item: '자격증·수상경력 (있는 경우)', where: '본인 보유', tip: '가점 요소' },
+    ],
+    steps: ['① K-Startup(k-startup.go.kr) 회원가입 → 공고 확인', '② 온라인 사업계획서 제출', '③ 서류·발표 평가 (PT)', '④ 선정 후 협약 → 자금 집행 (6개월 내)'],
+  },
+  두루누리: {
+    title: '두루누리 사회보험 지원', emoji: '🛡️', amount: '고용보험·국민연금 보험료 80% 지원',
+    period: '연중 수시', url: 'https://www.4insure.or.kr',
+    eligible: '직원 월급 270만원 미만, 10인 미만 사업장',
+    docs: [
+      { item: '사업자등록증', where: '홈택스', tip: '' },
+      { item: '근로자 주민등록번호 및 월급 정보', where: '본인 보유', tip: '' },
+    ],
+    steps: ['① 4대보험포털(4insure.or.kr) 또는 근로복지공단 방문', '② 두루누리 신청서 작성', '③ 근로자 1인당 보험료 80% 자동 지원', '④ 매월 보험료 납부 시 할인 적용'],
+  },
+  희망리턴: {
+    title: '희망리턴패키지 (폐업 지원)', emoji: '🚪', amount: '점포철거비 최대 250만원',
+    period: '연중 수시', url: 'https://www.sbiz.or.kr',
+    eligible: '폐업 예정 또는 폐업 후 3년 이내 소상공인',
+    docs: [
+      { item: '사업자등록증 또는 폐업사실증명원', where: '홈택스', tip: '폐업 전후 모두 신청 가능' },
+      { item: '임대차계약서', where: '본인 보유', tip: '' },
+      { item: '점포 현장사진', where: '직접 촬영', tip: '' },
+    ],
+    steps: ['① 소상공인24 → 희망리턴패키지 신청', '② 사전 폐업 컨설팅 (무료)', '③ 점포철거 업체 선정 → 철거 진행', '④ 완료 후 지원금 지급 → 재취업·재창업 연계'],
+  },
+  청년창업: {
+    title: '청년창업사관학교', emoji: '🎓', amount: '최대 1억원 + 전용공간 + 멘토링',
+    period: '매년 1~2월 공고', url: 'https://www.kised.or.kr',
+    eligible: '만 39세 이하, 창업 3년 이내',
+    docs: [
+      { item: '사업계획서', where: 'kised.or.kr 양식', tip: '핵심 — AI 초안 기능 활용 추천' },
+      { item: '사업자등록증 (있는 경우)', where: '홈택스', tip: '예비창업자도 지원 가능' },
+      { item: '신분증', where: '본인', tip: '만 39세 이하 확인용' },
+    ],
+    steps: ['① 창업진흥원(kised.or.kr) 공고 확인 → 온라인 신청', '② 서류 심사', '③ 발표 평가 (비즈니스 모델 PT)', '④ 입교 → 1년간 집중 지원'],
+  },
+}
+
 const QUICK_QUESTIONS: string[] = [
   '우리 지역 소상공인 지원금 알려줘',
   '소상공인 무상자금 신청 방법은?',
@@ -586,6 +686,14 @@ const SYSTEM_PROMPT = `당신은 대한민국 자영업자·소상공인·창업
 - 기업마당: www.bizinfo.go.kr (자료실)`
 
 export default function GovernmentPage() {
+  const [showWizard, setShowWizard] = useState(true)
+  const [wizardStep, setWizardStep] = useState(0)
+  const [wizardData, setWizardData] = useState({ bizType: '', region: '', employees: '', years: '' })
+  const [showChecklist, setShowChecklist] = useState<string | null>(null)
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [planTarget, setPlanTarget] = useState('')
+  const [planContent, setPlanContent] = useState('')
+  const [planLoading, setPlanLoading] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -634,6 +742,44 @@ export default function GovernmentPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const finishWizard = () => {
+    setShowWizard(false)
+    const { bizType, region, employees, years } = wizardData
+    const q = `나는 ${region}에서 ${bizType} 업종을 운영하는 소상공인이야. 직원은 ${employees}이고 창업한 지 ${years} 됐어. 내 상황에 맞는 지원금을 우선순위 TOP 5로 추천해줘. 각 지원금마다 ① 금액 ② 신청 시기 ③ 나한테 해당되는 이유를 간단히 알려줘.`
+    sendMessage(q)
+  }
+
+  const generatePlan = async (programName: string) => {
+    setPlanTarget(programName)
+    setPlanContent('')
+    setShowPlanModal(true)
+    setPlanLoading(true)
+    const { bizType, region, employees, years } = wizardData
+    const prompt = `${programName} 지원금 신청을 위한 사업계획서 초안을 작성해줘.
+신청자 정보: 업종=${bizType||'소상공인'}, 지역=${region||'국내'}, 직원=${employees||'소규모'}, 운영기간=${years||'해당없음'}
+
+다음 형식으로 작성해줘:
+1. 사업 개요 (3~4문장)
+2. 사업 목표 및 비전
+3. 주요 제품/서비스 소개
+4. 시장 현황 및 경쟁력
+5. 지원금 활용 계획 (구체적 금액 포함)
+6. 기대 효과
+
+실제 제출 가능한 수준으로 구체적으로 작성해줘.`
+    try {
+      const userKeys = await loadUserKeys().catch(() => ({ gemini: '', openai: '', groq: '' }))
+      const provider = userKeys.gemini ? 'gemini' : userKeys.groq ? 'groq' : 'openai'
+      const res = await fetch('/api/ai', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, provider, userGemini: userKeys.gemini, userOpenai: userKeys.openai, userGroq: userKeys.groq }),
+      })
+      const data = await res.json()
+      setPlanContent(data.text || '사업계획서 생성에 실패했어요. 다시 시도해주세요.')
+    } catch { setPlanContent('오류가 발생했어요. 다시 시도해주세요.') }
+    setPlanLoading(false)
+  }
 
   const buildSystemPrompt = (): string => {
     let prompt = SYSTEM_PROMPT
@@ -958,6 +1104,14 @@ export default function GovernmentPage() {
           AI
         </div>
 
+        <button onClick={() => { setWizardStep(0); setShowWizard(true) }} style={{
+          background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.3)',
+          color: 'var(--accent)', borderRadius: '10px', padding: '10px 14px',
+          cursor: 'pointer', fontSize: '12px', fontWeight: 800, flexShrink: 0,
+          minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: "'Noto Sans KR',sans-serif", gap: '4px',
+        }}>🎯 맞춤추천</button>
+
         <button onClick={() => setShowReset(true)} title="대화 초기화" style={{
           background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
           color: '#f87171', borderRadius: '10px', padding: '10px 12px',
@@ -965,6 +1119,138 @@ export default function GovernmentPage() {
           minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>🔄</button>
       </div>
+
+      {/* ── 맞춤 마법사 모달 ── */}
+      {showWizard && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'24px', padding:'28px 24px', maxWidth:420, width:'100%', boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
+            {wizardStep < 4 ? (
+              <>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+                  <div>
+                    <div style={{ fontSize:13, color:'var(--accent)', fontWeight:800, marginBottom:4 }}>맞춤 지원금 찾기 {wizardStep+1}/4</div>
+                    <div style={{ fontSize:18, fontWeight:900 }}>
+                      {wizardStep===0 && '어떤 업종을 운영하세요?'}
+                      {wizardStep===1 && '어느 지역이에요?'}
+                      {wizardStep===2 && '직원이 몇 명이에요?'}
+                      {wizardStep===3 && '창업한 지 얼마나 됐어요?'}
+                    </div>
+                  </div>
+                  <button onClick={() => setShowWizard(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', fontSize:22, cursor:'pointer', padding:4 }}>✕</button>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {(wizardStep===0 ? WIZARD_BIZ : wizardStep===1 ? WIZARD_REGION : wizardStep===2 ? WIZARD_EMP : WIZARD_YEAR).map((opt) => (
+                    <button key={opt} onClick={() => {
+                      const key = wizardStep===0?'bizType':wizardStep===1?'region':wizardStep===2?'employees':'years'
+                      const next = { ...wizardData, [key]: opt }
+                      setWizardData(next)
+                      if (wizardStep < 3) setWizardStep(wizardStep+1)
+                      else { setWizardData(next); finishWizard() }
+                    }} style={{
+                      padding:'12px 8px', borderRadius:14, border:'1px solid var(--border)',
+                      background:'var(--surface2)', color:'var(--text)', cursor:'pointer',
+                      fontSize:13, fontWeight:700, fontFamily:"'Noto Sans KR',sans-serif",
+                      transition:'all 0.15s', textAlign:'center',
+                    }}
+                      onMouseEnter={(e)=>{ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.background='rgba(255,107,53,0.12)'; e.currentTarget.style.color='var(--accent)' }}
+                      onMouseLeave={(e)=>{ e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.background='var(--surface2)'; e.currentTarget.style.color='var(--text)' }}
+                    >{opt}</button>
+                  ))}
+                </div>
+                {wizardStep > 0 && (
+                  <button onClick={() => setWizardStep(wizardStep-1)} style={{ marginTop:16, background:'none', border:'none', color:'var(--text-muted)', fontSize:13, cursor:'pointer', padding:0 }}>← 이전</button>
+                )}
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* ── 체크리스트 모달 ── */}
+      {showChecklist && CHECKLIST_DATA[showChecklist] && (
+        <div onClick={() => setShowChecklist(null)} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background:'var(--surface)', borderRadius:'24px 24px 0 0', padding:'24px 20px', width:'100%', maxWidth:600, maxHeight:'85vh', overflowY:'auto', boxShadow:'0 -8px 40px rgba(0,0,0,0.4)' }}>
+            {(() => { const p = CHECKLIST_DATA[showChecklist!]
+              return (
+                <>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+                    <div>
+                      <div style={{ fontSize:24, marginBottom:4 }}>{p.emoji}</div>
+                      <div style={{ fontSize:17, fontWeight:900, marginBottom:4 }}>{p.title}</div>
+                      <div style={{ fontSize:13, color:'var(--accent)', fontWeight:700 }}>{p.amount}</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:4 }}>📅 {p.period} · 대상: {p.eligible}</div>
+                    </div>
+                    <button onClick={() => setShowChecklist(null)} style={{ background:'none', border:'none', color:'var(--text-muted)', fontSize:22, cursor:'pointer', flexShrink:0 }}>✕</button>
+                  </div>
+
+                  {/* 신청 단계 */}
+                  <div style={{ background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:14, padding:'14px 16px', marginBottom:16 }}>
+                    <div style={{ fontSize:13, fontWeight:900, color:'#34d399', marginBottom:10 }}>📋 신청 단계</div>
+                    {p.steps.map((s, i) => (
+                      <div key={i} style={{ fontSize:13, color:'var(--text)', lineHeight:1.8, padding:'3px 0' }}>{s}</div>
+                    ))}
+                  </div>
+
+                  {/* 필요 서류 체크리스트 */}
+                  <div style={{ marginBottom:16 }}>
+                    <div style={{ fontSize:13, fontWeight:900, color:'var(--text)', marginBottom:10 }}>📁 필요 서류</div>
+                    {p.docs.map((d, i) => (
+                      <div key={i} style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px', marginBottom:8 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                          <span style={{ fontSize:16 }}>□</span>
+                          <span style={{ fontSize:14, fontWeight:800 }}>{d.item}</span>
+                        </div>
+                        <div style={{ fontSize:12, color:'var(--text-muted)', paddingLeft:24 }}>발급처: {d.where}</div>
+                        {d.tip && <div style={{ fontSize:12, color:'var(--accent)', paddingLeft:24, marginTop:2 }}>💡 {d.tip}</div>}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 버튼들 */}
+                  <div style={{ display:'flex', gap:10 }}>
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ flex:1, display:'block', textAlign:'center', padding:'13px', background:'linear-gradient(135deg,var(--accent),#ff8c42)', color:'white', borderRadius:14, fontSize:14, fontWeight:800, textDecoration:'none' }}>
+                      🔗 신청 사이트 바로가기
+                    </a>
+                    <button onClick={() => { setShowChecklist(null); generatePlan(p.title) }} style={{ flex:1, padding:'13px', background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.3)', color:'#a78bfa', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>
+                      ✍️ 사업계획서 초안 생성
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ── 사업계획서 모달 ── */}
+      {showPlanModal && (
+        <div onClick={() => { if (!planLoading) setShowPlanModal(false) }} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:24, padding:'24px 20px', width:'100%', maxWidth:600, maxHeight:'85vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 80px rgba(0,0,0,0.5)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16, flexShrink:0 }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:900 }}>✍️ 사업계획서 초안</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{planTarget}</div>
+              </div>
+              {!planLoading && (
+                <button onClick={() => setShowPlanModal(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', fontSize:22, cursor:'pointer' }}>✕</button>
+              )}
+            </div>
+            <div style={{ flex:1, overflowY:'auto', background:'var(--surface2)', borderRadius:14, padding:'16px', fontSize:13, lineHeight:1.9, color:'var(--text)', whiteSpace:'pre-wrap', minHeight:200 }}>
+              {planLoading ? (
+                <div style={{ display:'flex', alignItems:'center', gap:10, color:'var(--text-muted)', padding:'20px 0' }}>
+                  <span style={{ fontSize:20 }}>✍️</span> AI가 사업계획서를 작성하고 있어요...
+                </div>
+              ) : planContent}
+            </div>
+            {!planLoading && planContent && (
+              <div style={{ display:'flex', gap:10, marginTop:14, flexShrink:0 }}>
+                <button onClick={() => { navigator.clipboard.writeText(planContent).catch(()=>{}) }} style={{ flex:1, padding:'12px', background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', borderRadius:12, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>📋 복사</button>
+                <button onClick={() => { const blob=new Blob([planContent],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`사업계획서_${planTarget}.txt`; a.click(); URL.revokeObjectURL(url) }} style={{ flex:1, padding:'12px', background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.3)', color:'#a78bfa', borderRadius:12, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:"'Noto Sans KR',sans-serif" }}>💾 다운로드</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 초기화 확인 팝업 */}
       {showReset && (
@@ -1025,8 +1311,24 @@ export default function GovernmentPage() {
           </button>
         ))}
       </div>
+      {/* 주요 지원금 체크리스트 바로가기 */}
+      <div style={{ overflowX:'auto', display:'flex', gap:'8px', padding:'10px 16px', background:'var(--surface2)', borderBottom:'1px solid var(--border)', scrollbarWidth:'none' }}>
+        <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:800, flexShrink:0, display:'flex', alignItems:'center', paddingRight:4 }}>📋 신청가이드</div>
+        {Object.entries(CHECKLIST_DATA).map(([key, p]) => (
+          <button key={key} onClick={() => setShowChecklist(key)} style={{
+            display:'flex', alignItems:'center', gap:'5px', padding:'7px 12px',
+            borderRadius:20, border:'1px solid var(--border)', background:'var(--surface)',
+            color:'var(--text)', cursor:'pointer', flexShrink:0,
+            fontSize:12, fontWeight:700, fontFamily:"'Noto Sans KR',sans-serif",
+            transition:'all 0.15s',
+          }}
+            onMouseEnter={(e)=>{ e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.color='var(--accent)' }}
+            onMouseLeave={(e)=>{ e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text)' }}
+          >{p.emoji} {p.title.length > 10 ? p.title.slice(0,10)+'…' : p.title}</button>
+        ))}
+      </div>
+
       <div style={{
-        flex: 1, overflowY: 'auto', padding: 'clamp(12px,3vw,20px)',
         paddingBottom: 'clamp(16px,4vw,24px)',
         maxWidth: '800px', width: '100%', margin: '0 auto',
         display: 'flex', flexDirection: 'column', gap: '16px',
