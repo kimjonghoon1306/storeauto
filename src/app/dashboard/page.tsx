@@ -42,15 +42,22 @@ export default function DashboardPage() {
 
   const T = THEMES[theme]
 
+  // 테마 초기화 (1회)
   useEffect(() => {
     try {
       const t = localStorage.getItem('storeauto_theme') as Theme
-      if (t && THEMES[t]) {
-        setTheme(t)
-        document.body.className = t === 'dark' ? '' : `theme-${t}`
-      }
+      if (t && THEMES[t]) setTheme(t)
     } catch { /* ignore */ }
+  }, [])
 
+  // theme state 바뀔 때마다 body class + localStorage 동기화
+  useEffect(() => {
+    document.body.className = theme === 'dark' ? '' : `theme-${theme}`
+    try { localStorage.setItem('storeauto_theme', theme) } catch { /* ignore */ }
+  }, [theme])
+
+  // 데이터 로드
+  useEffect(() => {
     try {
       const visited = localStorage.getItem('storeauto_onboarded')
       if (!visited) setShowOnboard(true)
@@ -80,11 +87,7 @@ export default function DashboardPage() {
     checkSession().then(v => { if (!v) router.push('/login') }).catch(() => {})
   }, [router])
 
-  const saveTheme = (t: Theme) => {
-    setTheme(t)
-    document.body.className = t === 'dark' ? '' : `theme-${t}`
-    try { localStorage.setItem('storeauto_theme', t) } catch { /* ignore */ }
-  }
+  const saveTheme = (t: Theme) => { setTheme(t) }
 
   const handleLogout = async () => {
     try { const s = loadSession(); if (s) await signOut(s.access_token) } catch { /* ignore */ }
