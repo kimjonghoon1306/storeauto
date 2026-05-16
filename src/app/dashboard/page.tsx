@@ -7,9 +7,9 @@ import { loadSession, checkSession, signOut } from '@/lib/auth'
 type Theme = 'dark' | 'light' | 'yellow'
 
 const THEMES = {
-  dark:   { bg: '#050510', surface: '#0d0d1a', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a', s2: 'rgba(255,255,255,0.03)' },
-  light:  { bg: '#f0f2ff', surface: '#ffffff',  border: 'rgba(0,0,0,0.08)',       text: '#1a1a2e', muted: '#9999bb', s2: 'rgba(0,0,0,0.02)' },
-  yellow: { bg: '#0a0900', surface: '#111000',  border: 'rgba(255,215,0,0.12)',    text: '#fff8dc', muted: '#aa9900', s2: 'rgba(255,215,0,0.03)' },
+  dark:   { bg: '#050510', surface: '#0d0d1a', border: 'rgba(255,255,255,0.08)', text: '#f0f0ff', muted: '#44446a',  s2: 'rgba(255,255,255,0.03)', emojiOp: 0.07, emptyBar: 'rgba(255,255,255,0.08)' },
+  light:  { bg: '#eef0f8', surface: '#ffffff',  border: 'rgba(90,90,140,0.15)',   text: '#1a1a2e', muted: '#5a5a88',  s2: 'rgba(90,90,140,0.06)', emojiOp: 0.18, emptyBar: 'rgba(90,90,140,0.15)' },
+  yellow: { bg: '#0a0900', surface: '#111000',  border: 'rgba(255,215,0,0.12)',    text: '#fff8dc', muted: '#aa9900',  s2: 'rgba(255,215,0,0.03)', emojiOp: 0.07, emptyBar: 'rgba(255,215,0,0.08)' },
 }
 
 const ACCENT = '#ff6b35'
@@ -45,7 +45,10 @@ export default function DashboardPage() {
   useEffect(() => {
     try {
       const t = localStorage.getItem('storeauto_theme') as Theme
-      if (t && THEMES[t]) setTheme(t)
+      if (t && THEMES[t]) {
+        setTheme(t)
+        document.body.className = t === 'dark' ? '' : `theme-${t}`
+      }
     } catch { /* ignore */ }
 
     try {
@@ -79,6 +82,7 @@ export default function DashboardPage() {
 
   const saveTheme = (t: Theme) => {
     setTheme(t)
+    document.body.className = t === 'dark' ? '' : `theme-${t}`
     try { localStorage.setItem('storeauto_theme', t) } catch { /* ignore */ }
   }
 
@@ -123,7 +127,7 @@ export default function DashboardPage() {
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .dash-anim { animation: fadeUp 0.3s ease; }
         .feat { transition: transform 0.2s, box-shadow 0.2s !important; }
-        .feat:hover { transform: translateY(-3px) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.25) !important; }
+        .feat:hover { transform: translateY(-3px) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important; }
         .nbtn { transition: opacity 0.15s !important; } .nbtn:hover { opacity: 0.75 !important; }
         @media(max-width:640px){
           .stat-grid  { grid-template-columns:1fr 1fr !important; gap:10px !important; }
@@ -241,10 +245,10 @@ export default function DashboardPage() {
             { label:'리뷰 답글',  value:byType['review']||0,      emoji:'💬', color:'#10b981' },
           ].map((s,i) => (
             <div key={i} style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:16, padding:'14px 14px 12px', position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', top:-8, right:-6, fontSize:44, opacity:0.07 }}>{s.emoji}</div>
+              <div style={{ position:'absolute', top:-8, right:-6, fontSize:44, opacity:T.emojiOp }}>{s.emoji}</div>
               <div style={{ fontSize:10, color:T.muted, fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>{s.label}</div>
               <div style={{ fontSize:'clamp(24px,5vw,32px)', fontWeight:900, color:s.color, lineHeight:1 }}>{s.value}</div>
-              <div style={{ marginTop:10, height:3, borderRadius:3, background:`${s.color}18` }}>
+              <div style={{ marginTop:10, height:3, borderRadius:3, background:`${s.color}22` }}>
                 <div style={{ height:'100%', borderRadius:3, background:s.color, width:total>0?`${Math.min((s.value/Math.max(total,1))*400,100)}%`:'0%' }} />
               </div>
             </div>
@@ -297,7 +301,7 @@ export default function DashboardPage() {
                   return (
                     <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
                       <div style={{ fontSize:10, color:d.count>0?(d.isToday?ACCENT:T.text):'transparent', fontWeight:900 }}>{d.count}</div>
-                      <div style={{ width:'100%', borderRadius:4, background:d.isToday?`linear-gradient(180deg,${ACCENT},#ffd700)`:d.count>0?'#3b82f6':T.border, height:h, boxShadow:d.isToday&&d.count>0?`0 3px 10px ${ACCENT}55`:'none' }} />
+                      <div style={{ width:'100%', borderRadius:4, background:d.isToday?`linear-gradient(180deg,${ACCENT},#ffd700)`:d.count>0?'#3b82f6':T.emptyBar, height:h, boxShadow:d.isToday&&d.count>0?`0 3px 10px ${ACCENT}55`:'none' }} />
                       <div style={{ fontSize:10, color:d.isToday?ACCENT:T.muted, fontWeight:d.isToday?900:700 }}>{d.label}</div>
                     </div>
                   )
