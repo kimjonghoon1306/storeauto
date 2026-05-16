@@ -590,7 +590,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       `}</style>
 
       {/* 네비 */}
-      <nav style={{ position:'sticky', top:0, zIndex:100, background:'rgba(5,5,16,0.88)', backdropFilter:'blur(20px)', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'0 24px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+      <nav style={{ position:'sticky', top:0, zIndex:100, background: theme === 'light' ? 'rgba(238,240,248,0.92)' : 'rgba(5,5,16,0.88)', backdropFilter:'blur(20px)', borderBottom: theme === 'light' ? '1px solid rgba(90,90,140,0.15)' : '1px solid rgba(255,255,255,0.06)', padding:'0 24px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
           <div style={{ background:'var(--accent)', color:'#fff', fontWeight:900, fontSize:12, letterSpacing:2, padding:'4px 10px', borderRadius:4, flexShrink:0 }}>STORE AUTO</div>
           <span className="nav-sub" style={{ color:'var(--text-muted)', fontSize:12 }}>AI 소상공인 비서</span>
