@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
           lastError = e instanceof Error ? e.message : '오류'; continue
         }
       }
-      return NextResponse.json({ error: `⏳ Gemini 한도 초과 (${lastError}). Groq를 선택해주세요.` }, { status: 500 })
+      return NextResponse.json({ error: `⏳ Gemini 한도 초과 (${lastError}). 잠시 후 다시 시도해주세요.` }, { status: 500 })
     }
 
     // ── OpenAI ──
