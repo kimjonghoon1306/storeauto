@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         if (!text) { lastErr = '빈 응답'; continue }
         break
       }
-      if (!text) return NextResponse.json({ error: lastErr === 'quota' ? '⏳ Gemini 무료 한도를 초과했어요. 잠시 후 다시 시도하거나 다른 AI(Groq 무료)를 선택해주세요.' : toKoreanError(lastErr) }, { status: 500 })
+      if (!text) return NextResponse.json({ error: lastErr === 'quota' ? '⏳ Gemini 무료 한도를 초과했어요. 잠시 후 다시 시도해주세요.' : toKoreanError(lastErr) }, { status: 500 })
 
     } else if (resolvedProvider === 'openai') {
       // ✅ 회원 키만 사용 — 관리자 키 폴백 없음
