@@ -92,14 +92,32 @@ export default function Home() {
     try {
       const savedTheme = localStorage.getItem('storeauto_theme')
       if (savedTheme) setTheme(savedTheme as 'dark' | 'light' | 'yellow')
-      // 네이버 키는 로컬(설정 페이지)
-      const sess = loadSession()
-      const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
-      const saved = localStorage.getItem(keysKey)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.naverClient) setNaverClientId(parsed.naverClient)
-        if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
+
+      const isAdm = localStorage.getItem('storeauto_admin_authed') === '1'
+
+      if (isAdm) {
+        // 관리자: admin_config 테이블에서 네이버 키 직접 조회
+        const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+        const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        fetch(`${SURL}/rest/v1/admin_config?key=in.(datalab_id,datalab_secret)&select=key,value`, {
+          headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` }
+        }).then(r => r.json()).then((rows: Array<{key: string; value: string}>) => {
+          if (!Array.isArray(rows)) return
+          const id  = rows.find(r => r.key === 'datalab_id')?.value || ''
+          const sec = rows.find(r => r.key === 'datalab_secret')?.value || ''
+          if (id)  setNaverClientId(id)
+          if (sec) setNaverClientSecret(sec)
+        }).catch(() => {})
+      } else {
+        // 일반 회원: localStorage에서 본인 키 읽기
+        const sess = loadSession()
+        const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+        const saved = localStorage.getItem(keysKey)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.naverClient) setNaverClientId(parsed.naverClient)
+          if (parsed.naverSecret) setNaverClientSecret(parsed.naverSecret)
+        }
       }
     } catch {}
     // 템플릿 로드
@@ -252,7 +270,7 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       }
 
       const text = await callAI(sectionPrompts[section])
-      const cleaned = text.replace(/\`\`\`json|\`\`\`/g, '').trim()
+      const cleaned = text.replace(/\`\`\`json|\`\`\`/gi, '').trim()
 
       setResult(prev => {
         if (!prev) return prev
@@ -387,21 +405,26 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
 }`
       const text = await callAI(prompt)
 
-      const cleaned = text.replace(/```json|```/g, '').trim()
+      const cleaned = text.replace(/```json|```/gi, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
 
-      let jsonStr = jsonMatch[0]
-      let parsed: GeneratedResult
-      try {
-        parsed = JSON.parse(jsonStr)
-      } catch {
-        // AI가 JSON 값 안에 실제 줄바꿈/탭 문자를 넣으면 파싱 실패 → 제어문자 정리 후 재시도
-        jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (m) =>
-          m.replace(/\n/g, '\\n').replace(/\r/g, '').replace(/\t/g, ' ')
-        )
-        parsed = JSON.parse(jsonStr)
+      // AI가 string 값 안에 literal 줄바꿈을 넣으면 JSON.parse 실패 → 문자 단위로 정리
+      const fixJson = (str: string): string => {
+        let inStr = false, esc = false, out = ''
+        for (const c of str) {
+          if (esc) { out += c; esc = false }
+          else if (c === '\\' && inStr) { out += c; esc = true }
+          else if (c === '"') { inStr = !inStr; out += c }
+          else if (inStr && c === '\n') { out += '\\n' }
+          else if (inStr && c === '\r') { /* skip */ }
+          else if (inStr && c === '\t') { out += '\\t' }
+          else { out += c }
+        }
+        return out
       }
+      const jsonStr = fixJson(jsonMatch[0]).replace(/,\s*([}\]])/g, '$1')
+      const parsed: GeneratedResult = JSON.parse(jsonStr)
       setResult(parsed)
       // 히스토리 저장
       const newItem = {
