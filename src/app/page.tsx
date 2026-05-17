@@ -26,8 +26,6 @@ export default function Home() {
   })
   const [featureInput, setFeatureInput] = useState('')
   const [isOffline, setIsOffline] = useState(false)
-  const [shareId, setShareId] = useState('')
-  const [sharing, setSharing] = useState(false)
   const [mobileStep, setMobileStep] = useState<1|2|3>(1)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<GeneratedResult | null>(null)
@@ -309,24 +307,6 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
     } catch { /* ignore */ }
   }
 
-  const handleShare = async () => {
-    if (!result) return
-    setSharing(true)
-    try {
-      const res = await fetch('/api/share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result, productName: input.productName }),
-      })
-      const data = await res.json()
-      if (data.id) {
-        setShareId(data.id)
-        navigator.clipboard.writeText(`${window.location.origin}/share/${data.id}`)
-      }
-    } catch (_e) { /* ignore */ }
-    setSharing(false)
-  }
-
   const handleSubmit = async () => {
     if (browseMode) {
       setError('둘러보기 모드에서는 기능을 사용할 수 없어요. 로그인 후 이용해주세요.')
@@ -404,7 +384,6 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
     {"q": "질문4", "a": "답변4"},
     {"q": "질문5", "a": "답변5"}
   ],
-  "htmlCode": ""
 }`
       const text = await callAI(prompt)
 
@@ -412,23 +391,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
 
-      // htmlCode 필드 내부의 줄바꿈/따옴표로 인한 JSON 파싱 오류 방지
-      let jsonStr = jsonMatch[0]
-      try {
-        JSON.parse(jsonStr)
-      } catch {
-        // htmlCode 값만 추출해서 따로 처리
-        jsonStr = jsonStr.replace(
-          /"htmlCode"\s*:\s*"([\s\S]*?)"(?=\s*[}])/,
-          (_, v) => `"htmlCode": ${JSON.stringify(v.replace(/\\n/g, '\n'))}`
-        )
-        // 그래도 안되면 htmlCode를 빈값으로
-        try {
-          JSON.parse(jsonStr)
-        } catch {
-          jsonStr = jsonStr.replace(/"htmlCode"\s*:\s*"[\s\S]*?"(?=\s*[}])/, '"htmlCode": ""')
-        }
-      }
+      const jsonStr = jsonMatch[0]
       const parsed: GeneratedResult = JSON.parse(jsonStr)
       setResult(parsed)
       // 히스토리 저장
@@ -455,21 +418,19 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'' },
               body: JSON.stringify({ user_id: authUser.id, type: 'detail_page', meta: input.productName }),
             }).catch(() => {})
-            // generated_results 저장 → await로 shareId 확보 후 카카오 버튼 활성화
+            // generated_results 저장
             try {
-              const saveRes = await fetch(SUPABASE_URL + '/rest/v1/generated_results', {
+              await fetch(SUPABASE_URL + '/rest/v1/generated_results', {
                 method: 'POST',
-                headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=representation' },
+                headers: { 'Content-Type':'application/json', apikey:SUPABASE_ANON_KEY, Authorization:'Bearer ' + sess.access_token, Prefer:'return=minimal' },
                 body: JSON.stringify({
                   user_id: authUser.id,
                   product_name: input.productName,
                   category: input.category,
                   provider,
-                  result: { ...parsed, htmlCode: '' },
+                  result: parsed,
                 }),
               })
-              const saveData = await saveRes.json()
-              if (Array.isArray(saveData) && saveData[0]?.id) setShareId(saveData[0].id)
             } catch (_e) { /* 저장 실패해도 생성 결과는 정상 표시 */ }
           }
         } catch (_e) { /* ignore */ }
@@ -756,6 +717,18 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
   return (
     <>
       <GuideModal />
+
+      {/* 오프라인 배너 */}
+      {isOffline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#ef4444', color: '#fff',
+          padding: '10px 20px', textAlign: 'center',
+          fontSize: '13px', fontWeight: 700, fontFamily: 'inherit',
+        }}>
+          📡 인터넷 연결이 끊어졌어요 — AI 생성 기능을 사용할 수 없습니다
+        </div>
+      )}
 
       {/* 둘러보기 모드 배너 */}
       {browseMode && (
@@ -1448,36 +1421,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               >
                 {copied === 'all' ? '✓ 전체 복사 완료!' : '📋 전체 복사'}
               </button>
-              <button
-                onClick={() => {
-                  const clean = (t: string) => t.replace(/[\u4E00-\u9FFF\u3040-\u30FF]/g, '').replace(/[\u2726\U0001F50D\u2605\u2606]/g, '').trim()
-                  const shareText = `[${input.productName}] 상세페이지\n\n${clean(result.oneLiner)}\n\n${clean(result.description.slice(0, 300))}...\n\n키워드: ${result.keywords.slice(0,5).join(', ')}`
-                  const shareUrl = shareId ? `${window.location.origin}/share/${shareId}` : window.location.origin
-                  const win = window as unknown as { Kakao?: { isInitialized?: () => boolean; init?: (k: string) => void; Share?: { sendDefault?: (o: unknown) => void } } }
-                  if (win.Kakao && !win.Kakao.isInitialized?.()) win.Kakao.init?.('23d3b649f46af9c7c321eb539c21720c')
-                  if (win.Kakao?.Share?.sendDefault) {
-                    win.Kakao.Share.sendDefault({
-                      objectType: 'text',
-                      text: shareText,
-                      link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-                    })
-                  } else if (navigator.share) {
-                    navigator.share({ text: shareText, url: shareUrl }).catch(() => {})
-                  } else {
-                    navigator.clipboard.writeText(shareText + '\n\n' + shareUrl).then(() => {
-                      alert('복사됐어요! 카카오톡에 붙여넣기 하세요.')
-                    })
-                  }
-                }}
-                style={{
-                  background: '#FEE500', border: 'none', borderRadius: '10px',
-                  padding: '14px 18px', fontSize: '14px', fontWeight: 800,
-                  cursor: 'pointer', fontFamily: 'inherit', color: '#000',
-                  whiteSpace: 'nowrap', flexShrink: 0,
-                }}
-              >
-                💬 카카오
-              </button>
+
             </div>
 
             {/* 다운로드 버튼 영역 */}
