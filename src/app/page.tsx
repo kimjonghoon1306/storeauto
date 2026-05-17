@@ -1240,7 +1240,11 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               <div>
                 <Label>가격대 <Required /></Label>
                 <input type="text" value={input.priceRange}
-                  onChange={e => setInput(prev => ({ ...prev, priceRange: e.target.value }))}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '')
+                    const formatted = raw ? Number(raw).toLocaleString('ko-KR') + '원' : ''
+                    setInput(prev => ({ ...prev, priceRange: formatted }))
+                  }}
                   placeholder="예: 89,000원" style={inputStyle} />
               </div>
             </div>
