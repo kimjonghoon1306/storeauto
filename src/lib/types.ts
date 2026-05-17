@@ -15,5 +15,4 @@ export interface GeneratedResult {
   recommendation: string
   cta: string
   faq: { q: string; a: string }[]
-  htmlCode: string
 }
