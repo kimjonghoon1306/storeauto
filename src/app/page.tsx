@@ -391,8 +391,17 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.')
 
-      const jsonStr = jsonMatch[0]
-      const parsed: GeneratedResult = JSON.parse(jsonStr)
+      let jsonStr = jsonMatch[0]
+      let parsed: GeneratedResult
+      try {
+        parsed = JSON.parse(jsonStr)
+      } catch {
+        // AI가 JSON 값 안에 실제 줄바꿈/탭 문자를 넣으면 파싱 실패 → 제어문자 정리 후 재시도
+        jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (m) =>
+          m.replace(/\n/g, '\\n').replace(/\r/g, '').replace(/\t/g, ' ')
+        )
+        parsed = JSON.parse(jsonStr)
+      }
       setResult(parsed)
       // 히스토리 저장
       const newItem = {
