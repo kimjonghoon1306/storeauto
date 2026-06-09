@@ -152,6 +152,9 @@ export default function Home() {
   const [editingFaqIdx, setEditingFaqIdx] = useState<number | null>(null)
   const [editFaqQ, setEditFaqQ] = useState('')
   const [editFaqA, setEditFaqA] = useState('')
+  const [snsContent, setSnsContent] = useState<{instagram:{caption:string; hashtags:string[]}; kakao:string} | null>(null)
+  const [snsLoading, setSnsLoading] = useState(false)
+  const [snsTab, setSnsTab] = useState<'instagram'|'kakao'>('instagram')
 
   const addFeature = () => {
     const val = featureInput.trim()
@@ -295,6 +298,42 @@ JSON 배열로만 응답: [{"q":"질문1","a":"답변1"},{"q":"질문2","a":"답
       alert(e instanceof Error ? e.message : '재생성 중 오류가 발생했습니다.')
     } finally {
       setRegenLoading(null)
+    }
+  }
+
+  const generateSNS = async () => {
+    if (!result) return
+    setSnsLoading(true)
+    setSnsContent(null)
+    try {
+      const prompt = `다음 상품 정보로 SNS 콘텐츠를 생성해주세요.
+
+상품명: ${input.productName}
+카테고리: ${input.category}
+핵심 특징: ${input.features.join(', ')}
+타겟 고객: ${input.targetCustomer}
+가격대: ${input.priceRange}
+핵심 카피: ${result.oneLiner}
+
+절대 한자, 일본어, 중국어 사용 금지. 쌍따옴표 값 안에 사용 금지. 마크다운 코드블록 없이 순수 JSON만.
+
+{
+  "instagram": {
+    "caption": "인스타그램 게시물 캡션. 이모지 적절히 사용. 200자 내외. 줄바꿈은 \\n. 자연스럽고 감성적으로.",
+    "hashtags": ["해시태그1","해시태그2","해시태그3","해시태그4","해시태그5","해시태그6","해시태그7","해시태그8","해시태그9","해시태그10","해시태그11","해시태그12","해시태그13","해시태그14","해시태그15","해시태그16","해시태그17","해시태그18","해시태그19","해시태그20"]
+  },
+  "kakao": "카카오채널 게시물. 짧고 임팩트있게. 이모지 사용. 150자 내외. 줄바꿈은 \\n."
+}`
+      const text = await callAI(prompt)
+      const cleaned = text.replace(/```json|```/gi, '').trim()
+      const json = cleaned.match(/\{[\s\S]*\}/)
+      if (!json) throw new Error('응답 파싱 실패. 다시 시도해주세요.')
+      const parsed = JSON.parse(json[0])
+      setSnsContent(parsed)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'SNS 콘텐츠 생성 실패')
+    } finally {
+      setSnsLoading(false)
     }
   }
 
@@ -1559,6 +1598,76 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* SNS 콘텐츠 카드 */}
+            <div className="result-card" style={{ background:'linear-gradient(135deg,rgba(225,48,108,0.06),rgba(131,58,180,0.06))', border:'1px solid rgba(225,48,108,0.2)' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                <h3 style={{ color:'#e1306c' }}>📱 SNS 콘텐츠</h3>
+                <button
+                  onClick={generateSNS}
+                  disabled={snsLoading}
+                  style={{ background: snsLoading ? 'var(--surface2)' : 'linear-gradient(135deg,#e1306c,#833ab4)', color: snsLoading ? 'var(--text-muted)' : '#fff', border:'none', borderRadius:'8px', padding:'7px 16px', fontSize:'13px', fontWeight:800, cursor: snsLoading ? 'not-allowed' : 'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const, transition:'all 0.2s' }}
+                >
+                  {snsLoading ? '⟳ 생성중...' : snsContent ? '↺ 다시 생성' : '✦ SNS 콘텐츠 생성'}
+                </button>
+              </div>
+
+              {!snsContent && !snsLoading && (
+                <p style={{ fontSize:'13px', color:'var(--text-muted)', marginTop:'8px', lineHeight:1.7 }}>
+                  인스타그램 캡션 + 해시태그, 카카오채널 게시물을 자동으로 만들어드립니다.
+                </p>
+              )}
+
+              {snsContent && (
+                <div style={{ marginTop:'14px' }}>
+                  {/* 탭 */}
+                  <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
+                    {([['instagram','📸 인스타그램'],['kakao','💛 카카오채널']] as const).map(([tab, label]) => (
+                      <button key={tab} onClick={() => setSnsTab(tab)} style={{ padding:'6px 16px', borderRadius:'20px', fontSize:'13px', fontWeight:700, cursor:'pointer', fontFamily:'inherit', border:`1px solid ${snsTab===tab ? (tab==='instagram'?'#e1306c':'#FEE500') : 'var(--border)'}`, background: snsTab===tab ? (tab==='instagram'?'rgba(225,48,108,0.15)':'rgba(254,229,0,0.15)') : 'var(--surface2)', color: snsTab===tab ? (tab==='instagram'?'#e1306c':'#b8a000') : 'var(--text-muted)', transition:'all 0.15s' }}>{label}</button>
+                    ))}
+                  </div>
+
+                  {snsTab === 'instagram' && (
+                    <div style={{ display:'grid', gap:'10px' }}>
+                      <div style={{ background:'var(--surface2)', borderRadius:'12px', padding:'14px 16px', border:'1px solid rgba(225,48,108,0.2)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+                          <p style={{ fontSize:'12px', fontWeight:700, color:'#e1306c' }}>캡션</p>
+                          <CopyBtn text={snsContent.instagram.caption} id="sns-caption" />
+                        </div>
+                        <p style={{ fontSize:'14px', color:'var(--text)', lineHeight:1.8, whiteSpace:'pre-line' }}>{snsContent.instagram.caption}</p>
+                      </div>
+                      <div style={{ background:'var(--surface2)', borderRadius:'12px', padding:'14px 16px', border:'1px solid rgba(225,48,108,0.2)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+                          <p style={{ fontSize:'12px', fontWeight:700, color:'#e1306c' }}>해시태그 ({snsContent.instagram.hashtags.length}개)</p>
+                          <CopyBtn text={snsContent.instagram.hashtags.map(h => `#${h.replace(/^#/,'')}`).join(' ')} id="sns-hash" />
+                        </div>
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                          {snsContent.instagram.hashtags.map((tag, i) => (
+                            <span key={i} style={{ fontSize:'13px', color:'#e1306c', fontWeight:600 }}>#{tag.replace(/^#/,'')}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ background:'var(--surface2)', borderRadius:'10px', padding:'10px 14px', border:'1px solid rgba(225,48,108,0.15)' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+                          <p style={{ fontSize:'12px', fontWeight:700, color:'#e1306c' }}>캡션 + 해시태그 합치기</p>
+                          <CopyBtn text={`${snsContent.instagram.caption}\n\n${snsContent.instagram.hashtags.map(h=>`#${h.replace(/^#/,'')}`).join(' ')}`} id="sns-all" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {snsTab === 'kakao' && (
+                    <div style={{ background:'var(--surface2)', borderRadius:'12px', padding:'14px 16px', border:'1px solid rgba(254,229,0,0.3)' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+                        <p style={{ fontSize:'12px', fontWeight:700, color:'#b8a000' }}>카카오채널 게시물</p>
+                        <CopyBtn text={snsContent.kakao} id="sns-kakao" />
+                      </div>
+                      <p style={{ fontSize:'14px', color:'var(--text)', lineHeight:1.8, whiteSpace:'pre-line' }}>{snsContent.kakao}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
