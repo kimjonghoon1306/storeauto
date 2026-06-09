@@ -6,6 +6,7 @@ import DetailPageBuilder from './DetailPageBuilder'
 import TrendSearch from './TrendSearch'
 import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
+import BulkGenerator from './BulkGenerator'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { loadSession, checkSession } from '@/lib/auth'
 import { loadUserKeys } from '@/lib/keys'
@@ -155,6 +156,7 @@ export default function Home() {
   const [snsContent, setSnsContent] = useState<{instagram:{caption:string; hashtags:string[]}; kakao:string} | null>(null)
   const [snsLoading, setSnsLoading] = useState(false)
   const [snsTab, setSnsTab] = useState<'instagram'|'kakao'>('instagram')
+  const [inputMode, setInputMode] = useState<'single'|'bulk'>('single')
 
   const addFeature = () => {
     const val = featureInput.trim()
@@ -1060,8 +1062,28 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
           </div>
         )}
 
+        {/* 입력 모드 탭 */}
+        <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
+          {([['single','✏️ 직접 입력'],['bulk','📊 엑셀 대량 생성']] as const).map(([mode, label]) => (
+            <button key={mode} onClick={() => setInputMode(mode)} style={{
+              flex:1, padding:'clamp(10px,2.5vw,12px)', borderRadius:'12px', fontSize:'clamp(13px,3vw,14px)',
+              fontWeight:800, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s',
+              background: inputMode===mode ? 'var(--accent)' : 'var(--surface)',
+              color: inputMode===mode ? '#fff' : 'var(--text-muted)',
+              border: `1px solid ${inputMode===mode ? 'var(--accent)' : 'var(--border)'}`,
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* 엑셀 대량 생성 */}
+        {inputMode === 'bulk' && (
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'16px', padding:'clamp(20px,4vw,28px)', marginBottom:'32px' }}>
+            <BulkGenerator callAI={callAI} platform={platform} persona={persona} />
+          </div>
+        )}
+
         {/* 입력 폼 */}
-        <div style={{
+        {inputMode === 'single' && <div style={{
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '16px', padding: 'clamp(20px, 4vw, 32px)', marginBottom: '32px',
         }}>
@@ -1421,7 +1443,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             </button>
             </div> {/* step-3 생성버튼 닫힘 */}
           </div>
-        </div>
+        </div>}
         {/* 결과 */}
         {result && (
           <div ref={resultRef} className="fade-up" style={{ display: 'grid', gap: '16px' }}>
