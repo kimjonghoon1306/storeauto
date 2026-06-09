@@ -61,6 +61,8 @@ export default function SignupPage() {
 
   const handleSignup = async () => {
     if (!name) { setError('이름을 입력해주세요'); return }
+    if (!phone.trim()) { setError('전화번호를 입력해주세요'); return }
+    if (!/^[0-9]{9,11}$/.test(phone.replace(/-/g, ''))) { setError('올바른 전화번호 형식이 아니에요 (예: 010-1234-5678)'); return }
     setLoading(true); setError('')
     try {
       const result = await signUp(email, password)
@@ -96,6 +98,8 @@ export default function SignupPage() {
       if (msg.includes('seconds') || msg.includes('rate') || msg.includes('after')) {
         const sec = msg.match(/(\d+) seconds?/)
         setError(`⏳ 잠시 후 다시 시도해주세요. (${sec ? `${sec[1]}초 후 가능` : '약 30초 후 가능'})`)
+      } else if (msg.includes('profiles_phone_unique') || (msg.includes('unique') && msg.includes('phone'))) {
+        setError('이미 가입된 전화번호예요. 다른 번호를 사용하거나 로그인해주세요.')
       } else if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
         setError('이미 가입된 이메일이에요. 로그인해주세요.')
       } else if (msg.includes('password') || msg.includes('weak')) {
@@ -273,7 +277,7 @@ export default function SignupPage() {
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:7 }}>연락처 (선택)</div>
+                  <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:7 }}>연락처 <span style={{ color:ACCENT }}>*</span></div>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="010-0000-0000" style={inputStyle}
                     onFocus={e => { (e.target as HTMLInputElement).style.borderColor = ACCENT }}
                     onBlur={e => { (e.target as HTMLInputElement).style.borderColor = T.border }}
