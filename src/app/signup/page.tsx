@@ -65,32 +65,45 @@ export default function SignupPage() {
     if (!/^[0-9]{9,11}$/.test(phone.replace(/-/g, ''))) { setError('올바른 전화번호 형식이 아니에요 (예: 010-1234-5678)'); return }
     setLoading(true); setError('')
     try {
+      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+      // 가입 전 전화번호 중복 확인
+      const phoneRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?phone=eq.${encodeURIComponent(phone.trim())}&select=id&limit=1`,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+      )
+      const phoneData = await phoneRes.json()
+      if (Array.isArray(phoneData) && phoneData.length > 0) {
+        setError('이미 가입된 전화번호예요. 다른 번호를 사용하거나 로그인해주세요.')
+        setLoading(false)
+        return
+      }
+
       const result = await signUp(email, password)
 
-      // 프로필 저장 (공통)
+      // 프로필 저장
       const saveProfileData = async (userId: string, token: string) => {
-        try {
-          const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-          const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-          await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${token}`,
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify({ id: userId, email, name, business_name: businessName, phone, business_type: businessType, region }),
-          })
-        } catch { /* ignore */ }
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ id: userId, email, name, business_name: businessName, phone: phone.trim(), business_type: businessType, region }),
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err?.message || err?.details || '프로필 저장 실패')
+        }
       }
 
       if (!result.requiresConfirmation) {
-        // 이메일 인증 비활성화 → 즉시 로그인됨
         await saveProfileData(result.session.id, result.session.access_token)
         router.push('/dashboard')
       } else {
-        // 이메일 인증 활성화 → 인증 메일 안내 화면
         setEmailSent(true)
       }
     } catch (e: unknown) {
