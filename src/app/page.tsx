@@ -31,8 +31,12 @@ export default function Home() {
   const [result, setResult] = useState<GeneratedResult | null>(null)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState<string | null>(null)
-  const [history, setHistory] = useState<{id: number; date: string; productName: string; result: GeneratedResult}[]>([])
+  const [history, setHistory] = useState<{id: number; date: string; productName: string; category?: string; result: GeneratedResult}[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [historySearch, setHistorySearch] = useState('')
+  const [historyCategory, setHistoryCategory] = useState('')
+  const [cloudHistory, setCloudHistory] = useState<{id:string; product_name:string; category:string; provider:string; result:GeneratedResult; created_at:string}[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [browseMode, setBrowseMode] = useState(false)
   const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -436,10 +440,11 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         id: Date.now(),
         date: new Date().toLocaleString('ko-KR'),
         productName: input.productName,
+        category: input.category,
         result: parsed,
       }
       setHistory(prev => {
-        const updated = [newItem, ...prev].slice(0, 20)
+        const updated = [newItem, ...prev].slice(0, 50)
         try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
         return updated
       })
@@ -843,15 +848,33 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 color: '#34d399', transition: 'all 0.15s',
                 whiteSpace: 'nowrap',
               }}>🏛️ 지원</button>
-              {history.length > 0 && (
-                <button onClick={() => setShowHistory(v => !v)} style={{
-                  padding: 'clamp(5px, 1.5vw, 7px) clamp(8px, 2vw, 12px)',
-                  borderRadius: '8px', fontSize: 'clamp(12px, 2.5vw, 13px)', fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  border: '1px solid var(--border)', background: 'var(--surface2)',
-                  color: 'var(--text-muted)', transition: 'all 0.15s',
-                }}>📋 ({history.length})</button>
-              )}
+              <button onClick={async () => {
+                const next = !showHistory
+                setShowHistory(next)
+                if (next && authUser) {
+                  setHistoryLoading(true)
+                  try {
+                    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+                    const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+                    const sess = loadSession()
+                    if (sess?.access_token) {
+                      const res = await fetch(
+                        `${SUPABASE_URL}/rest/v1/generated_results?user_id=eq.${authUser.id}&order=created_at.desc&limit=200`,
+                        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${sess.access_token}` } }
+                      )
+                      const data = await res.json()
+                      if (Array.isArray(data)) setCloudHistory(data)
+                    }
+                  } catch {}
+                  setHistoryLoading(false)
+                }
+              }} style={{
+                padding: 'clamp(5px,1.5vw,7px) clamp(8px,2vw,12px)',
+                borderRadius: '8px', fontSize: 'clamp(12px,2.5vw,13px)', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+                border: '1px solid var(--border)', background: showHistory ? 'var(--accent)' : 'var(--surface2)',
+                color: showHistory ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s',
+              }}>📋 기록</button>
               {authUser ? (
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <button onClick={() => router.push('/dashboard')} style={{
@@ -913,71 +936,88 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         </div>
 
         {/* 히스토리 패널 */}
-        {showHistory && history.length > 0 && (
-          <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '20px', marginBottom: '24px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        {showHistory && (
+          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'16px', padding:'20px', marginBottom:'24px' }}>
+            {/* 헤더 */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexWrap:'wrap', gap:'8px' }}>
               <div>
-                <p style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent)' }}>📋 생성 기록</p>
-                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  총 {history.length}개 · 이 기기 브라우저에만 저장됩니다
+                <p style={{ fontWeight:800, fontSize:'15px', color:'var(--accent)' }}>📋 생성 기록</p>
+                <p style={{ fontSize:'11px', color:'var(--text-muted)', marginTop:'2px' }}>
+                  {authUser ? `클라우드 ${cloudHistory.length}개` : `로컬 ${history.length}개`}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => {
-                  if (confirm('기록을 모두 삭제할까요?\n이 작업은 되돌릴 수 없습니다.')) {
-                    setHistory([])
-                    localStorage.removeItem('storeauto_history')
-                  }
-                }} style={{
-                  background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)',
-                  borderRadius: '8px', padding: '6px 12px', fontSize: '12px',
-                  color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
-                }}>🗑️ 전체 초기화</button>
-                <button onClick={() => setShowHistory(false)} style={{
-                  background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '8px',
-                  padding: '6px 12px', fontSize: '12px', color: 'var(--text-muted)',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>닫기</button>
-              </div>
+              <button onClick={() => setShowHistory(false)} style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', color:'var(--text-muted)', cursor:'pointer', fontFamily:'inherit' }}>닫기</button>
             </div>
-            <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-              {history.map(item => (
-                <div key={item.id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'var(--surface2)', border: '1px solid var(--border)',
-                  borderRadius: '10px', padding: '12px 16px', gap: '12px',
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text)', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.productName}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.date}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                    <button onClick={() => {
-                      setResult(item.result)
-                      setInput(prev => ({ ...prev, productName: item.productName }))
-                      setShowHistory(false)
-                      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-                    }} style={{
-                      background: 'var(--accent)', color: '#fff', border: 'none',
-                      borderRadius: '6px', padding: '6px 12px', fontSize: '12px',
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>불러오기</button>
-                    <button onClick={() => {
-                      const updated = history.filter(h => h.id !== item.id)
-                      setHistory(updated)
-                      try { localStorage.setItem('storeauto_history', JSON.stringify(updated)) } catch {}
-                    }} style={{
-                      background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.25)',
-                      borderRadius: '6px', padding: '6px 10px', fontSize: '12px',
-                      color: '#ff6666', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
-                    }}>🗑️</button>
-                  </div>
-                </div>
+
+            {/* 검색 */}
+            <input
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+              placeholder="🔍 상품명 검색..."
+              style={{ width:'100%', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'10px 14px', color:'var(--text)', fontSize:'14px', outline:'none', fontFamily:'inherit', boxSizing:'border-box', marginBottom:'10px' }}
+            />
+
+            {/* 카테고리 필터 */}
+            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'12px' }}>
+              {['전체', ...CATEGORIES].map(cat => (
+                <button key={cat} onClick={() => setHistoryCategory(cat === '전체' ? '' : cat)} style={{
+                  padding:'4px 12px', borderRadius:'20px', fontSize:'12px', fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                  background: historyCategory === (cat === '전체' ? '' : cat) ? 'var(--accent)' : 'var(--surface2)',
+                  color: historyCategory === (cat === '전체' ? '' : cat) ? '#fff' : 'var(--text-muted)',
+                  border: `1px solid ${historyCategory === (cat === '전체' ? '' : cat) ? 'var(--accent)' : 'var(--border)'}`,
+                  transition:'all 0.15s', whiteSpace:'nowrap',
+                }}>{cat}</button>
               ))}
             </div>
+
+            {/* 목록 */}
+            {historyLoading ? (
+              <div style={{ textAlign:'center', padding:'24px', color:'var(--text-muted)', fontSize:'14px' }}>⟳ 불러오는 중...</div>
+            ) : (
+              <div style={{ display:'grid', gap:'8px', maxHeight:'360px', overflowY:'auto' }}>
+                {(authUser ? cloudHistory : history).filter(item => {
+                  const name = authUser ? (item as typeof cloudHistory[0]).product_name : (item as typeof history[0]).productName
+                  const cat = authUser ? (item as typeof cloudHistory[0]).category : (item as typeof history[0]).category
+                  const matchSearch = !historySearch || name.toLowerCase().includes(historySearch.toLowerCase())
+                  const matchCat = !historyCategory || cat === historyCategory
+                  return matchSearch && matchCat
+                }).map((item, idx) => {
+                  const isCloud = authUser
+                  const name = isCloud ? (item as typeof cloudHistory[0]).product_name : (item as typeof history[0]).productName
+                  const cat = isCloud ? (item as typeof cloudHistory[0]).category : (item as typeof history[0]).category
+                  const date = isCloud
+                    ? new Date((item as typeof cloudHistory[0]).created_at).toLocaleString('ko-KR')
+                    : (item as typeof history[0]).date
+                  const res = (item as {result: GeneratedResult}).result
+                  return (
+                    <div key={idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'12px 14px', gap:'10px' }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'3px', flexWrap:'wrap' }}>
+                          <p style={{ fontWeight:700, fontSize:'14px', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'180px' }}>{name}</p>
+                          {cat && <span style={{ fontSize:'11px', fontWeight:700, padding:'2px 8px', borderRadius:'10px', background:'rgba(255,107,53,0.1)', color:'var(--accent)', border:'1px solid rgba(255,107,53,0.2)', flexShrink:0 }}>{cat}</span>}
+                        </div>
+                        <p style={{ fontSize:'11px', color:'var(--text-muted)' }}>{date}</p>
+                      </div>
+                      <button onClick={() => {
+                        setResult(res)
+                        setInput(prev => ({ ...prev, productName: name, category: cat || prev.category }))
+                        setShowHistory(false)
+                        setTimeout(() => resultRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }), 100)
+                      }} style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:'6px', padding:'7px 14px', fontSize:'12px', fontWeight:700, cursor:'pointer', fontFamily:'inherit', flexShrink:0, whiteSpace:'nowrap' as const }}>불러오기</button>
+                    </div>
+                  )
+                })}
+                {(authUser ? cloudHistory : history).filter(item => {
+                  const name = authUser ? (item as typeof cloudHistory[0]).product_name : (item as typeof history[0]).productName
+                  const cat = authUser ? (item as typeof cloudHistory[0]).category : (item as typeof history[0]).category
+                  return (!historySearch || name.toLowerCase().includes(historySearch.toLowerCase())) && (!historyCategory || cat === historyCategory)
+                }).length === 0 && (
+                  <div style={{ textAlign:'center', padding:'24px', color:'var(--text-muted)', fontSize:'13px' }}>
+                    {historySearch || historyCategory ? '검색 결과가 없습니다' : '생성 기록이 없습니다'}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
