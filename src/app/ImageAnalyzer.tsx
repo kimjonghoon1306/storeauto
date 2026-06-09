@@ -77,60 +77,22 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
 한글만. 쌍따옴표 값 안에 사용 금지.`
 
     try {
-      let text = ''
+      const res = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64,
+          imageMime,
+          prompt,
+          geminiKey: geminiKey.trim() || undefined,
+          openaiKey: openaiKey.trim() || undefined,
+        }),
+      })
 
-      if (hasOpenAIKey) {
-        // OpenAI Vision 우선 (이미지 분석 안정적)
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openaiKey.trim()}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            max_tokens: 1024,
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                { type: 'image_url', image_url: { url: `data:${imageMime};base64,${imageBase64}` } }
-              ]
-            }]
-          }),
-        })
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err?.error?.message || 'OpenAI 오류')
-        }
-        const data = await res.json()
-        text = data.choices?.[0]?.message?.content || ''
-      } else if (hasGeminiKey) {
-        // Gemini Vision 폴백
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { text: prompt },
-                  { inline_data: { mime_type: imageMime, data: imageBase64 } }
-                ]
-              }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-            }),
-          }
-        )
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err?.error?.message || 'Gemini 오류')
-        }
-        const data = await res.json()
-        text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      }
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || '분석 중 오류가 발생했습니다.')
 
+      const text: string = data.text || ''
       const cleaned = text.replace(/```json|```/g, '').trim()
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('이미지에서 상품 정보를 인식하지 못했습니다.')
