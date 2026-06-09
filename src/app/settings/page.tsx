@@ -37,6 +37,25 @@ export default function Page() {
       const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
       const savedKeys = localStorage.getItem(keysKey)
       if (savedKeys) setKeys(JSON.parse(savedKeys))
+
+      // Supabase에서 AI 키 불러오기 (로컬보다 최신일 수 있음)
+      if (sess?.id && sess?.access_token) {
+        const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+        const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        fetch(`${SURL}/rest/v1/user_keys?user_id=eq.${sess.id}&select=gemini_key,openai_key,groq_key&limit=1`, {
+          headers: { apikey: SKEY, Authorization: `Bearer ${sess.access_token}` },
+        }).then(r => r.json()).then(data => {
+          if (Array.isArray(data) && data[0]) {
+            const k = data[0] as { gemini_key?: string; openai_key?: string; groq_key?: string }
+            setKeys(prev => ({
+              ...prev,
+              gemini: k.gemini_key || prev.gemini,
+              openai: k.openai_key || prev.openai,
+              groq:   k.groq_key   || prev.groq,
+            }))
+          }
+        }).catch(() => {})
+      }
     } catch {}
   }, [])
 
@@ -45,14 +64,36 @@ export default function Page() {
     document.body.style.color = t.text
   }, [theme, t])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       const sess = loadSession()
       const keysKey = sess ? `storeauto_keys_${sess.id}` : 'storeauto_keys'
+      // localStorage 저장
       localStorage.setItem(keysKey, JSON.stringify(keys))
-      // 구버전 공용 키 삭제
       localStorage.removeItem('storeauto_keys')
       localStorage.setItem('storeauto_theme', theme)
+
+      // Supabase user_keys 테이블에도 동기화 (AI 키)
+      if (sess?.id && sess?.access_token && (keys.gemini || keys.openai || keys.groq)) {
+        const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+        const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+        await fetch(`${SURL}/rest/v1/user_keys`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SKEY,
+            Authorization: `Bearer ${sess.access_token}`,
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify({
+            user_id: sess.id,
+            gemini_key: keys.gemini || null,
+            openai_key: keys.openai || null,
+            groq_key:   keys.groq   || null,
+          }),
+        }).catch(() => {})
+      }
+
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch {}

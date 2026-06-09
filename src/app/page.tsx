@@ -39,6 +39,7 @@ export default function Home() {
   const [historyCategory, setHistoryCategory] = useState('')
   const [cloudHistory, setCloudHistory] = useState<{id:string; product_name:string; category:string; provider:string; result:GeneratedResult; created_at:string}[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [browseMode, setBrowseMode] = useState(false)
   const [authUser, setAuthUser] = useState<{ email: string; id: string } | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -515,6 +516,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                   result: parsed,
                 }),
               })
+              // 클라우드 히스토리 캐시에도 즉시 추가
+              setCloudHistory(prev => [{
+                id: String(Date.now()),
+                product_name: input.productName,
+                category: input.category,
+                provider,
+                result: parsed,
+                created_at: new Date().toISOString(),
+              }, ...prev])
             } catch (_e) { /* 저장 실패해도 생성 결과는 정상 표시 */ }
           }
         } catch (_e) { /* ignore */ }
@@ -893,7 +903,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               <button onClick={async () => {
                 const next = !showHistory
                 setShowHistory(next)
-                if (next && authUser) {
+                if (next && authUser && !historyLoaded) {
                   setHistoryLoading(true)
                   try {
                     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -905,7 +915,7 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                         { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${sess.access_token}` } }
                       )
                       const data = await res.json()
-                      if (Array.isArray(data)) setCloudHistory(data)
+                      if (Array.isArray(data)) { setCloudHistory(data); setHistoryLoaded(true) }
                     }
                   } catch {}
                   setHistoryLoading(false)

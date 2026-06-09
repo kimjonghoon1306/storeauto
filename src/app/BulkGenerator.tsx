@@ -48,6 +48,7 @@ export default function BulkGenerator({ callAI, platform, persona }: Props) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [parseError, setParseError] = useState('')
+  const [showGuide, setShowGuide] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const copyText = (text: string, key: string) => {
@@ -163,8 +164,6 @@ export default function BulkGenerator({ callAI, platform, persona }: Props) {
     const a = document.createElement('a'); a.href = url; a.download = `${name}.txt`; a.click()
     URL.revokeObjectURL(url)
   }
-
-  const [showGuide, setShowGuide] = useState(false)
 
   return (
     <div>
