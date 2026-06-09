@@ -42,16 +42,34 @@ export const clearSession = () => {
   try { localStorage.removeItem('sa_session') } catch (_e) { /* ignore */ }
 }
 
+export type SignUpResult =
+  | { requiresConfirmation: false; session: AuthUser }
+  | { requiresConfirmation: true }
+
 // 회원가입
-export const signUp = async (email: string, password: string) => {
+export const signUp = async (email: string, password: string): Promise<SignUpResult> => {
   const res = await fetch(`${AUTH_URL}/signup`, {
     method: 'POST',
     headers: authHeaders,
     body: JSON.stringify({ email, password }),
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.msg || data.error_description || '회원가입 실패')
-  return data
+  if (!res.ok) throw new Error(data.message || data.msg || data.error_description || data.error || '회원가입 실패')
+
+  // 이메일 인증 비활성화: access_token이 즉시 반환됨
+  if (data.access_token) {
+    const session: AuthUser = {
+      id: data.user?.id,
+      email: data.user?.email,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    }
+    saveSession(session)
+    return { requiresConfirmation: false, session }
+  }
+
+  // 이메일 인증 활성화: 인증 메일 발송됨
+  return { requiresConfirmation: true }
 }
 
 // 로그인

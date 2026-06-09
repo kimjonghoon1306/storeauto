@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signUp, signIn } from '@/lib/auth'
+import { signUp } from '@/lib/auth'
 
 type Theme = 'dark' | 'light' | 'yellow'
 
@@ -19,6 +19,7 @@ export default function SignupPage() {
   const router = useRouter()
   const [theme, setTheme] = useState<Theme>('dark')
   const [step, setStep] = useState<1 | 2>(1)
+  const [emailSent, setEmailSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -62,13 +63,11 @@ export default function SignupPage() {
     if (!name) { setError('이름을 입력해주세요'); return }
     setLoading(true); setError('')
     try {
-      await signUp(email, password)
-      // 가입 후 바로 로그인
-      await signIn(email, password)
-      // 프로필 저장은 mypage에서 처리
-      try {
-        const session = JSON.parse(localStorage.getItem('sa_session') || '{}')
-        if (session.id) {
+      const result = await signUp(email, password)
+
+      // 프로필 저장 (공통)
+      const saveProfileData = async (userId: string, token: string) => {
+        try {
           const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
           const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
           await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
@@ -76,27 +75,35 @@ export default function SignupPage() {
             headers: {
               'Content-Type': 'application/json',
               'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${session.access_token}`,
+              'Authorization': `Bearer ${token}`,
               'Prefer': 'return=minimal',
             },
-            body: JSON.stringify({ id: session.id, email, name, business_name: businessName, phone, business_type: businessType, region }),
+            body: JSON.stringify({ id: userId, email, name, business_name: businessName, phone, business_type: businessType, region }),
           })
-        }
-      } catch (_e) { /* ignore profile save error */ }
-      router.push('/dashboard')
+        } catch { /* ignore */ }
+      }
+
+      if (!result.requiresConfirmation) {
+        // 이메일 인증 비활성화 → 즉시 로그인됨
+        await saveProfileData(result.session.id, result.session.access_token)
+        router.push('/dashboard')
+      } else {
+        // 이메일 인증 활성화 → 인증 메일 안내 화면
+        setEmailSent(true)
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : ''
       if (msg.includes('seconds') || msg.includes('rate') || msg.includes('after')) {
         const sec = msg.match(/(\d+) seconds?/)
-        setError(`⏳ 잠시 후 다시 시도해주세요. (${sec ? sec[1]+'초 후 가능' : '약 30초 후 가능'})`)
+        setError(`⏳ 잠시 후 다시 시도해주세요. (${sec ? `${sec[1]}초 후 가능` : '약 30초 후 가능'})`)
       } else if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
         setError('이미 가입된 이메일이에요. 로그인해주세요.')
       } else if (msg.includes('password') || msg.includes('weak')) {
         setError('비밀번호가 너무 단순해요. 6자 이상으로 입력해주세요.')
-      } else if (msg.includes('email') || msg.includes('invalid')) {
+      } else if (msg.includes('valid') || msg.includes('format')) {
         setError('올바른 이메일 형식이 아니에요.')
       } else {
-        setError('회원가입에 실패했어요. 다시 시도해주세요.')
+        setError(msg || '회원가입에 실패했어요. 다시 시도해주세요.')
       }
     } finally { setLoading(false) }
   }
@@ -195,7 +202,26 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {step === 1 ? (
+            {emailSent ? (
+              /* 이메일 인증 안내 화면 */
+              <div style={{ textAlign: 'center', padding: '10px 0', animation: 'fadeUp 0.4s ease' }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>📧</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: T.text, marginBottom: 10 }}>이메일을 확인해주세요!</div>
+                <p style={{ fontSize: 14, color: T.muted, lineHeight: 1.9, marginBottom: 16 }}>
+                  <strong style={{ color: T.text }}>{email}</strong>로<br />
+                  인증 링크를 보냈어요.<br />
+                  링크를 클릭하면 자동으로 로그인됩니다.
+                </p>
+                <div style={{ fontSize: 12, color: T.muted, padding: '10px 14px', background: T.input, borderRadius: 10, border: `1px solid ${T.border}`, marginBottom: 20, lineHeight: 1.7 }}>
+                  💡 메일이 안 보이면 스팸 메일함도 확인해주세요
+                </div>
+                <button onClick={() => router.push('/login')} style={{
+                  width: '100%', padding: 14, background: `linear-gradient(135deg,#10b981,#3b82f6)`,
+                  border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 900,
+                  cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 6px 24px rgba(16,185,129,0.4)',
+                }}>로그인 페이지로 →</button>
+              </div>
+            ) : step === 1 ? (
               <div style={{ display:'flex', flexDirection:'column', gap:14, animation:'fadeUp 0.3s ease' }}>
                 <div>
                   <div style={{ fontSize:12, color:T.muted, fontWeight:700, letterSpacing:'0.5px', marginBottom:7 }}>이메일</div>
