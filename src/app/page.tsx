@@ -7,6 +7,7 @@ import TrendSearch from './TrendSearch'
 import ImageAnalyzer from './ImageAnalyzer'
 import GuideModal from './GuideModal'
 import BulkGenerator from './BulkGenerator'
+import URLAnalyzer from './URLAnalyzer'
 import { ProductInput, GeneratedResult } from '@/lib/types'
 import { loadSession, checkSession } from '@/lib/auth'
 import { loadUserKeys } from '@/lib/keys'
@@ -1117,8 +1118,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
 
           <div style={{ display: 'grid', gap: 'clamp(16px, 3vw, 24px)' }}>
 
-            {/* AI 이미지 분석 */}
+            {/* AI 이미지 분석 + URL 불러오기 */}
             <div className={`step-1 ${mobileStep===1?'step-show':''}`}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="url-img-grid">
+            <style>{`.url-img-grid { } @media(max-width:640px){ .url-img-grid{ grid-template-columns:1fr!important } }`}</style>
             <ImageAnalyzer
               geminiKey={geminiKey}
               openaiKey={openaiKey}
@@ -1136,6 +1139,24 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               }}
               onGoSettings={() => router.push('/settings')}
             />
+            <URLAnalyzer
+              callAI={callAI}
+              hasKey={!!(geminiKey || openaiKey || groqKey)}
+              onResult={(result) => {
+                setInput(prev => ({
+                  ...prev,
+                  productName: result.productName || prev.productName,
+                  category: result.category || prev.category,
+                  features: result.features?.length ? result.features : prev.features,
+                  targetCustomer: result.targetCustomer || prev.targetCustomer,
+                  priceRange: result.priceRange || prev.priceRange,
+                  extraInfo: result.extraInfo || prev.extraInfo,
+                }))
+                if (result.productName) setTrendQuery(result.productName)
+              }}
+              onGoSettings={() => router.push('/settings')}
+            />
+            </div>
 
             {/* 네이버 트렌드 & AI 키워드 */}
             <TrendSearch
