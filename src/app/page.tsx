@@ -1064,16 +1064,23 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
         )}
 
         {/* 입력 모드 탭 */}
-        <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
-          {([['single','✏️ 직접 입력'],['bulk','📊 엑셀 대량 생성']] as const).map(([mode, label]) => (
-            <button key={mode} onClick={() => setInputMode(mode)} style={{
-              flex:1, padding:'clamp(10px,2.5vw,12px)', borderRadius:'12px', fontSize:'clamp(13px,3vw,14px)',
-              fontWeight:800, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s',
-              background: inputMode===mode ? 'var(--accent)' : 'var(--surface)',
-              color: inputMode===mode ? '#fff' : 'var(--text-muted)',
-              border: `1px solid ${inputMode===mode ? 'var(--accent)' : 'var(--border)'}`,
-            }}>{label}</button>
-          ))}
+        <div style={{ marginBottom:'8px' }}>
+          <div style={{ display:'flex', gap:'8px', marginBottom:'6px' }}>
+            {([['single','✏️ 직접 입력'],['bulk','📊 엑셀 대량 생성']] as const).map(([mode, label]) => (
+              <button key={mode} onClick={() => setInputMode(mode)} style={{
+                flex:1, padding:'clamp(10px,2.5vw,12px)', borderRadius:'12px', fontSize:'clamp(13px,3vw,14px)',
+                fontWeight:800, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s',
+                background: inputMode===mode ? 'var(--accent)' : 'var(--surface)',
+                color: inputMode===mode ? '#fff' : 'var(--text-muted)',
+                border: `1px solid ${inputMode===mode ? 'var(--accent)' : 'var(--border)'}`,
+              }}>{label}</button>
+            ))}
+          </div>
+          {inputMode === 'bulk' && (
+            <p style={{ fontSize:'12px', color:'var(--text-muted)', textAlign:'center', lineHeight:1.6 }}>
+              엑셀(.xlsx) 또는 CSV 파일로 상품 정보를 올리면 최대 10개를 한번에 자동 생성합니다
+            </p>
+          )}
         </div>
 
         {/* 엑셀 대량 생성 */}
@@ -1499,9 +1506,10 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap:'wrap' }}>
                 <div style={{ width: '8px', height: '8px', background: 'var(--green)', borderRadius: '50%' }} />
                 <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '14px', letterSpacing: '1px' }}>생성 완료</span>
+                <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>각 항목 ✏️ 버튼으로 직접 수정 가능</span>
               </div>
               <button onClick={() => {
                 if (confirm('생성된 콘텐츠를 삭제할까요?')) setResult(null)
@@ -1646,7 +1654,11 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
             {/* SNS 콘텐츠 카드 */}
             <div className="result-card" style={{ background:'linear-gradient(135deg,rgba(225,48,108,0.06),rgba(131,58,180,0.06))', border:'1px solid rgba(225,48,108,0.2)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
-                <h3 style={{ color:'#e1306c' }}>📱 SNS 콘텐츠</h3>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', flexWrap:'wrap' }}>
+                  <h3 style={{ color:'#e1306c' }}>📱 SNS 콘텐츠</h3>
+                  <span style={{ fontSize:'10px', fontWeight:800, padding:'2px 7px', borderRadius:'20px', background:'rgba(225,48,108,0.15)', color:'#e1306c', border:'1px solid rgba(225,48,108,0.3)' }}>NEW</span>
+                  <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>인스타그램·카카오채널 자동 생성</span>
+                </div>
                 <button
                   onClick={generateSNS}
                   disabled={snsLoading}

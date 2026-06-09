@@ -164,11 +164,39 @@ export default function BulkGenerator({ callAI, platform, persona }: Props) {
     URL.revokeObjectURL(url)
   }
 
+  const [showGuide, setShowGuide] = useState(false)
+
   return (
     <div>
       <style>{`
         @keyframes bulkSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       `}</style>
+
+      {/* 사용방법 */}
+      <div style={{ background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:'12px', padding:'12px 16px', marginBottom:'14px' }}>
+        <button onClick={() => setShowGuide(v => !v)} style={{ width:'100%', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <p style={{ fontSize:'13px', fontWeight:800, color:'#818cf8' }}>📖 사용방법</p>
+          <span style={{ fontSize:'12px', color:'var(--text-muted)' }}>{showGuide ? '접기 ▲' : '펼치기 ▼'}</span>
+        </button>
+        {showGuide && (
+          <div style={{ marginTop:'10px', display:'grid', gap:'8px' }}>
+            {[
+              { step:'1', icon:'📥', title:'엑셀 파일 준비', desc:'아래 양식에 맞게 엑셀(xlsx) 또는 CSV 파일을 작성하세요. A열부터 순서대로 상품명, 카테고리, 특징, 타겟고객, 가격대, 추가정보(선택).' },
+              { step:'2', icon:'📂', title:'파일 업로드', desc:'파일 클릭 또는 드래그해서 올리면 상품 목록이 미리보기로 표시됩니다. 최대 10개까지 처리 가능합니다.' },
+              { step:'3', icon:'✦', title:'자동 생성 시작', desc:'"N개 상품 자동 생성 시작" 버튼을 누르면 상품을 순서대로 하나씩 생성합니다. 중간에 나가도 이미 생성된 것은 유지됩니다.' },
+              { step:'4', icon:'📋', title:'결과 확인 및 저장', desc:'각 상품 결과를 펼쳐서 확인하고 전체복사 또는 TXT 파일로 저장하세요. 스마트스토어 등록에 바로 사용 가능합니다.' },
+            ].map((s, i) => (
+              <div key={i} style={{ display:'flex', gap:'10px', alignItems:'flex-start', background:'rgba(99,102,241,0.05)', borderRadius:'8px', padding:'10px 12px' }}>
+                <div style={{ width:'22px', height:'22px', borderRadius:'50%', background:'rgba(99,102,241,0.2)', color:'#818cf8', fontSize:'11px', fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{s.step}</div>
+                <div>
+                  <p style={{ fontSize:'13px', fontWeight:700, color:'var(--text)', marginBottom:'2px' }}>{s.icon} {s.title}</p>
+                  <p style={{ fontSize:'12px', color:'var(--text-muted)', lineHeight:1.7 }}>{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 엑셀 양식 안내 */}
       <div style={{ background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:'12px', padding:'14px 16px', marginBottom:'16px' }}>
