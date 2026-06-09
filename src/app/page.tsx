@@ -143,6 +143,11 @@ export default function Home() {
   const [seoKeyword, setSeoKeyword] = useState('')
   const [trendQuery, setTrendQuery] = useState('')
   const resultRef = useRef<HTMLDivElement>(null)
+  const [editingSection, setEditingSection] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [editingFaqIdx, setEditingFaqIdx] = useState<number | null>(null)
+  const [editFaqQ, setEditFaqQ] = useState('')
+  const [editFaqA, setEditFaqA] = useState('')
 
   const addFeature = () => {
     const val = featureInput.trim()
@@ -539,6 +544,33 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
       {regenLoading === section ? '⟳ 생성중...' : `↺ ${label} 재생성`}
     </button>
   )
+
+  const saveEdit = () => {
+    if (!editingSection || !result) return
+    if (editingSection === 'keywords') {
+      setResult(prev => prev ? { ...prev, keywords: editValue.split(',').map(k => k.trim()).filter(Boolean) } : prev)
+    } else {
+      setResult(prev => prev ? { ...prev, [editingSection]: editValue } : prev)
+    }
+    setEditingSection(null)
+  }
+
+  const EditBtn = ({ section, value }: { section: string; value: string }) =>
+    editingSection === section ? (
+      <div style={{ display:'flex', gap:'6px' }}>
+        <button onClick={saveEdit} style={{ background:'var(--green)', color:'#000', border:'none', borderRadius:'6px', padding:'6px 14px', fontSize:'12px', fontWeight:800, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>✓ 저장</button>
+        <button onClick={() => setEditingSection(null)} style={{ background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--text-muted)', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer', fontFamily:'inherit' }}>✕</button>
+      </div>
+    ) : (
+      <button onClick={() => { setEditingSection(section); setEditValue(value) }} style={{ background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.3)', color:'#818cf8', borderRadius:'6px', padding:'6px 12px', fontSize:'12px', fontWeight:600, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>✏️ 수정</button>
+    )
+
+  const editTextareaStyle: React.CSSProperties = {
+    width:'100%', background:'var(--surface2)', border:'1px solid rgba(99,102,241,0.4)',
+    borderRadius:'10px', padding:'12px 14px', color:'var(--text)', fontSize:'clamp(13px,3vw,14px)',
+    lineHeight:1.8, outline:'none', fontFamily:"'Noto Sans KR',sans-serif", resize:'vertical',
+    marginTop:'8px', minHeight:'80px', boxSizing:'border-box' as const,
+  }
 
   const CopyBtn = ({ text, id }: { text: string; id: string }) => (
     <button
@@ -1363,18 +1395,24 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <h3>🔍 네이버 검색 최적화 키워드</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <RegenBtn section="keywords" label="키워드" />
+                  <EditBtn section="keywords" value={result.keywords.join(', ')} />
                   <CopyBtn text={result.keywords.join(', ')} id="keywords" />
                 </div>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                {result.keywords.map((k, i) => (
-                  <span key={i} style={{
-                    background: 'var(--surface2)', border: '1px solid var(--border)',
-                    borderRadius: '6px', padding: 'clamp(4px, 1vw, 6px) clamp(10px, 2vw, 14px)',
-                    fontSize: 'clamp(12px, 2.5vw, 14px)', color: 'var(--accent2)',
-                  }}>{k}</span>
-                ))}
-              </div>
+              {editingSection === 'keywords' ? (
+                <input
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  placeholder="키워드1, 키워드2, 키워드3 ..."
+                  style={{ ...editTextareaStyle, minHeight:'auto', padding:'10px 14px', fontSize:'clamp(13px,3vw,14px)' }}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                  {result.keywords.map((k, i) => (
+                    <span key={i} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '6px', padding: 'clamp(4px,1vw,6px) clamp(10px,2vw,14px)', fontSize: 'clamp(12px,2.5vw,14px)', color: 'var(--accent2)' }}>{k}</span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="result-card">
@@ -1382,10 +1420,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <h3>✦ 핵심 카피</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <RegenBtn section="oneLiner" label="카피" />
+                  <EditBtn section="oneLiner" value={result.oneLiner} />
                   <CopyBtn text={result.oneLiner} id="oneliner" />
                 </div>
               </div>
-              <p style={{ fontSize: 'clamp(16px, 4vw, 20px)', fontWeight: 700, color: 'var(--accent2)', marginTop: '4px' }}>{result.oneLiner}</p>
+              {editingSection === 'oneLiner' ? (
+                <input value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...editTextareaStyle, minHeight:'auto', padding:'10px 14px' }} />
+              ) : (
+                <p style={{ fontSize: 'clamp(16px,4vw,20px)', fontWeight:700, color:'var(--accent2)', marginTop:'4px' }}>{result.oneLiner}</p>
+              )}
             </div>
 
             <div className="result-card">
@@ -1393,10 +1436,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <h3>📝 상세 설명</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <RegenBtn section="description" label="설명" />
+                  <EditBtn section="description" value={result.description} />
                   <CopyBtn text={result.description} id="desc" />
                 </div>
               </div>
-              <p style={{ lineHeight: 1.9, whiteSpace: 'pre-line', color: 'var(--text)', fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.description}</p>
+              {editingSection === 'description' ? (
+                <textarea value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...editTextareaStyle, minHeight:'200px' }} />
+              ) : (
+                <p style={{ lineHeight:1.9, whiteSpace:'pre-line', color:'var(--text)', fontSize:'clamp(14px,3vw,15px)', marginTop:'4px' }}>{result.description}</p>
+              )}
             </div>
 
             <div className="result-card">
@@ -1404,10 +1452,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <h3>👤 이런 분께 추천</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <RegenBtn section="recommendation" label="추천" />
+                  <EditBtn section="recommendation" value={result.recommendation} />
                   <CopyBtn text={result.recommendation} id="rec" />
                 </div>
               </div>
-              <p style={{ lineHeight: 2, whiteSpace: 'pre-line', color: 'var(--text)', fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.recommendation}</p>
+              {editingSection === 'recommendation' ? (
+                <textarea value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...editTextareaStyle, minHeight:'120px' }} />
+              ) : (
+                <p style={{ lineHeight:2, whiteSpace:'pre-line', color:'var(--text)', fontSize:'clamp(14px,3vw,15px)', marginTop:'4px' }}>{result.recommendation}</p>
+              )}
             </div>
 
             <div className="result-card">
@@ -1415,10 +1468,15 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
                 <h3>🛒 구매 유도 멘트</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <RegenBtn section="cta" label="멘트" />
+                  <EditBtn section="cta" value={result.cta} />
                   <CopyBtn text={result.cta} id="cta" />
                 </div>
               </div>
-              <p style={{ lineHeight: 1.8, color: 'var(--accent)', fontWeight: 500, fontSize: 'clamp(14px, 3vw, 15px)', marginTop: '4px' }}>{result.cta}</p>
+              {editingSection === 'cta' ? (
+                <textarea value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...editTextareaStyle, minHeight:'100px' }} />
+              ) : (
+                <p style={{ lineHeight:1.8, color:'var(--accent)', fontWeight:500, fontSize:'clamp(14px,3vw,15px)', marginTop:'4px' }}>{result.cta}</p>
+              )}
             </div>
 
             <div className="result-card">
@@ -1432,8 +1490,32 @@ ${seoKeyword ? `- SEO 타겟 키워드: ${seoKeyword} (이 키워드를 descript
               <div style={{ display: 'grid', gap: '14px', marginTop: '8px' }}>
                 {result.faq.map((item, i) => (
                   <div key={i} style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '14px' }}>
-                    <p style={{ fontWeight: 700, marginBottom: '4px', color: 'var(--text)', fontSize: 'clamp(13px, 3vw, 14px)' }}>Q. {item.q}</p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(13px, 3vw, 14px)', lineHeight: 1.7 }}>A. {item.a}</p>
+                    {editingFaqIdx === i ? (
+                      <div style={{ display:'grid', gap:'8px' }}>
+                        <input value={editFaqQ} onChange={e => setEditFaqQ(e.target.value)} placeholder="질문" style={{ ...editTextareaStyle, minHeight:'auto', padding:'8px 12px' }} />
+                        <textarea value={editFaqA} onChange={e => setEditFaqA(e.target.value)} placeholder="답변" style={{ ...editTextareaStyle, minHeight:'80px' }} />
+                        <div style={{ display:'flex', gap:'6px' }}>
+                          <button onClick={() => {
+                            setResult(prev => {
+                              if (!prev) return prev
+                              const faq = [...prev.faq]
+                              faq[i] = { q: editFaqQ, a: editFaqA }
+                              return { ...prev, faq }
+                            })
+                            setEditingFaqIdx(null)
+                          }} style={{ background:'var(--green)', color:'#000', border:'none', borderRadius:'6px', padding:'6px 14px', fontSize:'12px', fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>✓ 저장</button>
+                          <button onClick={() => setEditingFaqIdx(null)} style={{ background:'var(--surface2)', border:'1px solid var(--border)', color:'var(--text-muted)', borderRadius:'6px', padding:'6px 10px', fontSize:'12px', cursor:'pointer', fontFamily:'inherit' }}>✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'8px' }}>
+                        <div style={{ flex:1 }}>
+                          <p style={{ fontWeight:700, marginBottom:'4px', color:'var(--text)', fontSize:'clamp(13px,3vw,14px)' }}>Q. {item.q}</p>
+                          <p style={{ color:'var(--text-muted)', fontSize:'clamp(13px,3vw,14px)', lineHeight:1.7 }}>A. {item.a}</p>
+                        </div>
+                        <button onClick={() => { setEditingFaqIdx(i); setEditFaqQ(item.q); setEditFaqA(item.a) }} style={{ background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.3)', color:'#818cf8', borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0, whiteSpace:'nowrap' as const }}>✏️</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
