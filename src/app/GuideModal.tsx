@@ -289,99 +289,107 @@ export default function GuideModal() {
         border: '1px solid var(--border)',
         borderRadius: '20px',
         width: '100%', maxWidth: '480px',
-        padding: '36px 32px 28px',
+        maxHeight: 'calc(100vh - 48px)',
+        display: 'flex', flexDirection: 'column',
         position: 'relative',
+        overflow: 'hidden',
       }}>
+        {/* 닫기 버튼 - 항상 고정 */}
         <button onClick={close} style={{
           position: 'absolute', top: '16px', right: '16px',
           background: 'var(--surface2)', border: '1px solid var(--border)',
           color: 'var(--text-muted)', borderRadius: '8px',
           width: '32px', height: '32px', cursor: 'pointer',
-          fontSize: '16px', fontFamily: 'inherit',
+          fontSize: '16px', fontFamily: 'inherit', zIndex: 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>×</button>
 
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '28px' }}>
-          {steps.map((_, i) => (
-            <div key={i} style={{
-              flex: 1, height: '4px', borderRadius: '2px',
-              background: i <= step ? 'var(--accent)' : 'var(--border)',
-              transition: 'background 0.3s',
-            }} />
-          ))}
-        </div>
-
-        <div style={{ fontSize: '48px', marginBottom: '16px', textAlign: 'center' }}>
-          {current.emoji}
-        </div>
-
-        <h2 style={{
-          fontSize: '22px', fontWeight: 900, color: 'var(--text)',
-          marginBottom: '16px', textAlign: 'center', lineHeight: 1.3,
-        }}>
-          {current.title}
-        </h2>
-
-        <p style={{
-          fontSize: '16px', lineHeight: 1.9, color: 'var(--text)',
-          whiteSpace: 'pre-line', textAlign: 'center', marginBottom: '16px',
-        }}>
-          {current.desc}
-        </p>
-
-        {current.img && (
-          <div style={{
-            background: 'var(--surface2)', border: '1px solid var(--border)',
-            borderRadius: '12px', padding: '16px', marginBottom: '16px',
-          }}>
-            {current.img.map((item, i) => (
-              <p key={i} style={{ fontSize: '14px', color: 'var(--text)', lineHeight: 1.9, paddingLeft: '4px' }}>{item}</p>
+        {/* 스크롤 영역 */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '36px 32px 20px' }}>
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '24px' }}>
+            {steps.map((_, i) => (
+              <div key={i} style={{
+                flex: 1, height: '4px', borderRadius: '2px',
+                background: i <= step ? 'var(--accent)' : 'var(--border)',
+                transition: 'background 0.3s',
+              }} />
             ))}
           </div>
-        )}
 
-        {current.sub && (
-          <p style={{
-            fontSize: '13px', color: 'var(--text-muted)',
-            whiteSpace: 'pre-line', textAlign: 'center', marginBottom: '16px', lineHeight: 1.7,
+          <div style={{ fontSize: '44px', marginBottom: '12px', textAlign: 'center' }}>
+            {current.emoji}
+          </div>
+
+          <h2 style={{
+            fontSize: '20px', fontWeight: 900, color: 'var(--text)',
+            marginBottom: '12px', textAlign: 'center', lineHeight: 1.3,
           }}>
-            {current.sub}
-          </p>
-        )}
+            {current.title}
+          </h2>
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-          {step > 0 && (
-            <button onClick={() => setStep(s => s - 1)} style={{
-              flex: 1, padding: '13px', borderRadius: '10px',
+          <p style={{
+            fontSize: '15px', lineHeight: 1.8, color: 'var(--text)',
+            whiteSpace: 'pre-line', textAlign: 'center', marginBottom: '14px',
+          }}>
+            {current.desc}
+          </p>
+
+          {current.img && (
+            <div style={{
               background: 'var(--surface2)', border: '1px solid var(--border)',
-              color: 'var(--text)', fontSize: '14px', fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>← 이전</button>
+              borderRadius: '12px', padding: '14px', marginBottom: '14px',
+            }}>
+              {current.img.map((item, i) => (
+                <p key={i} style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.8, paddingLeft: '4px' }}>{item}</p>
+              ))}
+            </div>
           )}
-          {step < steps.length - 1 ? (
-            <button onClick={() => setStep(s => s + 1)} style={{
-              flex: 2, padding: '13px', borderRadius: '10px',
-              background: 'var(--accent)', border: 'none',
-              color: '#fff', fontSize: '14px', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>다음 →</button>
-          ) : (
-            <button onClick={close} style={{
-              flex: 2, padding: '13px', borderRadius: '10px',
-              background: 'var(--accent)', border: 'none',
-              color: '#fff', fontSize: '15px', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>🚀 시작하기!</button>
+
+          {current.sub && (
+            <p style={{
+              fontSize: '12px', color: 'var(--text-muted)',
+              whiteSpace: 'pre-line', textAlign: 'center', lineHeight: 1.7,
+            }}>
+              {current.sub}
+            </p>
           )}
         </div>
 
-        {step === 0 && (
-          <button onClick={close} style={{
-            display: 'block', margin: '14px auto 0', background: 'none',
-            border: 'none', color: 'var(--text-muted)', fontSize: '12px',
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}>건너뛰기</button>
-        )}
+        {/* 버튼 영역 - 항상 하단 고정 */}
+        <div style={{ padding: '16px 32px 24px', borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {step > 0 && (
+              <button onClick={() => setStep(s => s - 1)} style={{
+                flex: 1, padding: '13px', borderRadius: '10px',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
+                color: 'var(--text)', fontSize: '14px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>← 이전</button>
+            )}
+            {step < steps.length - 1 ? (
+              <button onClick={() => setStep(s => s + 1)} style={{
+                flex: 2, padding: '13px', borderRadius: '10px',
+                background: 'var(--accent)', border: 'none',
+                color: '#fff', fontSize: '14px', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>다음 →</button>
+            ) : (
+              <button onClick={close} style={{
+                flex: 2, padding: '13px', borderRadius: '10px',
+                background: 'var(--accent)', border: 'none',
+                color: '#fff', fontSize: '15px', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>🚀 시작하기!</button>
+            )}
+          </div>
+          {step === 0 && (
+            <button onClick={close} style={{
+              display: 'block', margin: '10px auto 0', background: 'none',
+              border: 'none', color: 'var(--text-muted)', fontSize: '12px',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>건너뛰기</button>
+          )}
+        </div>
       </div>
     </div>
   )
