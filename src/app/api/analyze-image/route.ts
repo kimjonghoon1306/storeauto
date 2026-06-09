@@ -100,10 +100,19 @@ export async function POST(req: NextRequest) {
         }
 
         const data = await res.json()
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-        if (!text) { lastErr = '빈 응답'; continue }
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        if (!raw) { lastErr = '빈 응답'; continue }
 
-        return NextResponse.json({ text, provider: 'gemini' })
+        // JSON 블록 추출 시도 (Gemini가 설명 텍스트를 함께 반환해도 JSON 뽑아냄)
+        const cleaned = raw.replace(/```json|```/g, '').trim()
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) {
+          // JSON 없으면 다음 모델로 재시도
+          lastErr = 'JSON 미포함 응답'
+          continue
+        }
+
+        return NextResponse.json({ text: jsonMatch[0], provider: 'gemini' })
       }
 
       return NextResponse.json({ error: toKoreanError(lastErr) }, { status: 500 })

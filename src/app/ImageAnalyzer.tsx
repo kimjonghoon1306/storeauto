@@ -69,12 +69,12 @@ export default function ImageAnalyzer({ geminiKey, openaiKey, onResult, onGoSett
     setLoading(true)
     setError('')
 
-    const prompt = `이 상품 이미지를 분석해서 아래 JSON 형식으로만 응답하세요. 다른 텍스트 금지.
+    const prompt = `당신은 온라인 쇼핑몰 상품 분석 전문가입니다. 이미지 속 상품을 분석하세요.
+분석이 어렵더라도 최대한 추정해서 반드시 아래 JSON만 출력하세요. 설명문, 마크다운 코드블록, 다른 텍스트 절대 금지.
 카테고리는 반드시 다음 중 하나: ${CATEGORIES.join(', ')}
+한글만 사용. 쌍따옴표 값 안에 쌍따옴표 사용 금지.
 
-{"productName":"상품명(구체적으로)","category":"카테고리","features":["특징1","특징2","특징3","특징4"],"targetCustomer":"타겟고객","priceRange":"예상가격대","extraInfo":"추가정보"}
-
-한글만. 쌍따옴표 값 안에 사용 금지.`
+{"productName":"상품명(최대한 구체적으로)","category":"카테고리","features":["특징1","특징2","특징3","특징4"],"targetCustomer":"타겟고객","priceRange":"예상가격대","extraInfo":"추가정보"}`
 
     try {
       const res = await fetch('/api/analyze-image', {
